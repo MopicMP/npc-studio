@@ -1,0 +1,100 @@
+NPC Studio License, version 1.0
+
+Copyright (c) 2026 MopicMP. All rights reserved, except as granted below.
+
+This is the authoritative text. A plain-language Russian summary follows it; the
+summary explains, it does not grant.
+
+
+1. WHAT YOU MAY DO
+
+Permission is granted, free of charge, to any person obtaining a copy of this
+software and its associated files, to:
+
+  (a) use it for any purpose that is not commercial, including on private and
+      public servers, in videos, streams and other published recordings;
+
+  (b) redistribute the software unmodified and in full, free of charge, provided
+      that this license and the credits are included unchanged and that the
+      origin is stated;
+
+  (c) include it in a modpack or server pack that is distributed free of charge,
+      under the same conditions as (b);
+
+  (d) modify it for your own private use, and for the purpose of preparing
+      contributions to be offered back to this project.
+
+
+2. WHAT YOU MAY NOT DO WITHOUT WRITTEN PERMISSION
+
+  (a) Sell it, charge for access to it, or make it part of any paid product,
+      paid service, paid rank, paid modpack or paywalled download. Accepting
+      donations that are not required for access is not selling.
+
+  (b) Publish it, or any modified version of it, as a separate project of your
+      own — on Modrinth, CurseForge, GitHub or anywhere else. Sharing a private
+      modification with the people you play with is not publishing.
+
+  (c) Remove, obscure or alter the authorship, the credits, or this license, or
+      present the work as your own.
+
+  (d) Train a machine-learning model on this source with the purpose of
+      reproducing it.
+
+
+3. ASKING
+
+Anything not granted above may still be granted. Ask, and the answer may well be
+yes — a port to a Minecraft version this project has not reached, or a fork
+continued if this project goes quiet, are exactly the sort of thing worth
+asking about. Silence is not permission, but a question costs nothing.
+
+
+4. CONTRIBUTIONS
+
+By offering a contribution to this project, you agree that it may be distributed
+under this license. You keep the copyright to what you wrote.
+
+
+5. THIRD-PARTY CONTENT
+
+This license covers the code and assets authored by this project. Some content
+distributed alongside it was made by other people and carries its own terms;
+those parts are named, with their authors, in the credits. Nothing here grants
+you rights over somebody else's work.
+
+
+6. NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+================================================================================
+КРАТКОЕ ИЗЛОЖЕНИЕ ПО-РУССКИ (пояснение, а не сама лицензия)
+================================================================================
+
+Можно:
+  - играть, ставить на любые серверы, снимать видео и стримы;
+  - раздавать мод целиком и без изменений, бесплатно, с указанием автора;
+  - включать в бесплатные сборки на тех же условиях;
+  - менять для себя и присылать правки в проект.
+
+Нельзя без письменного разрешения:
+  - продавать, брать деньги за доступ, класть в платные сборки и за пейволл
+    (пожертвования, которые не обязательны для доступа, продажей не считаются);
+  - публиковать мод или его изменённую версию как свой отдельный проект;
+  - убирать или менять авторство, кредиты и эту лицензию, выдавать за своё;
+  - обучать на этом исходнике модель с целью его воспроизведения.
+
+Спросить можно про что угодно. Порт на версию, до которой проект не дошёл, или
+продолжение, если проект затих, — ровно тот случай, когда стоит спросить.
+
+Часть материалов рядом с модом сделана другими людьми и живёт по своим условиям;
+они названы в кредитах. Эта лицензия на чужую работу прав не даёт.
+
+Гарантий никаких, ответственности никакой.

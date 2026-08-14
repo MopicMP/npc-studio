@@ -1,0 +1,723 @@
+package com.mopicmp.npcstudio.entity;
+
+import java.util.function.BiFunction;
+
+import com.mopicmp.npcstudio.dialogue.runtime.DialogueRuntime;
+
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Avatar;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.PlayerModelPart;
+import net.minecraft.world.item.component.ResolvableProfile;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.Vec3;
+
+/**
+ * An NPC: a player-shaped entity that is not a player.
+ *
+ * Built on {@link Avatar}, the abstract class Minecraft itself introduced for
+ * exactly this — {@code Player} and {@code Mannequin} are its other two
+ * subclasses. It gives us the player silhouette, the skin profile, the hideable
+ * skin layers and the pose dimensions for free, without dragging in what
+ * {@code Player} carries: an inventory, container handling, abilities, none of
+ * which an NPC has any use for.
+ *
+ * Worth recording how little it asks in return: {@code getProfile()} is the
+ * only abstract method on the whole chain. That was checked with the compiler
+ * rather than assumed, and it is the strongest sign that this is the extension
+ * point Mojang intended rather than a class we are leaning on sideways.
+ *
+ * A mannequin was the other candidate and was ruled out because it cannot move
+ * at all — no AI, no pathfinding — and movement is most of what separates an
+ * NPC from a statue.
+ */
+public class NpcEntity extends Avatar {
+
+	/**
+	 * Whose skin to wear.
+	 *
+	 * Synched rather than kept on the server, because the client is what draws
+	 * the skin and it has no other way to learn which one. This mirrors how
+	 * {@code Mannequin} does it, which is a good sign we are on the marked path.
+	 */
+	private static final EntityDataAccessor<ResolvableProfile> DATA_PROFILE =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.RESOLVABLE_PROFILE);
+
+	/**
+	 * Which dialogue this NPC opens.
+	 *
+	 * A name, not the dialogue itself. Twenty copies of a guard can point at one
+	 * conversation, and fixing a typo in it fixes all twenty — which is most of
+	 * what templates would have bought us, without templates.
+	 */
+	private static final EntityDataAccessor<String> DATA_DIALOGUE =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.STRING);
+
+	/**
+	 * The gesture the NPC is making, and when it started.
+	 *
+	 * Synched because the client is what draws it. The tick is part of the value
+	 * rather than something the client works out for itself: two players joining
+	 * at different moments must see the same wave at the same point, and a player
+	 * arriving halfway through should catch the second half rather than start it
+	 * again.
+	 */
+	private static final EntityDataAccessor<String> DATA_GESTURE =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.STRING);
+
+	/**
+	 * The animations an NPC falls back on when nobody is talking to it.
+	 *
+	 * On the entity rather than in a dialogue, because standing, walking and
+	 * jumping are things a character does whether or not it has anything to say —
+	 * an NPC with no dialogue at all still has to stand somehow. A gesture from a
+	 * conversation overrides these for as long as it runs.
+	 *
+	 * One accessor per state rather than a packed list, so the client can be told
+	 * about a change to one of them without resending the rest.
+	 */
+	private static final EntityDataAccessor<String> DATA_ANIM_IDLE =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.STRING);
+
+	private static final EntityDataAccessor<String> DATA_ANIM_WALK =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.STRING);
+
+	private static final EntityDataAccessor<String> DATA_ANIM_RUN =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.STRING);
+
+	private static final EntityDataAccessor<String> DATA_ANIM_JUMP =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.STRING);
+
+	/** What an NPC is doing with its body when left to itself. */
+	public enum Motion { IDLE, WALK, RUN, JUMP }
+
+	/**
+	 * A skin somebody supplied as a file, rather than by naming a player.
+	 *
+	 * The picture is kept here on the server and handed out on request. What is
+	 * synched is only its fingerprint — a client seeing a fingerprint it has no
+	 * picture for asks for one, and a client that already has it says nothing.
+	 * Sending a few kilobytes to everybody in range every time an entity updates
+	 * would be the obvious way and the wrong one.
+	 */
+	private static final EntityDataAccessor<String> DATA_SKIN_MARK =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.STRING);
+
+	private byte[] customSkin;
+
+	public byte[] customSkin() {
+		return customSkin;
+	}
+
+	public String skinMark() {
+		return entityData.get(DATA_SKIN_MARK);
+	}
+
+	public void setCustomSkin(byte[] pixels) {
+		customSkin = pixels;
+		entityData.set(DATA_SKIN_MARK, pixels == null || pixels.length == 0
+			? "" : Integer.toHexString(java.util.Arrays.hashCode(pixels)));
+	}
+
+	/**
+	 * The looks this character owns, and which one it has on.
+	 *
+	 * Server-side only. What everyone needs to see is the skin being worn, and
+	 * that is already synched — the wardrobe itself only matters to whoever is
+	 * editing, so it travels when the editor asks and not before. Sending a
+	 * cupboard of skins to every player in range would be paying constantly for
+	 * something looked at once.
+	 */
+	private final java.util.List<Outfit> wardrobe = new java.util.ArrayList<>();
+	private int worn = -1;
+
+	/** Adds a look and puts it on, because adding one is how you say you want it. */
+	public void addOutfit(Outfit outfit) {
+		wardrobe.add(outfit);
+		wear(wardrobe.size() - 1);
+	}
+
+	/**
+	 * Puts on one costume and keeps nothing else.
+	 *
+	 * The difference from {@link #addOutfit} is the whole point, and it is a bug
+	 * fix rather than a preference. Once the world grew a shared wardrobe, every
+	 * dressing came through it and every dressing appended — so a character
+	 * changed twenty times was carrying twenty whole PNGs in its own saved data,
+	 * nineteen of them unreachable, all of them written into the chunk. Skins run
+	 * to a couple of hundred kilobytes at the sizes we allow, and the entity was
+	 * the only thing growing.
+	 *
+	 * Dropping the rest is safe precisely because the wardrobe is shared: the
+	 * costume is not being thrown away, it is on a shelf that every character can
+	 * reach. The character holds what it is wearing, and nothing more.
+	 */
+	public void dressIn(Outfit outfit) {
+		wardrobe.clear();
+		addOutfit(outfit);
+	}
+
+	public void wear(int index) {
+		if (index < 0 || index >= wardrobe.size()) return;
+		Outfit outfit = wardrobe.get(index);
+		worn = index;
+		setEyeMap(outfit.eyes());
+		if (outfit.isPicture()) setCustomSkin(outfit.pixels());
+		else {
+			setCustomSkin(null);
+			setSkin(outfit.name());
+		}
+	}
+
+	private static final EntityDataAccessor<Integer> DATA_GESTURE_START =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.INT);
+
+	/**
+	 * The face this character is making, and for how long.
+	 *
+	 * Synchronised rather than worked out, because unlike everything else the eyes
+	 * do, an expression is an <b>event</b>: somebody decided, at a moment, that
+	 * this line is said angrily. A blink can be recomputed from the clock on every
+	 * client and always agree; a decision cannot.
+	 *
+	 * Held as a name rather than a number so that a dialogue naming an expression
+	 * this version has never heard of still loads, and simply makes an ordinary
+	 * face.
+	 */
+	private static final EntityDataAccessor<String> DATA_EXPRESSION =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.STRING);
+
+	private static final EntityDataAccessor<Integer> DATA_EXPRESSION_START =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.INT);
+
+	private static final EntityDataAccessor<Integer> DATA_EXPRESSION_TICKS =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.INT);
+
+	private static final EntityDataAccessor<Integer> DATA_GESTURE_TICKS =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.INT);
+
+	/**
+	 * How the character is built, packed into eight bytes.
+	 *
+	 * Synched because everyone who can see the character has to draw it, and
+	 * entity data is the one channel that handles somebody walking into view
+	 * later without anybody arranging it.
+	 */
+	private static final EntityDataAccessor<Long> DATA_SHAPE =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.LONG);
+
+	/** The bend of the back, kept apart because the first eight bytes were full. */
+	private static final EntityDataAccessor<Long> DATA_POSTURE =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.LONG);
+
+	/**
+	 * Where the face this character is wearing keeps its eyes and brows.
+	 *
+	 * Two longs, a bit per pixel of the face — see {@link EyeMap}. Sent rather
+	 * than worked out on each client, so that a character blinks the same way for
+	 * everybody watching, and so that a face somebody marked out by hand is not
+	 * quietly replaced by a guess on somebody else's screen.
+	 */
+	private static final EntityDataAccessor<Long> DATA_EYES =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.LONG);
+
+	private static final EntityDataAccessor<Long> DATA_WHITES =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.LONG);
+
+	private static final EntityDataAccessor<Long> DATA_BROWS =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.LONG);
+
+	/** Whether that map was drawn by a person, as against read off the picture. */
+	private static final EntityDataAccessor<Boolean> DATA_EYES_AUTHORED =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.BOOLEAN);
+
+	/**
+	 * What actually gets built when an NPC spawns.
+	 *
+	 * The renderer insists on {@code Avatar & ClientAvatarEntity}, and that
+	 * second interface exists only on the client — so the client needs its own
+	 * subclass, exactly as vanilla has {@code ClientMannequin} beside
+	 * {@code Mannequin}. Common code cannot name a client-only class, so the
+	 * client initializer writes its constructor in here instead, and the entity
+	 * type reads this field at spawn time rather than at registration.
+	 *
+	 * A dedicated hook in {@code EntityType.Builder} would be tidier, but there
+	 * isn't one; this is the same trick with the moving part left visible.
+	 */
+	public static BiFunction<EntityType<? extends LivingEntity>, Level, NpcEntity> factory = NpcEntity::new;
+
+	/**
+	 * Every part of the second skin layer switched on.
+	 *
+	 * The same seven parts our Blockbench plugin turns into real geometry: hat,
+	 * jacket, both sleeves, both trouser legs, cape.
+	 */
+	private static final byte ALL_LAYERS = allLayers();
+
+	private static byte allLayers() {
+		int mask = 0;
+		for (PlayerModelPart part : PlayerModelPart.values()) {
+			mask |= part.getMask();
+		}
+		return (byte) mask;
+	}
+
+	public NpcEntity(EntityType<? extends LivingEntity> type, Level level) {
+		super(type, level);
+
+		// Avatar defines this mask as a literal zero, meaning no second layer at
+		// all — checked in the bytecode, not guessed. That is right for a Player,
+		// whose real value arrives from the client's settings packet, and for a
+		// Mannequin, which sets it explicitly. An NPC has neither, so without this
+		// line it shows up bald and sleeveless.
+		entityData.set(DATA_PLAYER_MODE_CUSTOMISATION, ALL_LAYERS);
+	}
+
+	/** Which parts of the second layer are drawn, as a {@link PlayerModelPart} mask. */
+	public byte skinLayers() {
+		return entityData.get(DATA_PLAYER_MODE_CUSTOMISATION);
+	}
+
+	public void setSkinLayers(byte mask) {
+		entityData.set(DATA_PLAYER_MODE_CUSTOMISATION, mask);
+	}
+
+	/** Turns one part of the second layer on or off. */
+	public void setSkinLayer(PlayerModelPart part, boolean shown) {
+		int mask = skinLayers();
+		setSkinLayers((byte) (shown ? mask | part.getMask() : mask & ~part.getMask()));
+	}
+
+	/**
+	 * An NPC stands where it is put and does not wander off.
+	 *
+	 * No follow range and no movement speed yet: routes arrive in a later phase,
+	 * and an NPC that drifts before then would look like a bug rather than an
+	 * unfinished feature.
+	 */
+	public static AttributeSupplier.Builder createAttributes() {
+		return LivingEntity.createLivingAttributes()
+			.add(Attributes.MAX_HEALTH, 20.0)
+			.add(Attributes.MOVEMENT_SPEED, 0.0)
+			.add(Attributes.STEP_HEIGHT, 0.6)
+			// The game's own scale, not one of ours. It carries the hitbox, the eye
+			// height, how far the character can reach and how big it is drawn — all
+			// the things a size ought to change, and all of them already wired up.
+			// A number of our own would have moved the picture and left the body
+			// where it was.
+			.add(Attributes.SCALE, 1.0);
+	}
+
+	@Override
+	protected void defineSynchedData(SynchedEntityData.Builder builder) {
+		super.defineSynchedData(builder);
+		builder.define(DATA_PROFILE, ResolvableProfile.createUnresolved("Steve"));
+		builder.define(DATA_DIALOGUE, "");
+		builder.define(DATA_GESTURE, "");
+		builder.define(DATA_GESTURE_START, 0);
+		builder.define(DATA_GESTURE_TICKS, 0);
+		builder.define(DATA_EXPRESSION, "");
+		builder.define(DATA_EXPRESSION_START, 0);
+		builder.define(DATA_EXPRESSION_TICKS, 0);
+		builder.define(DATA_SHAPE, BodyShape.DEFAULT.packed());
+		builder.define(DATA_POSTURE, BodyShape.DEFAULT.packedPosture());
+		builder.define(DATA_EYES, 0L);
+		builder.define(DATA_WHITES, 0L);
+		builder.define(DATA_BROWS, 0L);
+		builder.define(DATA_EYES_AUTHORED, false);
+		builder.define(DATA_ANIM_IDLE, "");
+		builder.define(DATA_ANIM_WALK, "");
+		builder.define(DATA_ANIM_RUN, "");
+		builder.define(DATA_ANIM_JUMP, "");
+		builder.define(DATA_SKIN_MARK, "");
+	}
+
+	private EntityDataAccessor<String> slotFor(Motion motion) {
+		return switch (motion) {
+			case IDLE -> DATA_ANIM_IDLE;
+			case WALK -> DATA_ANIM_WALK;
+			case RUN -> DATA_ANIM_RUN;
+			case JUMP -> DATA_ANIM_JUMP;
+		};
+	}
+
+	public String motionAnimation(Motion motion) {
+		return entityData.get(slotFor(motion));
+	}
+
+	public void setMotionAnimation(Motion motion, String animation) {
+		entityData.set(slotFor(motion), animation == null ? "" : animation);
+	}
+
+	/**
+	 * What this NPC should be playing right now if nothing is talking to it.
+	 *
+	 * Worked out from how it is actually moving rather than from a state somebody
+	 * has to remember to set, so an NPC pushed along by a route or by a piston
+	 * animates without anyone arranging it.
+	 */
+	public String restingAnimation() {
+		// Standing still is decided by standing still, not by the ground flag. A
+		// client's copy of an entity is not run through the physics the server
+		// uses, so its `onGround` can read false for a character that has been
+		// stood in the same spot for an hour — and asking that question first
+		// meant the idle animation never played at all.
+		double speed = getDeltaMovement().horizontalDistanceSqr();
+		double falling = Math.abs(getDeltaMovement().y);
+		if (falling > 0.08 && !onGround()) return motionAnimation(Motion.JUMP);
+		// Squared, because comparing squared lengths avoids a square root and the
+		// threshold is arbitrary anyway. Roughly a brisk walk.
+		if (speed > 0.02) return motionAnimation(Motion.RUN);
+		if (speed > 0.0005) return motionAnimation(Motion.WALK);
+		return motionAnimation(Motion.IDLE);
+	}
+
+	@Override
+	public ResolvableProfile getProfile() {
+		return entityData.get(DATA_PROFILE);
+	}
+
+	/** Dresses the NPC in a player's skin. Resolved by the server when needed. */
+	public void setSkin(String playerName) {
+		entityData.set(DATA_PROFILE, ResolvableProfile.createUnresolved(playerName));
+	}
+
+	/** Wears someone else's look wholesale — used to dress a preview as this NPC. */
+	public void setProfile(ResolvableProfile profile) {
+		entityData.set(DATA_PROFILE, profile);
+	}
+
+	@Override
+	public void tick() {
+		super.tick();
+		// Only the side that owns the truth. The client works out for itself when to
+		// stop drawing a gesture, and having it also clear the field would mean two
+		// answers to the same question that drift apart.
+		if (!level().isClientSide()) {
+			expireGesture();
+			expireExpression();
+		}
+	}
+
+	/** What the NPC is doing with itself, or empty for nothing. */
+	public String gesture() {
+		return entityData.get(DATA_GESTURE);
+	}
+
+	/** How many ticks the current gesture has been running, on either side. */
+	public int gestureAge() {
+		return tickCount - entityData.get(DATA_GESTURE_START);
+	}
+
+	/**
+	 * How long the current gesture was asked to last, or zero for indefinitely.
+	 *
+	 * Synched rather than kept on the server alone, because both sides need it and
+	 * for different reasons. The server clears the gesture when the time is up, so
+	 * that somebody arriving later is not told a character is still bowing. The
+	 * client stops drawing it at exactly the right tick instead of waiting to be
+	 * told — otherwise every gesture would hold its last frame for however long
+	 * the packet took, which is the pose freezing and then snapping.
+	 */
+	public int gestureTicks() {
+		return entityData.get(DATA_GESTURE_TICKS);
+	}
+
+	public void playGesture(String name, int ticks) {
+		entityData.set(DATA_GESTURE, name == null ? "" : name);
+		entityData.set(DATA_GESTURE_START, tickCount);
+		entityData.set(DATA_GESTURE_TICKS, Math.max(0, ticks));
+	}
+
+	/**
+	 * How long the current expression has been going, in ticks.
+	 *
+	 * A held face does not need this and a wink is nothing without it: a wink is a
+	 * movement with a beginning, and the beginning is the only part of an
+	 * expression that cannot be worked out from the clock alone.
+	 */
+	public int expressionAge() {
+		return Math.max(0, tickCount - entityData.get(DATA_EXPRESSION_START));
+	}
+
+	/** The face this character is making, or {@link Expression#NEUTRAL}. */
+	public Expression expression() {
+		return Expression.named(entityData.get(DATA_EXPRESSION));
+	}
+
+	/**
+	 * How far through the expression we are, nought to one, or one when it is held.
+	 *
+	 * Given as a fraction rather than a count so that the client can ease a face
+	 * off at its end without knowing how long it was meant to last.
+	 */
+	public float expressionProgress() {
+		int ticks = entityData.get(DATA_EXPRESSION_TICKS);
+		if (ticks <= 0) return 1f;
+		return Math.clamp((tickCount - entityData.get(DATA_EXPRESSION_START)) / (float) ticks,
+			0f, 1f);
+	}
+
+	/**
+	 * Sets the face, for a while.
+	 *
+	 * @param name  an {@link Expression} by name; anything unrecognised is an
+	 *              ordinary face rather than an error
+	 * @param ticks how long to hold it, or nought to hold it until something else
+	 *              changes it
+	 */
+	public void express(String name, int ticks) {
+		entityData.set(DATA_EXPRESSION, name == null ? "" : name);
+		entityData.set(DATA_EXPRESSION_START, tickCount);
+		entityData.set(DATA_EXPRESSION_TICKS, Math.max(0, ticks));
+	}
+
+	/**
+	 * Puts the body back to itself once a bounded gesture has run its course.
+	 *
+	 * Only the server does this, and only for a gesture that was given a length.
+	 * Clearing the name is what lets the resting animation come back, since the
+	 * renderer falls back to standing or walking exactly when there is no gesture
+	 * to show.
+	 */
+	/**
+	 * Puts the face back to itself once a bounded expression has run its course.
+	 *
+	 * The same shape as a gesture expiring and for the same reason: without it, a
+	 * character told to look angry for one line looks angry for the rest of the
+	 * session.
+	 */
+	private void expireExpression() {
+		int ticks = entityData.get(DATA_EXPRESSION_TICKS);
+		if (ticks <= 0 || entityData.get(DATA_EXPRESSION).isEmpty()) return;
+		if (tickCount - entityData.get(DATA_EXPRESSION_START) < ticks) return;
+		entityData.set(DATA_EXPRESSION, "");
+		entityData.set(DATA_EXPRESSION_TICKS, 0);
+	}
+
+	private void expireGesture() {
+		int ticks = entityData.get(DATA_GESTURE_TICKS);
+		if (ticks <= 0 || entityData.get(DATA_GESTURE).isEmpty()) return;
+		if (gestureAge() < ticks) return;
+		entityData.set(DATA_GESTURE, "");
+		entityData.set(DATA_GESTURE_TICKS, 0);
+	}
+
+	/**
+	 * How this character is built.
+	 *
+	 * Kept apart from {@link #scale()} on purpose, and the difference is not
+	 * cosmetic. Scale is the game's own attribute: it moves the hitbox, the eye
+	 * height and how far the character can reach. Shape is only how the model is
+	 * drawn — a fat innkeeper does not catch arrows on a belly the server has
+	 * never heard of. Worth saying out loud, because the alternative is somebody
+	 * reporting it later as a bug.
+	 */
+	public BodyShape bodyShape() {
+		return BodyShape.unpack(entityData.get(DATA_SHAPE), entityData.get(DATA_POSTURE));
+	}
+
+	/** Where this character's face keeps its eyes, as everybody watching sees it. */
+	public EyeMap eyeMap() {
+		return new EyeMap(entityData.get(DATA_EYES), entityData.get(DATA_WHITES),
+			entityData.get(DATA_BROWS), entityData.get(DATA_EYES_AUTHORED));
+	}
+
+	public void setEyeMap(EyeMap read) {
+		EyeMap map = read == null ? EyeMap.NONE : read;
+		entityData.set(DATA_EYES, map.eyes());
+		entityData.set(DATA_WHITES, map.whites());
+		entityData.set(DATA_BROWS, map.brows());
+		entityData.set(DATA_EYES_AUTHORED, map.authored());
+	}
+
+	public void setBodyShape(BodyShape shape) {
+		BodyShape wanted = shape == null ? BodyShape.DEFAULT : shape;
+		entityData.set(DATA_SHAPE, wanted.packed());
+		entityData.set(DATA_POSTURE, wanted.packedPosture());
+	}
+
+	/**
+	 * Which costume this character is wearing, or empty for none.
+	 *
+	 * Server-side only, and kept for one purpose: so that "put the build back to
+	 * the costume's" can be asked for without the client naming a costume. A name
+	 * that arrives over the wire is a name somebody chose; a name the server
+	 * remembers is one it handed out.
+	 */
+	private String costumeId = "";
+
+	public String costumeId() {
+		return costumeId;
+	}
+
+	public void setCostumeId(String id) {
+		costumeId = id == null ? "" : id;
+	}
+
+	/** How big this character is, where one is ordinary player size. */
+	public float scale() {
+		return (float) getAttributeValue(Attributes.SCALE);
+	}
+
+	public void setScale(float scale) {
+		var instance = getAttribute(Attributes.SCALE);
+		if (instance != null) instance.setBaseValue(Math.clamp(scale, 0.25f, 4.0f));
+	}
+
+	public String dialogueId() {
+		return entityData.get(DATA_DIALOGUE);
+	}
+
+	public void setDialogueId(String id) {
+		entityData.set(DATA_DIALOGUE, id == null ? "" : id);
+	}
+
+	/**
+	 * Right-clicking starts, or continues, the conversation.
+	 *
+	 * Continues is the important half. While a dialogue is open this click means
+	 * "go on" rather than "talk to me", so a player who pressed Esc on a choice
+	 * and came back picks up where they left off instead of starting over.
+	 * The engine already behaves that way; wiring it up is the next step.
+	 *
+	 * This is {@code interact}, not {@code mobInteract}: the latter lives on
+	 * {@code Mob}, which an {@link Avatar} is not. The third argument is where on
+	 * the body the click landed — new in this version, and worth keeping in mind
+	 * for later, when clicking an NPC's head might mean something different from
+	 * clicking its hand.
+	 */
+	@Override
+	public InteractionResult interact(Player player, InteractionHand hand, Vec3 hit) {
+		if (level().isClientSide()) {
+			return InteractionResult.SUCCESS;
+		}
+		if (!(player instanceof ServerPlayer talker)) {
+			return InteractionResult.PASS;
+		}
+		// Crouching means "let me at the workings" — the same gesture that opens a
+		// block's own screen instead of using it. A plain click still talks, so an
+		// author testing their dialogue is never one keypress away from a settings
+		// screen they did not want.
+		if (player.isShiftKeyDown() && player.isCreative()) {
+			com.mopicmp.npcstudio.net.NpcEditing.open(talker, getId());
+			return InteractionResult.SUCCESS;
+		}
+		if (dialogueId().isEmpty()) {
+			return InteractionResult.PASS;
+		}
+		DialogueRuntime.talkTo(talker, this);
+		return InteractionResult.SUCCESS;
+	}
+
+	@Override
+	protected void addAdditionalSaveData(ValueOutput output) {
+		super.addAdditionalSaveData(output);
+		output.store("Profile", ResolvableProfile.CODEC, getProfile());
+		output.putString("Dialogue", dialogueId());
+		output.putByte("SkinLayers", skinLayers());
+		if (customSkin != null && customSkin.length > 0) {
+			// Base64 because this file holds text and numbers, and a picture is
+			// neither. It costs a third more room and saves inventing a format.
+			output.putString("SkinFile", java.util.Base64.getEncoder().encodeToString(customSkin));
+		}
+		output.putInt("Worn", worn);
+		for (int i = 0; i < wardrobe.size(); i++) {
+			Outfit outfit = wardrobe.get(i);
+			output.putString("Outfit" + i + "Label", outfit.label());
+			output.putString("Outfit" + i + "Name", outfit.name());
+			if (outfit.isPicture()) {
+				output.putString("Outfit" + i + "Skin",
+					java.util.Base64.getEncoder().encodeToString(outfit.pixels()));
+			}
+			if (!outfit.eyes().isNone()) {
+				output.putLong("Outfit" + i + "Eyes", outfit.eyes().eyes());
+				output.putLong("Outfit" + i + "Whites", outfit.eyes().whites());
+				output.putLong("Outfit" + i + "Brows", outfit.eyes().brows());
+				output.putBoolean("Outfit" + i + "EyesByHand", outfit.eyes().authored());
+			}
+		}
+		output.putInt("Outfits", wardrobe.size());
+		for (Motion motion : Motion.values()) {
+			output.putString("Anim" + motion.name(), motionAnimation(motion));
+		}
+		// Written as the packed long rather than as named numbers, because unlike
+		// the wardrobe file nobody opens a chunk in a text editor.
+		output.putLong("Shape", entityData.get(DATA_SHAPE));
+		output.putLong("Posture", entityData.get(DATA_POSTURE));
+		output.putString("Costume", costumeId);
+	}
+
+	@Override
+	protected void readAdditionalSaveData(ValueInput input) {
+		super.readAdditionalSaveData(input);
+		input.read("Profile", ResolvableProfile.CODEC).ifPresent(p -> entityData.set(DATA_PROFILE, p));
+		setDialogueId(input.getStringOr("Dialogue", ""));
+		// An NPC placed before this field existed has no value saved, and the whole
+		// layer should stay on rather than quietly vanishing on the next reload.
+		setSkinLayers(input.getByteOr("SkinLayers", ALL_LAYERS));
+		for (Motion motion : Motion.values()) {
+			setMotionAnimation(motion, input.getStringOr("Anim" + motion.name(), ""));
+		}
+		// A character placed before shapes existed is shaped like everybody else.
+		entityData.set(DATA_SHAPE, input.getLongOr("Shape", BodyShape.DEFAULT.packed()));
+		entityData.set(DATA_POSTURE,
+			input.getLongOr("Posture", BodyShape.DEFAULT.packedPosture()));
+		costumeId = input.getStringOr("Costume", "");
+		wardrobe.clear();
+		int outfits = input.getIntOr("Outfits", 0);
+		for (int i = 0; i < outfits; i++) {
+			String label = input.getStringOr("Outfit" + i + "Label", "");
+			String name = input.getStringOr("Outfit" + i + "Name", "");
+			String picture = input.getStringOr("Outfit" + i + "Skin", "");
+			// A costume saved before faces were read has no map, which is not the
+			// same as a face with no eyes: nought means "nobody has looked yet".
+			EyeMap read = new EyeMap(
+				input.getLongOr("Outfit" + i + "Eyes", 0L),
+				input.getLongOr("Outfit" + i + "Whites", 0L),
+				input.getLongOr("Outfit" + i + "Brows", 0L),
+				input.getBooleanOr("Outfit" + i + "EyesByHand", false));
+			if (picture.isEmpty()) {
+				wardrobe.add(Outfit.named(label, name).looking(read));
+			} else {
+				try {
+					wardrobe.add(Outfit.picture(label,
+						java.util.Base64.getDecoder().decode(picture)).looking(read));
+				} catch (IllegalArgumentException unreadable) {
+					// One unreadable costume, not a lost character.
+					com.mopicmp.npcstudio.NpcStudio.LOGGER.warn(
+						"Could not read a saved outfit: {}", unreadable.getMessage());
+				}
+			}
+		}
+		worn = Math.clamp(input.getIntOr("Worn", -1), -1, wardrobe.size() - 1);
+
+		String saved = input.getStringOr("SkinFile", "");
+		if (!saved.isEmpty()) {
+			try {
+				setCustomSkin(java.util.Base64.getDecoder().decode(saved));
+			} catch (IllegalArgumentException unreadable) {
+				// A corrupted skin costs this NPC its face, not the world its load.
+				com.mopicmp.npcstudio.NpcStudio.LOGGER.warn(
+					"Could not read the saved skin for an NPC: {}", unreadable.getMessage());
+			}
+		}
+	}
+
+	/** Nothing here should be pushed around by mobs or water. */
+	@Override
+	public boolean isPushable() {
+		return false;
+	}
+}

@@ -1,0 +1,19 @@
+{
+	"required": true,
+	"package": "com.mopicmp.npcstudio.client.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"AvatarRenderStateMixin",
+		"CameraMixin",
+		"HeldItemMixin",
+		"ModelPartMixin",
+		"PlayerModelMixin",
+		"MinecraftMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}

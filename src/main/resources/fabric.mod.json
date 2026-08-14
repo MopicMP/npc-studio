@@ -1,0 +1,37 @@
+{
+	"schemaVersion": 1,
+	"id": "npc_studio",
+	"version": "${version}",
+	"name": "NPC Studio",
+	"description": "NPCs with branching dialogue, cutscenes, and a dialogue interface that can be reskinned.",
+	"authors": [
+		"MopicMP"
+	],
+	"contact": {
+		"sources": "https://github.com/MopicMP"
+	},
+	"license": "LicenseRef-NpcStudio-1.0",
+	"icon": "assets/npc_studio/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.mopicmp.npcstudio.NpcStudio"
+		],
+		"client": [
+			"com.mopicmp.npcstudio.client.NpcStudioClient"
+		]
+	},
+	"mixins": [
+		"npc_studio.mixins.json",
+		{
+			"config": "npc_studio.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

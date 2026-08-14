@@ -1,0 +1,220 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+	id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+repositories {
+	// Loom adds the Minecraft repositories itself; this one is here for the test
+	// framework and any ordinary library the mod ends up needing.
+	mavenCentral()
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		"modid" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+dependencies {
+	// To change the versions see the gradle.properties file
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+	// Fabric API. This is technically optional, but you probably want it anyway.
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// The dialogue engine is deliberately free of Minecraft types, so it can be
+	// tested with plain JUnit and no game running at all. That is the whole point
+	// of keeping the engine and the integration apart.
+	testImplementation platform('org.junit:junit-bom:5.11.4')
+	testImplementation 'org.junit.jupiter:junit-jupiter'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	// The emote reader lives in the client source set but touches nothing from the
+	// game — only Gson and its own types. Putting the client output on the test
+	// path lets it be checked against the whole pack without a game running, which
+	// matters more here than for most code: it parses seven hundred files nobody
+	// on this side wrote, and one surprise in the format should fail a build
+	// rather than a frame.
+	testImplementation sourceSets.client.output
+	testImplementation sourceSets.client.compileClasspath
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+	testLogging {
+		events 'passed', 'failed', 'skipped'
+		exceptionFormat 'full'
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Two downloads, one codebase.
+//
+// Some of the bundled animations belong only in the build that goes on our own
+// site, and not in the one that goes to CurseForge and Modrinth. That is a
+// content decision, and it is made in `emotes-restricted.txt` — a plain list of
+// ids that anybody can read and edit.
+//
+// What matters here is what this deliberately is NOT: a second version of the
+// mod. Two jars that differ in code means two release pipelines, two sets of bug
+// reports, "which one do you have?" at the start of every conversation, and a
+// permanent tax on every future change. These two jars differ in **resources
+// only**. The classes in them are byte for byte the same.
+// ---------------------------------------------------------------------------
+def restrictedList = file("emotes-restricted.txt")
+def restricted = restrictedList.exists()
+	? restrictedList.readLines()*.trim().findAll { it && !it.startsWith("#") } as Set
+	: [] as Set
+def unrestrictedBuild = project.hasProperty("full")
+
+// Four animations are perfectly ordinary movements that were only ever let down
+// by their names. Renaming costs nothing and saves them, so it is applied to
+// both builds — this file is not about hiding anything.
+def renameList = file("emotes-renamed.txt")
+def renames = [:]
+if (renameList.exists()) {
+	renameList.readLines()*.trim().each { line ->
+		if (!line || line.startsWith("#") || !line.contains("=")) return
+		def at = line.indexOf("=")
+		renames[line.substring(0, at).trim()] = line.substring(at + 1).trim()
+	}
+}
+
+if (unrestrictedBuild) {
+	// A different name, so the two can never be confused once they are sitting in
+	// the same folder — which is exactly where they will end up.
+	base.archivesName = "${base.archivesName.get()}-full"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+	// Named inputs, so changing the list or the flag rebuilds the resources
+	// instead of Gradle helpfully handing back the previous jar.
+	inputs.property "restricted", restricted.join(",")
+	inputs.property "renames", renames.toString()
+	inputs.property "full", unrestrictedBuild
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+
+	if (!unrestrictedBuild) {
+		restricted.each { id ->
+			exclude "assets/npc_studio/emotes/${id}.json"
+			exclude "assets/npc_studio/emotes/${id}.png"
+		}
+	}
+
+	// The index is rewritten in both builds: names always, and the excluded
+	// entries as well in the restricted one. Leaving them in would offer the
+	// picker animations whose files are not in the jar — a grid of names that do
+	// nothing when clicked, which is worse than not offering them.
+	doLast {
+		def index = new File(destinationDir, "assets/npc_studio/emotes/index.json")
+		if (!index.exists()) return
+		def read = new groovy.json.JsonSlurper().parse(index)
+		def before = read.emotes.size()
+
+		def renamed = 0
+		read.emotes.each { emote ->
+			def wanted = renames[emote.id]
+			if (wanted) {
+				emote.name = wanted
+				renamed++
+			}
+		}
+		if (!unrestrictedBuild) {
+			read.emotes = read.emotes.findAll { !restricted.contains(it.id) }
+		}
+		logger.lifecycle("emotes: ${read.emotes.size()} of ${before} bundled, "
+			+ "${renamed} renamed"
+			+ (unrestrictedBuild ? " (unrestricted build)" : ""))
+		index.text = groovy.json.JsonOutput.prettyPrint(
+			groovy.json.JsonOutput.toJson(read))
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+
+	// Gradle itself runs on an older JDK than the toolchain, so javac is forked
+	// into a worker process — and that worker gets its own, much smaller heap
+	// than `org.gradle.jvmargs` grants the daemon. Compiling against the whole
+	// remapped Minecraft exhausted it, and the failure surfaced as "worker daemon
+	// finished with non-zero exit value" with no mention of memory at all.
+	it.options.forkOptions.memoryMaximumSize = '2g'
+}
+
+java {
+	// Pin the compiler to a real JDK 25 instead of relying on whatever JAVA_HOME
+	// happens to be. Gradle finds an installed one by itself, so this works for
+	// anyone who clones the repo without them having to set an environment
+	// variable — and it stops a machine with an older default JDK from failing
+	// with an error that says nothing about the actual cause.
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
+
+	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
+	// if it is present.
+	// If you remove this line, sources will not be generated.
+	withSourcesJar()
+
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+	def projectName = project.name
+	inputs.property "projectName", projectName
+
+	from("LICENSE") {
+		rename { "${it}_$projectName"}
+	}
+}
+
+// configure the maven publication
+publishing {
+	publications {
+		create("mavenJava", MavenPublication) {
+			from components.java
+		}
+	}
+
+	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
+	repositories {
+		// Add repositories to publish to here.
+		// Notice: This block does NOT have the same function as the block in the top level.
+		// The repositories here will be used for publishing your artifact, not for
+		// retrieving dependencies.
+	}
+}
+
+// Prints what the eye reading makes of every skin in test/Eyes/skins. Not a
+// test: its output is what a person corrects, and those corrections become the
+// labels the real test measures against.
+tasks.register('runFaceLookReport', JavaExec) {
+	group = 'verification'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.mopicmp.npcstudio.skin.FaceLookReport'
+}
+
+// Copies the faces marked by hand in game out of the save and into
+// test/Eyes/faces.txt, pixels and all, so the measurement against them is an
+// ordinary test rather than something depending on a world folder existing.
+// Run after marking faces in the eye grid.
+tasks.register('exportFaceMarks', JavaExec) {
+	group = 'verification'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.mopicmp.npcstudio.skin.FaceMarksExport'
+}

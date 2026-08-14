@@ -1,0 +1,72 @@
+# Animations that only belong in the unrestricted build.
+#
+# One id per line. Blank lines and lines starting with # are ignored.
+#
+#   ./gradlew build          leaves these out of the jar and out of the index.
+#                            The build for CurseForge and Modrinth.
+#   ./gradlew build -Pfull   includes everything, jar named "-full".
+#
+# The code is identical in both; only the resources differ. Nothing is deleted
+# from the repository — changing your mind is deleting a line here.
+#
+#
+# THE RULE
+#
+# Out: depictions of a sexual act, and of excretion. In: everything else.
+#
+# It is drawn this narrowly on purpose. A moderator reads a list of 712 *names*;
+# nobody watches 712 animations. So the name is most of what is ever seen, and a
+# crude name on an innocent animation is a naming problem — see
+# `emotes-renamed.txt`, which fixes four of them without costing an animation.
+
+spe_sexpass
+spe_lying_sex
+spe_sexact
+spe_fucking_lying_down
+spe_fucking_sitting_down
+spe_rider
+spe_masturbate
+spe_striptease
+spe_shit
+spe_pee
+
+# The last one is the animation that urinates. NOT spe_writing_a_book, which is
+# also called "Писать" and is somebody writing a book.
+#
+#
+# DELIBERATELY NOT HERE, AND WHY
+#
+# Smoking — spe_to_smoke, spe_i_lean_against_the_wall_to_smoke
+#   Both platforms carry mods that add tobacco. Not an issue.
+#
+# Kneeling and bound hands — spe_kneel_down, spe_kneel_down_with_your_hands_back,
+# spe_lying_with_your_hands_tied
+#   Read together these are a prisoner set, and captivity is a staple of
+#   adventure maps. That is what they are for.
+#
+# Crossing oneself and worship — spe_cross_from_left_to_right,
+# spe_cross_from_right_to_left, spe_worship
+#   A religious gesture is not adult content. These should not have been on the
+#   list at all, in either direction.
+#
+# spe_fart
+#   Crude, and a different thing from defecation. Vanilla Minecraft is not above
+#   this kind of joke.
+#
+# spe_finishing_with_a_knife
+#   Minecraft is a game about hitting things. A finishing move is not the line.
+#
+# spe_inject_adrenaline
+#   Named as medical, which is what it is — the action-film shot to the heart,
+#   not recreational use.
+#
+# spe_tverk
+#   Common in every emote mod on both platforms.
+#
+#
+# WHERE MY OPINION IS WORTH NOTHING
+#
+# spe_modelpose1..8, spe_stylish_pose1..9, spe_lean_in_front_of_the_block
+#   I have not seen these. They are kept because "a pose" is not a reason to
+#   drop one — but you have looked at them and I have not. If any of them reads
+#   wrong, add it. That judgement is better than mine.

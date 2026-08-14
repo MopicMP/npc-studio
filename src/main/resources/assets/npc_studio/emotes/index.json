@@ -1,0 +1,6802 @@
+{
+ "emotes": [
+  {
+   "id": "spe_a_blow_with_a_heavy_sword1",
+   "name": "Удар тяжелым мечом §8(1 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Кх-я-я!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_a_blow_with_a_heavy_sword2",
+   "name": "Удар тяжелым мечом §8(2 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Увесистый!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_a_blow_with_a_heavy_sword3",
+   "name": "Удар тяжелым мечом §8(3 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Ух!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_a_hammer1",
+   "name": "Молоток §4(§cКСЭПСП§4) §8(§7Спорт§8) (Правая рука)",
+   "author": "SPEmotes",
+   "description": "Берём гантелю и качаем мышцы!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП",
+    "Спорт",
+    "Правая рука"
+   ]
+  },
+  {
+   "id": "spe_a_hammer2",
+   "name": "Молоток §4(§cКСЭПСП§4) §8(§7Спорт§8) (Левая рука)",
+   "author": "SPEmotes",
+   "description": "Мышцы! Мышцы! Мышцы!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП",
+    "Спорт",
+    "Левая рука"
+   ]
+  },
+  {
+   "id": "spe_a_terrible_laugh",
+   "name": "Жутко смеяться",
+   "author": "SPEmotes",
+   "description": "Со мной точно всё в порядке?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_admire",
+   "name": "Восхищаться",
+   "author": "SPEmotes",
+   "description": "Вау! У тебя так хорошо получается!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_air_kiss",
+   "name": "Воздушный поцелуй",
+   "author": "SPEmotes",
+   "description": "Поцелуй на расстоянии",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_albedo_stand",
+   "name": "Стойка Альбедо §5(§dМульти вселенная§5) §8(Genshin impact)",
+   "author": "SPEmotes",
+   "description": "Главный алхимик Ордо Фавониус",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Genshin impact"
+   ]
+  },
+  {
+   "id": "spe_anasui_pose",
+   "name": "Поза Анасуи §5(§dМульти вселенная§5) §8(JoJo)",
+   "author": "SPEmotes",
+   "description": "Разберу всё, что душа пожелает",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "JoJo"
+   ]
+  },
+  {
+   "id": "spe_animatronics_movements",
+   "name": "Движения аниматроника §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Это было, так давно?",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_ankha_dance",
+   "name": "Танец Анкхи §1(§9Танец§1) §5(§dМульти вселенная§5) §8(Animal Crossing)",
+   "author": "SPEmotes",
+   "description": "Бёдрами туда сюда!",
+   "icon": true,
+   "tags": [
+    "Танец",
+    "Мульти вселенная",
+    "Animal Crossing"
+   ]
+  },
+  {
+   "id": "spe_apologize_on_my_knees",
+   "name": "Извиниться на коленях",
+   "author": "SPEmotes",
+   "description": "Прошу, простите меня, я виноват!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_apologize",
+   "name": "Извиниться",
+   "author": "SPEmotes",
+   "description": "Простите, извините...",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_armory_pass",
+   "name": "Оружейный перевал §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Смотри какая пушка, да, это моя!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_arrogant_gait",
+   "name": "Высокомерная походка §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Вы не достойны смотреть на меня",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_arsonist",
+   "name": "Поджигатель §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Ха-ха муррит до труфа",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_ashi",
+   "name": "Аши §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Аши, аши",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_aski_pose",
+   "name": "Поза Аски §5(§dМульти вселенная§5) §8(Evangelion)",
+   "author": "SPEmotes",
+   "description": "Глупый Синдзи!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Evangelion"
+   ]
+  },
+  {
+   "id": "spe_awkward_to_fall",
+   "name": "Неловко упасть",
+   "author": "SPEmotes",
+   "description": "Извините, не сдержался",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_ayanami_rei_pose",
+   "name": "Поза Аянами Рей §5(§dМульти вселенная§5) §8(Evangelion)",
+   "author": "SPEmotes",
+   "description": "Я, Аянами Рей?",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Evangelion"
+   ]
+  },
+  {
+   "id": "spe_backflip",
+   "name": "Сальто назад",
+   "author": "SPEmotes",
+   "description": "Оп!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_ballet",
+   "name": "Балет §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Лебеди танцуют",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_banani",
+   "name": "Банани §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Я банан",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_bandage_hand",
+   "name": "Перебинтовать руку",
+   "author": "SPEmotes",
+   "description": "Вот так! И раны как не бывало",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_bang_on_the_table",
+   "name": "Стукнуть по столу",
+   "author": "SPEmotes",
+   "description": "Тихо!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_bask_by_the_fire",
+   "name": "Греться у костра",
+   "author": "SPEmotes",
+   "description": "Ручечки замёрзли, нужно согреться",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_battle_stance_tanks",
+   "name": "Боевая стойка Баки §5(§dМульти вселенная§5) §8(Боец Баки)",
+   "author": "SPEmotes",
+   "description": "Жить — значит существовать, связав себя в отношениях с другими",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Боец Баки"
+   ]
+  },
+  {
+   "id": "spe_be_sad",
+   "name": "Грустить",
+   "author": "SPEmotes",
+   "description": "Отстаньте, мне не до вас",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_be_shy",
+   "name": "Стесняться",
+   "author": "SPEmotes",
+   "description": "Ой, прости пожалуйста",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_be_ashamed",
+   "name": "Стыдиться",
+   "author": "SPEmotes",
+   "description": "Боже мой, это же надо было до такого додуматься",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_bench_press_with_barbell",
+   "name": "Жим лёжа со штангой §4(§cКСЭПСП§4) §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Стабилизируемся!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП",
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_beyond_the_way",
+   "name": "Beyond the way §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Просто желая чего?",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_birch",
+   "name": "Берёзка §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Это упражнение поможет избавиться от боли в спине",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_bit_jock",
+   "name": "Битовый качок §5(§dМульти вселенная§5) §8(Friday Night Funkin)",
+   "author": "SPEmotes",
+   "description": "Как же он(а) чувствует",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Friday Night Funkin"
+   ]
+  },
+  {
+   "id": "spe_bitter_choco_decoration",
+   "name": "Шоколадное украшение §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Пусть горько, зато красиво...",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_black_widow_pose",
+   "name": "Поза Чёрной Вдовы §5(§dМульти вселенная§5) §8(Marvel)",
+   "author": "SPEmotes",
+   "description": "Эй, полегче",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Marvel"
+   ]
+  },
+  {
+   "id": "spe_bloody_pop",
+   "name": "Кровавый поп §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Бла-бла-бла",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_boba_fett_stand",
+   "name": "Левитирующая стойка Боба Фетта §5(§dМульти вселенная§5) §8(Star Wars)",
+   "author": "SPEmotes",
+   "description": "Империя наносит ответный удар",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Star Wars"
+   ]
+  },
+  {
+   "id": "spe_bodybuilding_pose1",
+   "name": "Бодибилд поза §8(§7Спорт§8) (1 Вариант)",
+   "author": "SPEmotes",
+   "description": "Ох, смотри какие у меня мускулы!",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_bodybuilding_pose2",
+   "name": "Бодибилд поза §8(§7Спорт§8) (2 Вариант)",
+   "author": "SPEmotes",
+   "description": "Зачётный трицепс?",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_bodybuilding_pose3",
+   "name": "Бодибилд поза §8(§7Спорт§8) (3 Вариант)",
+   "author": "SPEmotes",
+   "description": "Долго ли мне ещё стоять в напряженном состоянии?",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_boogie_down",
+   "name": "Boogie Down §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Прыг-прыг",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_boom_boom",
+   "name": "Boom Boom §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Почувствуй сердца стук",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_boring_talk",
+   "name": "Скучно разговаривать",
+   "author": "SPEmotes",
+   "description": "Ну там было это, а потом то",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_boring_sit",
+   "name": "Скучно сидеть",
+   "author": "SPEmotes",
+   "description": "Мда-а-а, ну и нудятина",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_bosom_friends",
+   "name": "Закадычные друзья §1(§9Танец§1) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "А кто ваш закадычный друг?",
+   "icon": true,
+   "tags": [
+    "Танец",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_bouncing_gait",
+   "name": "Подпрыгивающая походка §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Серьёзный, но смешной",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_bow",
+   "name": "Поклон",
+   "author": "SPEmotes",
+   "description": "Всем спасибо!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_boy_with_luv",
+   "name": "Boy With Luv §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Влюбленный парень",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_boyfriend_singing",
+   "name": "Пение Бойфренда §5(§dМульти вселенная§5) §8(Friday Night Funkin)",
+   "author": "SPEmotes",
+   "description": "Иу-ау",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Friday Night Funkin"
+   ]
+  },
+  {
+   "id": "spe_bridge",
+   "name": "Мостик §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Поможет укрепить мышцы ног и ягодиц",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_broad_gait",
+   "name": "Широкая походка §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Всем разойтись, идёт машина",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_buba_pose",
+   "name": "Поза Бубы §6(Кошмары) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Распилю!",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_bunny",
+   "name": "Зайчик §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "С одним ушком",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_burpee",
+   "name": "Бёрпи §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Сложное упражнение для сжигания калорий",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_bye",
+   "name": "Пока",
+   "author": "SPEmotes",
+   "description": "Пока-пока!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_caramel",
+   "name": "Карамелька §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Уа-уа-уа",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_chill_gait",
+   "name": "Чилловая походка §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Ееее, супер кайф",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_chill_to_sit",
+   "name": "Чиллово сидеть",
+   "author": "SPEmotes",
+   "description": "Пора расслабиться",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_chop_down_a_tree",
+   "name": "Рубить дерево §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Да так и дровосеком стать можно",
+   "icon": true,
+   "tags": [
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_circular_kick_in_the_air",
+   "name": "Круговой удар ногой в прыжке §5(§dМульти вселенная§5) §8(Street Fighter)",
+   "author": "SPEmotes",
+   "description": "Кхя!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Street Fighter"
+   ]
+  },
+  {
+   "id": "spe_clap",
+   "name": "Хлопай §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Хлопай-хлопай своей жопой-жопой...",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_clap1",
+   "name": "Хлопать §8(Не циклично)",
+   "author": "SPEmotes",
+   "description": "Вау!",
+   "icon": true,
+   "tags": [
+    "Не циклично"
+   ]
+  },
+  {
+   "id": "spe_clap2",
+   "name": "Хлопать §8(Циклично)",
+   "author": "SPEmotes",
+   "description": "Давайте похлопаем!",
+   "icon": true,
+   "tags": [
+    "Циклично"
+   ]
+  },
+  {
+   "id": "spe_clean_up_the_snow",
+   "name": "Убирать снег §4(§cНовый год§4) §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Тут так замело, что придётся убирать",
+   "icon": true,
+   "tags": [
+    "Новый год",
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_clink_glasses",
+   "name": "Чокнуться",
+   "author": "SPEmotes",
+   "description": "За здоровье!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_clown_dance",
+   "name": "Клоунада §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Куда пропала твоя рука?",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_come_to_senses",
+   "name": "Прийти в себя §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Что со мной случилось?",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_consider_the_subject",
+   "name": "Рассмотреть предмет",
+   "author": "SPEmotes",
+   "description": "Рассмотри предмет и узнай что это",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_cool_drink_water",
+   "name": "Круто выпить воды",
+   "author": "SPEmotes",
+   "description": "Крутя-я-як!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_corps_de_ballet",
+   "name": "Кордебалет §1(§9Танец§1) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Разойдитесь шлёндры!",
+   "icon": true,
+   "tags": [
+    "Танец",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_cough",
+   "name": "Покашлять",
+   "author": "SPEmotes",
+   "description": "Кхе-кхе, не мешаю?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_crawl",
+   "name": "Ползти §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Быстрей, быстрей, ползём чтобы нас не заметили",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_cross_from_left_to_right",
+   "name": "Перекреститься слева направо",
+   "author": "SPEmotes",
+   "description": "Святой ганак, спаси и сохрани!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_cross_from_right_to_left",
+   "name": "Перекреститься справа налево",
+   "author": "SPEmotes",
+   "description": "Святой Ганак, пожалуйста, восстановите мой дом",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_cross_out_the_throat",
+   "name": "Перечеркнуть горло",
+   "author": "SPEmotes",
+   "description": "Тебе крышка!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_crossroad",
+   "name": "Перекрёсток §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Поехали!",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_cry",
+   "name": "Плакать",
+   "author": "SPEmotes",
+   "description": "Хнык-хнык",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_cuddle",
+   "name": "Обнять §8(Парная эмоция)",
+   "author": "SPEmotes",
+   "description": "Обнимашки нужны всем!",
+   "icon": true,
+   "tags": [
+    "Парная эмоция"
+   ]
+  },
+  {
+   "id": "spe_cutting_food_with_a_knife",
+   "name": "Резать еду ножом §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Сейчас нарежу и приготовлю, вот вкуснятина получится!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_d4dj_dance",
+   "name": "Диджей §8(1 Вариант) §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Двигаюсь под бит",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_d4dj_dance1",
+   "name": "Диджей §8(2 Вариант) §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Бай",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_d4dj_dance2",
+   "name": "Диджей §8(3 Вариант) §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Рич",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_d4dj_dance3",
+   "name": "Диджей §8(4 Вариант) §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Слик бэк",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_dj",
+   "name": "Диджей",
+   "author": "SPEmotes",
+   "description": "Зажгём эту вечеринку!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_dab",
+   "name": "Дэб",
+   "author": "SPEmotes",
+   "description": "Дэбни со всем вкусом",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_dance_of_little_chickens",
+   "name": "Танец маленьких цыплят §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Хлопаем в ладоши!",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_dance_of_the_fire_god",
+   "name": "Танец Бога Огня §5(§dМульти вселенная§5) §8(Demon Slayer)",
+   "author": "SPEmotes",
+   "description": "Сумиёши? Что...",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Demon Slayer"
+   ]
+  },
+  {
+   "id": "spe_dance",
+   "name": "Водоворот рук §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Зажгите танцпол новыми красками",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_dance1",
+   "name": "Руки в отпуск §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Учись у лучших, как нужно танцевать",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_dance2",
+   "name": "Головное торнадо §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Диджей продолжай!",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_dancing_gait",
+   "name": "Пританцовывающая походка §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Не грусти и подбодри других!",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_dancing",
+   "name": "Пританцовывать §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Я не стесняюсь, просто я не умею танцевать",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_dart_vader_stand",
+   "name": "Стойка Дарт Вейдера §5(§dМульти вселенная§5) §8(Star Wars)",
+   "author": "SPEmotes",
+   "description": "Пшшшшш, пухххх.",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Star Wars"
+   ]
+  },
+  {
+   "id": "spe_dawn_of_the_phoenix",
+   "name": "Рассвет Феникса §5(§dМульти вселенная§5) §8(Genshin impact)",
+   "author": "SPEmotes",
+   "description": "Рассвет, прорвись!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Genshin impact"
+   ]
+  },
+  {
+   "id": "spe_deaddance",
+   "name": "Танец Мертвеца §6(Кошмары) §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Танцуй, пока не умрёшь!",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_delight",
+   "name": "Восторг",
+   "author": "SPEmotes",
+   "description": "Гиб-Гиб, УРА!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_die_with_the_loss_of_hands",
+   "name": "Умереть с потерей рук §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Не похлопаешь",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_die",
+   "name": "Умереть",
+   "author": "SPEmotes",
+   "description": "Умри от чего угодно",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_dig_into_the_ground",
+   "name": "Закопаться в землю §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Прячемся, зомби должны перемещаться скрытно",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_diluc_stand",
+   "name": "Стойка Дилюка §5(§dМульти вселенная§5) §8(Genshin impact)",
+   "author": "SPEmotes",
+   "description": "Я не люблю пустые разговоры. Дай знать, если понадобится помощь.",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Genshin impact"
+   ]
+  },
+  {
+   "id": "spe_diskomania",
+   "name": "Дискомания §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Давай зажём, как пару лет назад",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_diva",
+   "name": "Прыжок D.va §5(§dМульти вселенная§5) §8(Overwatch)",
+   "author": "SPEmotes",
+   "description": "Катапультируюсь!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Overwatch"
+   ]
+  },
+  {
+   "id": "spe_do_artificial_respiration",
+   "name": "Делать искусственное дыхание",
+   "author": "SPEmotes",
+   "description": "Прошу, не умирай!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_doll",
+   "name": "Куколка §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Пошатываюсь",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_domino",
+   "name": "Домино §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Разрушь меня, словно я домино",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_doom",
+   "name": "Обречённость",
+   "author": "SPEmotes",
+   "description": "Меня сразили наповал...",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_dr._livesey_s_gait",
+   "name": "Походка Доктора Ливси §5(§dМульти вселенная§5) §6(§eПередвижение§6) §8(Остров сокровищ)",
+   "author": "SPEmotes",
+   "description": "Ха-Ха-Ха!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Передвижение",
+    "Остров сокровищ"
+   ]
+  },
+  {
+   "id": "spe_draw_on_an_easel",
+   "name": "Рисовать на мольберте §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Кисточка, палитра, полотно и картина готова!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_drink_some_water",
+   "name": "Выпить воды",
+   "author": "SPEmotes",
+   "description": "Эх, освежающая!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_drive_away_insects",
+   "name": "Отогнать насекомых §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Оп, попалась зараза",
+   "icon": true,
+   "tags": [
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_dynamite",
+   "name": "Динамит §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Отожгите со всей душой вместе с BTS",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_eat_food1",
+   "name": "Кушать еду cтоя §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Время подкрепиться!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_eat_food2",
+   "name": "Кушать еду cидя §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Так кушать хочу, аж лень стоять",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_egorock",
+   "name": "ЭгоРок §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Сердце танцует под ЭгоРок-у",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_egoist",
+   "name": "Эгоист §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Спокойной ночи...",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_embarrassing_to_sit",
+   "name": "Неловко сидеть",
+   "author": "SPEmotes",
+   "description": "Я... Эм... Ну...",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_envy_baby",
+   "name": "Envy Baby §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Эти чувства, детка, словно цветы...",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_epic_jump",
+   "name": "Эпичный прыжок",
+   "author": "SPEmotes",
+   "description": "Квинка, слоу-мо!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_evelynn_stand",
+   "name": "Стойка Эвелинн §5(§dМульти вселенная§5) §8(League of Legends)",
+   "author": "SPEmotes",
+   "description": "Я избавляю от страданий. Навсегда.",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "League of Legends"
+   ]
+  },
+  {
+   "id": "spe_expectation",
+   "name": "Ожидание",
+   "author": "SPEmotes",
+   "description": "Сорян, я АФК",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_explain_near_the_blackboard",
+   "name": "Объяснять около доски",
+   "author": "SPEmotes",
+   "description": "Смотрите, вот тут это, вон там это...",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_explain_something_on_the_table",
+   "name": "Объяснять что-нибудь на столе",
+   "author": "SPEmotes",
+   "description": "Смотрите, держим направление сюда, потом идём туда...",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_extend_your_arms_forward",
+   "name": "Вытянуть руки вперёд",
+   "author": "SPEmotes",
+   "description": "Вытянул(а), и что дальше?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_facepalm",
+   "name": "Фэйспалм",
+   "author": "SPEmotes",
+   "description": "Ты не понимаешь!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fall_drunk",
+   "name": "Пьяно упасть",
+   "author": "SPEmotes",
+   "description": "Я видимо... ик...",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fall_like_a_soldier",
+   "name": "Упасть солдатиком",
+   "author": "SPEmotes",
+   "description": "...",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fall1",
+   "name": "Падение §8(1 Вариант)",
+   "author": "SPEmotes",
+   "description": "Ай, больно же",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fall2",
+   "name": "Падение §8(2 Вариант)",
+   "author": "SPEmotes",
+   "description": "Только не на лицо!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fantastic_pose1",
+   "name": "Фантастическая поза §8(1 Вариант)",
+   "author": "SPEmotes",
+   "description": "Подойдёшь, или боишься?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fantastic_pose2",
+   "name": "Фантастическая поза §8(2 Вариант)",
+   "author": "SPEmotes",
+   "description": "Копейку жалко?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fantastic_pose3",
+   "name": "Фантастическая поза §8(3 Вариант)",
+   "author": "SPEmotes",
+   "description": "Отдашь свою душу?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fantastic_pose4",
+   "name": "Фантастическая поза §8(4 Вариант)",
+   "author": "SPEmotes",
+   "description": "Словно мертвец",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fantastic_pose5",
+   "name": "Фантастическая поза §8(5 Вариант)",
+   "author": "SPEmotes",
+   "description": "Муза моей души",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fantastic_pose6",
+   "name": "Фантастическая поза §8(6 Вариант)",
+   "author": "SPEmotes",
+   "description": "Мяу!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fantastic_pose7",
+   "name": "Фантастическая поза §8(7 Вариант)",
+   "author": "SPEmotes",
+   "description": "Важная особь",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fantastic_pose8",
+   "name": "Фантастическая поза §8(8 Вариант)",
+   "author": "SPEmotes",
+   "description": "На кого ты там бычишь?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fantastic_pose9",
+   "name": "Фантастическая поза §8(9 Вариант)",
+   "author": "SPEmotes",
+   "description": "Шнурочек развязался",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fart",
+   "name": "Пукнуть",
+   "author": "SPEmotes",
+   "description": "Фуу, кто навонял?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fast_forward",
+   "name": "Fast Forward §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Ты единственная, кто остановится",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_fatigue",
+   "name": "Утомленность",
+   "author": "SPEmotes",
+   "description": "Что-то мне плохо",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fear",
+   "name": "Страх",
+   "author": "SPEmotes",
+   "description": "О нет, там что-то страшное",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_feardropitem",
+   "name": "Уронить предмет в страхе §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Чуть не поймал!",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_fearfall",
+   "name": "Упасть в страхе §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Не пугай так!",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_fearrun",
+   "name": "Бег в страхе §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Кто-то за мной бежит!",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_feel_special",
+   "name": "Feel Special §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Даже темнейшая ночь сменилась днем",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_feels",
+   "name": "Чувства §1(§9Полный танец§1)",
+   "author": "SPEmotes",
+   "description": "Ты украл мое сердце, оу да",
+   "icon": true,
+   "tags": [
+    "Полный танец"
+   ]
+  },
+  {
+   "id": "spe_feet_down",
+   "name": "Ноги вниз §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Приглашу тебя на чай",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_few_halves",
+   "name": "Мало половин §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "В моей вселенной ты был господин...",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_fighting_pose_with_a_bow",
+   "name": "Боевая поза с луком",
+   "author": "SPEmotes",
+   "description": "Осторожно! У меня есть оружие дальнего боя!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fighting_pose_with_shild",
+   "name": "Боевая поза с щитом",
+   "author": "SPEmotes",
+   "description": "Попробуешь напасть - ты сразу улетишь от моего щита!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fighting_pose",
+   "name": "Боевая поза",
+   "author": "SPEmotes",
+   "description": "Покажи мне свою мощь!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fighting_stance_with_swords",
+   "name": "Боевая поза с мечами",
+   "author": "SPEmotes",
+   "description": "К бою готов(а)",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fighting_stance",
+   "name": "Боевая стойка §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Считай, что чёрный пояс уже у меня",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_finishing_with_a_knife",
+   "name": "Добивание ножом §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Ты мне никогда не нравился!",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_finishing",
+   "name": "Добивание",
+   "author": "SPEmotes",
+   "description": "Старайся лучше",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fishing_standing_up",
+   "name": "Рыбачить стоя §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Попалась!",
+   "icon": true,
+   "tags": [
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_fishing_while_sitting_in_a_boat",
+   "name": "Рыбачить сидя в лодке §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Уют и комфорт на утренней рыбалке",
+   "icon": true,
+   "tags": [
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_flight_of_superman",
+   "name": "Полёт Супермена §5(§dМульти вселенная§5) §6(§eПередвижение§6) §8(DC)",
+   "author": "SPEmotes",
+   "description": "Учись закрывать глаза",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Передвижение",
+    "DC"
+   ]
+  },
+  {
+   "id": "spe_flight_of_the_witch",
+   "name": "Полёт ведьмы §6(Кошмары) (§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Ой, а чего её так всю дергает?",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_floss",
+   "name": "Флосс §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Станцуй как мальчик с рюкзаком",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_flying_face_down",
+   "name": "Лететь лицом вниз",
+   "author": "SPEmotes",
+   "description": "Сопротивление с ветром",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_flying_on_a_broom",
+   "name": "Полёт на метле §6(Кошмары) §6(§eПередвижение§6) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Думаю, я скоро научусь варить зелья",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение",
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_flying_on_the_sword",
+   "name": "Полёт на мече §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Магия, полученная от древних ведьм",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_flyinglimbs",
+   "name": "Летающие конечности §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Буэ-ах",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_fold_your_hands_in_front_of_you",
+   "name": "Сложить руки перед собой",
+   "author": "SPEmotes",
+   "description": "Важный тип на то и важный, чтобы быть важным",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_foot_tapping",
+   "name": "Стук ногой §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Я не умею танцевать, но думаю так пойдёт",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_footsteps",
+   "name": "Стук ногами §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Вроде легко, но так трудно устоять на одном месте",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_forge",
+   "name": "Ковать",
+   "author": "SPEmotes",
+   "description": "Эх, сейчас такое сделаю, все позавидуют!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_fortnite_dance",
+   "name": "Дефолт §1(§9Танец§1) §5(§dМульти вселенная§5) §8(Fortnite)",
+   "author": "SPEmotes",
+   "description": "Легендарный мемный танец",
+   "icon": true,
+   "tags": [
+    "Танец",
+    "Мульти вселенная",
+    "Fortnite"
+   ]
+  },
+  {
+   "id": "spe_forward_somersault",
+   "name": "Сальто вперёд",
+   "author": "SPEmotes",
+   "description": "Пры-ы-ы-жок!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_frankenstein_pose",
+   "name": "Поза Франкенштейна §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Бу! Страшно?",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_freeze",
+   "name": "Мёрзнуть §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Как же тут холодно, выключите кондиционер",
+   "icon": true,
+   "tags": [
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_fucking_lying_down",
+   "name": "Трахать лёжа §8(Парная эмоция)",
+   "author": "SPEmotes",
+   "description": "Оу, ты так хорошо прыгаешь",
+   "icon": true,
+   "tags": [
+    "Парная эмоция"
+   ]
+  },
+  {
+   "id": "spe_fucking_sitting_down",
+   "name": "Трахать сидя",
+   "author": "SPEmotes",
+   "description": "Ах, ох!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_gait_with_a_sword_on_belt",
+   "name": "Походка с мечом на поясе §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Готов мстить",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_gait1",
+   "name": "Обычная походка §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Обычная пора",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_gait2",
+   "name": "Жизнерадостная походка §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Никто не сможет сломать мой дух",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_gait3",
+   "name": "Пугливая походка §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Здесь очень страшно...",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_gait4",
+   "name": "Грустная походка §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Плохая погода, поставили двойку...",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_gait5",
+   "name": "Дрожащая походка §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Здесь холодно, либо очень темно",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_gait7",
+   "name": "Походка зомби §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Да не нужны мне твои мозги",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_gangnam_style1",
+   "name": "Гангнам стайл §1(§9Цикличный танец§1)",
+   "author": "SPEmotes",
+   "description": "Опа, Гангнам стайл!",
+   "icon": true,
+   "tags": [
+    "Цикличный танец"
+   ]
+  },
+  {
+   "id": "spe_gangnam_style2",
+   "name": "Гангнам стайл §1(§9Полный танец§1)",
+   "author": "SPEmotes",
+   "description": "Эй, секси леди!",
+   "icon": true,
+   "tags": [
+    "Полный танец"
+   ]
+  },
+  {
+   "id": "spe_gentelman",
+   "name": "Джентльмен §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Вот же чёртов джентльмен!",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_get_griddy",
+   "name": "Get Griddy §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Фут крип",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_get_on_one_knee",
+   "name": "Встать на колено",
+   "author": "SPEmotes",
+   "description": "Склонитесь перед королём",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_get_out_of_the_ground",
+   "name": "Вылезти из земли §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Мозги-и-и-и",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_get_scared",
+   "name": "Испугаться",
+   "author": "SPEmotes",
+   "description": "Эй, почему так громко, кто здесь?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_ghostfaceattack",
+   "name": "Удар Призрачного Лица §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Вот ты и попался!",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_ghostfacepose",
+   "name": "Поза Призрачного Лица §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Возьми трубку",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_ghostfacerun",
+   "name": "Бег Призрачного Лица §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Ну куда ты бежишь?",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_ghostfacewalk",
+   "name": "Походка Призрачного Лица §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Тихо и незаметно",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_ghostfacewalksit",
+   "name": "Походка в присяде Призрачного Лица §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Поверь, ты не увидишь свою смерть",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_giorno_giovanna_pose",
+   "name": "Поза Джорно Джованно §5(§dМульти вселенная§5) §8(JoJo)",
+   "author": "SPEmotes",
+   "description": "Люблю мочу",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "JoJo"
+   ]
+  },
+  {
+   "id": "spe_give_that_wolf_a_banana",
+   "name": "Дайте волку банан §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Не уверен, что говорил тебе, но мне очень нравятся твои зубки",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_give_it_here",
+   "name": "Подозвать",
+   "author": "SPEmotes",
+   "description": "Эй, сюда!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_give_money_from_the_cash_register",
+   "name": "Дать денег из кассы §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Вот ваша сдача",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_go_crazy",
+   "name": "Сходить с ума",
+   "author": "SPEmotes",
+   "description": "Посторонний голос присутствует в моей голове, кто это?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_goat",
+   "name": "Коза §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Рок-н-ролл!",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_gopnik",
+   "name": "Сесть как гопник",
+   "author": "SPEmotes",
+   "description": "Э, братанчик, иди сюда",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_gun_trick",
+   "name": "Трюк с оружием §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "А я вот так умею вертеть",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_gymnastic1",
+   "name": "Гимнастика §8(§7Спорт§8) (1 Вариант)",
+   "author": "SPEmotes",
+   "description": "Перед этим упражнением, нужно как следует размяться",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_gymnastic2",
+   "name": "Гимнастика §8(§7Спорт§8) (2 Вариант)",
+   "author": "SPEmotes",
+   "description": "Признаюсь, держать ногу на весу - очень тяжело",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_gymnastic3",
+   "name": "Гимнастика §8(§7Спорт§8) (3 Вариант)",
+   "author": "SPEmotes",
+   "description": "Только будь осторожен, если не разомнёшь мышцы - порвёшь их сам",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_hand_in_the_sky",
+   "name": "Рука в небо",
+   "author": "SPEmotes",
+   "description": "Вместе мы непобедимы!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_hand_on_heart",
+   "name": "Руку на сердце",
+   "author": "SPEmotes",
+   "description": "Почувствуй своё сердцебиение",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_hand_strike",
+   "name": "Удар рукой",
+   "author": "SPEmotes",
+   "description": "Ой, у тебя головы нет",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_hand_strike1",
+   "name": "Удар рукой §8(1 Вариант)",
+   "author": "SPEmotes",
+   "description": "Прострел",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_hand_strike2",
+   "name": "Удар рукой §8(2 Вариант)",
+   "author": "SPEmotes",
+   "description": "Бамц!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_hand_strike3",
+   "name": "Удар рукой §8(3 Вариант)",
+   "author": "SPEmotes",
+   "description": "Шмяк!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_hand_waving",
+   "name": "Помахивания рукой",
+   "author": "SPEmotes",
+   "description": "Сегодня, мы воссоединимся!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_hands_behind",
+   "name": "Руки за спину",
+   "author": "SPEmotes",
+   "description": "Меня повязали или я важный тип?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_hands_on_the_belt",
+   "name": "Руки на пояс",
+   "author": "SPEmotes",
+   "description": "СуперГероя звали?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_hands_up",
+   "name": "Руки вверх",
+   "author": "SPEmotes",
+   "description": "Всё, всё, поднимаю!",
+   "icon": false,
+   "tags": []
+  },
+  {
+   "id": "spe_handshake",
+   "name": "Рукопожатие §8(Парная эмоция)",
+   "author": "SPEmotes",
+   "description": "Приятно было иметь с вами дело",
+   "icon": true,
+   "tags": [
+    "Парная эмоция"
+   ]
+  },
+  {
+   "id": "spe_hang_yourself",
+   "name": "Повеситься §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Смотрите, я черешня",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_hanging_out_under_substances",
+   "name": "Болтаться под веществами",
+   "author": "SPEmotes",
+   "description": "Плохие вещества негативно влияют на ваш организм!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_happy_night",
+   "name": "Happy Night §1(§9Танец§1) §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Я не контролирую своим телом!",
+   "icon": true,
+   "tags": [
+    "Танец",
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_hay_harvesting",
+   "name": "Убирать сено §4(§cКСЭПСП§4) §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Понакидали здесь и бросили, а мне работать нужно",
+   "icon": true,
+   "tags": [
+    "КСЭПСП",
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_haymaking_with_a_scythe",
+   "name": "Сенокос с косой §4(§cКСЭПСП§4) §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Ох, сколько же пшеницы надо убрать!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП",
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_head_tilts",
+   "name": "Наклоны головы §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Разминаем головку",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_headphones",
+   "name": "Наушники §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Погружение в ритм",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_heart",
+   "name": "Сердечко",
+   "author": "SPEmotes",
+   "description": "Люблю тебя",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_heart1",
+   "name": "Сердечко §8(Правая сторона) (Парная эмоция)",
+   "author": "SPEmotes",
+   "description": "Я тебя люблю",
+   "icon": true,
+   "tags": [
+    "Правая сторона",
+    "Парная эмоция"
+   ]
+  },
+  {
+   "id": "spe_heart2",
+   "name": "Сердечко §8(Левая сторона) (Парная эмоция)",
+   "author": "SPEmotes",
+   "description": "И я тебя тоже люблю",
+   "icon": true,
+   "tags": [
+    "Левая сторона",
+    "Парная эмоция"
+   ]
+  },
+  {
+   "id": "spe_heartbeat",
+   "name": "Стук сердца",
+   "author": "SPEmotes",
+   "description": "Я чувствую, как бьётся моё сердце",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_heavy_blow_of_the_stand",
+   "name": "Шквальный удар стенда §5(§dМульти вселенная§5) §8(JoJo)",
+   "author": "SPEmotes",
+   "description": "Ора-Ора-Ора!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "JoJo"
+   ]
+  },
+  {
+   "id": "spe_hello",
+   "name": "Привет",
+   "author": "SPEmotes",
+   "description": "Поздоровайтесь с другом",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_helltaker",
+   "name": "Разрушитель ада §1(§9Танец§1) §5(§dМульти вселенная§5) §8(Helltaker)",
+   "author": "SPEmotes",
+   "description": "Хороший танец, горячий",
+   "icon": true,
+   "tags": [
+    "Танец",
+    "Мульти вселенная",
+    "Helltaker"
+   ]
+  },
+  {
+   "id": "spe_hide",
+   "name": "Спрятаться",
+   "author": "SPEmotes",
+   "description": "Надеюсь, меня никто не найдёт",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_hit_the_door_with_an_axe",
+   "name": "Ударить топором в дверь §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Эй Джонни!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_hit_the_ground_with_a_sledgehammer",
+   "name": "Ударить кувалдой в землю §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Тяжелая зараза, аж поднять трудно",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_hit_with_a_stick",
+   "name": "Ударить клюшкой для гольфа §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Да мы вроде в гольф играли, а оно само пошло",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_hold_the_microphone",
+   "name": "Держать микрофон",
+   "author": "SPEmotes",
+   "description": "Микрофон работает, можно говорить",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_hold_the_microphone1",
+   "name": "Держать микрофон двумя руками",
+   "author": "SPEmotes",
+   "description": "А, эм, ну тут такое дело...",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_hold",
+   "name": "Держи",
+   "author": "SPEmotes",
+   "description": "Гена на",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_holding_hands",
+   "name": "Держаться за руки §8(Левая рука) §8(§7Парная эмоция§8)",
+   "author": "SPEmotes",
+   "description": "Мы так классно смотримся!",
+   "icon": true,
+   "tags": [
+    "Левая рука",
+    "Парная эмоция"
+   ]
+  },
+  {
+   "id": "spe_holding_hands1",
+   "name": "Держаться за руки §8(Правая рука) §8(§7Парная эмоция§8)",
+   "author": "SPEmotes",
+   "description": "Я полностью с тобой согласен!",
+   "icon": true,
+   "tags": [
+    "Правая рука",
+    "Парная эмоция"
+   ]
+  },
+  {
+   "id": "spe_hopalong",
+   "name": "Попрыгунчик §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Скачу как попрыгунчик",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_hopeless_gait",
+   "name": "Безысходная походка §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Этот мир прогнил...",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_hopeless_to_sit",
+   "name": "Безысходно сидеть",
+   "author": "SPEmotes",
+   "description": "Люди живут только потому, что могут забывать прошлое.",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_hopelessness",
+   "name": "Безысходность",
+   "author": "SPEmotes",
+   "description": "Больше ничего хорошего в этом мире не осталось...",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_hugs",
+   "name": "Обнять сидя §8(§7Парная эмоция§8)",
+   "author": "SPEmotes",
+   "description": "Ты такой мягкий, когда тебя обнимаешь",
+   "icon": true,
+   "tags": [
+    "Парная эмоция"
+   ]
+  },
+  {
+   "id": "spe_huntressattack",
+   "name": "Удар Охотницы §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Получи!",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_huntressbait",
+   "name": "Заманка Охотницы §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Оп, повёлся?",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_huntresspose",
+   "name": "Поза Охотницы §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Колыбельная тебя успокоит",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_huntressrun",
+   "name": "Бег Охотницы §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Догоню-догоню",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_huntressthrowaxe",
+   "name": "Бросок топора Охотницы §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Не уйдёшь!",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_huntresswalk",
+   "name": "Походка Охотницы §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Ну куда ты уходишь от меня?",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_hype",
+   "name": "Хайп §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "На волне хайпа",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_hypnosis",
+   "name": "Гипнотизировать §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Теперь ты под моей властью",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_i_lean_against_the_wall_to_smoke",
+   "name": "Курить опираясь о стену",
+   "author": "SPEmotes",
+   "description": "Не тревожь меня, я курю!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_idol",
+   "name": "Айдол §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Самый лучший в мире айдол!",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_imagine_sitting_down_to_work",
+   "name": "Воображать работу сидя",
+   "author": "SPEmotes",
+   "description": "Это конечно не Пропмашина, но тоже пойдёт",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_imagine_working_standing_up",
+   "name": "Воображать работу стоя",
+   "author": "SPEmotes",
+   "description": "Ну типо работаю",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_important_gait",
+   "name": "Важная походка §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "На зеркало неча пенять, коли рожа крива.",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_incomprehensible",
+   "name": "Непонятие §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Меряюсь силой, но ты мне не нравишься ",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_inject_adrenaline",
+   "name": "Вколоть адреналин §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Потерплю и в бой!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_internet",
+   "name": "Интернет §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Пусть уносят колёса в сладкий плен...",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_iron_man_pose",
+   "name": "Поза Железного человека §5(§dМульти вселенная§5) §8(Marvel)",
+   "author": "SPEmotes",
+   "description": "Образ создан.",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Marvel"
+   ]
+  },
+  {
+   "id": "spe_it_s_time_to_shift",
+   "name": "Пора швифтануться §5(§dМульти вселенная§5) §8(Рик и Морти)",
+   "author": "SPEmotes",
+   "description": "Давай швифтанёмся!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Рик и Морти"
+   ]
+  },
+  {
+   "id": "spe_it_s_tragic_to_die",
+   "name": "Трагично умереть",
+   "author": "SPEmotes",
+   "description": "Ай!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_jasonattack",
+   "name": "Удар Джейсона Вурхиза §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Да мамочка, я их убил",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_jasonpose",
+   "name": "Поза Джейсона Вурхиза §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Да мамочка, я их убью",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_jasonrun",
+   "name": "Бег Джейсона Вурхиза §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Да мамочка, я бегу!",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_jasontalktomom",
+   "name": "Разговор с мамой §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Да мамочка, я покушал",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_jasonwalk",
+   "name": "Походка Джейсона Вурхиза §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Да мамочка, я иду",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_jerk",
+   "name": "Рывок §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Прорыв!",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_jerk1",
+   "name": "Джерк §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Да, я джеркаю",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_jinx_stand",
+   "name": "Стойка Джинкс §5(§dМульти вселенная§5) §8(League of Legends)",
+   "author": "SPEmotes",
+   "description": "При звуке взрывов теряю волю!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "League of Legends"
+   ]
+  },
+  {
+   "id": "spe_jojo-pose1",
+   "name": "Поза Джонатана Джостера §5(§dМульти вселенная§5) §8(JoJo)",
+   "author": "SPEmotes",
+   "description": "Фух, главное - стоять ровно!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "JoJo"
+   ]
+  },
+  {
+   "id": "spe_jojo-pose2",
+   "name": "Поза Джорно Джованна §5(§dМульти вселенная§5) §8(JoJo)",
+   "author": "SPEmotes",
+   "description": "Незаконнорожденный сын Дио Брандо",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "JoJo"
+   ]
+  },
+  {
+   "id": "spe_jojo-pose3",
+   "name": "Поза Киллер Квина §5(§dМульти вселенная§5) §8(JoJo)",
+   "author": "SPEmotes",
+   "description": "Байд зе даст!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "JoJo"
+   ]
+  },
+  {
+   "id": "spe_jojo-pose4",
+   "name": "Поза Джоске Хигашиката §5(§dМульти вселенная§5) §8(JoJo)",
+   "author": "SPEmotes",
+   "description": "Часть семьи",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "JoJo"
+   ]
+  },
+  {
+   "id": "spe_jojo-pose5",
+   "name": "Поза Джотаро Куджо §5(§dМульти вселенная§5) §8(JoJo)",
+   "author": "SPEmotes",
+   "description": "Да-да-да",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "JoJo"
+   ]
+  },
+  {
+   "id": "spe_jojo-pose6",
+   "name": "Поза Джолин Куджо §5(§dМульти вселенная§5) §8(JoJo)",
+   "author": "SPEmotes",
+   "description": "Моя рука разлагается в нити",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "JoJo"
+   ]
+  },
+  {
+   "id": "spe_jojo-pose7",
+   "name": "Поза Джотаро Куджо §5(§dМульти вселенная§5) §8(JoJo)",
+   "author": "SPEmotes",
+   "description": "Если надо, то и позвоночник станет ногой",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "JoJo"
+   ]
+  },
+  {
+   "id": "spe_jojo-pose8",
+   "name": "Поза Дио Брандо §5(§dМульти вселенная§5) §8(JoJo)",
+   "author": "SPEmotes",
+   "description": "Время стоп!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "JoJo"
+   ]
+  },
+  {
+   "id": "spe_joy",
+   "name": "Радоваться",
+   "author": "SPEmotes",
+   "description": "Ура, победа!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_jump_on_the_spot",
+   "name": "Прыжки на месте §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Прыгай до упаду",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_jump_over_a_block",
+   "name": "Перепрыгнуть через блок §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Оп, не догонишь!",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_jump_shot",
+   "name": "Удар в прыжке §5(§dМульти вселенная§5) §8(Street Fighter)",
+   "author": "SPEmotes",
+   "description": "Неплохой нокаут",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Street Fighter"
+   ]
+  },
+  {
+   "id": "spe_jump_sideways_over_a_block1",
+   "name": "Перепрыгнуть боком через блок §6(§eПередвижение§6) §8(Левая сторона)",
+   "author": "SPEmotes",
+   "description": "Покатились!",
+   "icon": true,
+   "tags": [
+    "Передвижение",
+    "Левая сторона"
+   ]
+  },
+  {
+   "id": "spe_jump_sideways_over_a_block2",
+   "name": "Перепрыгнуть боком через блок §6(§eПередвижение§6) §8(Правая сторона)",
+   "author": "SPEmotes",
+   "description": "Покатились!",
+   "icon": true,
+   "tags": [
+    "Передвижение",
+    "Правая сторона"
+   ]
+  },
+  {
+   "id": "spe_jump_to_the_floor",
+   "name": "Прыжок в пол",
+   "author": "SPEmotes",
+   "description": "Сегодня был очень трудный день, я хочу спать",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_jump",
+   "name": "Прыжок",
+   "author": "SPEmotes",
+   "description": "Думаю, это отсылка на SPACE",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_jumping",
+   "name": "Джампинг §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Говорят, прыжки помогают",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_jumpstyle",
+   "name": "Джампстайл §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Попрыгунчик, но с ногами",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_justdance",
+   "name": "Just Dance §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Следуем трендам",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_kda_popstar",
+   "name": "Pop Stars §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Танец группы K/DA",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_kakashi_pose",
+   "name": "Поза Какаши §5(§dМульти вселенная§5) §8(Наруто)",
+   "author": "SPEmotes",
+   "description": "На ошибках учатся, после ошибок лечатся.",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Наруто"
+   ]
+  },
+  {
+   "id": "spe_kaoru_pose",
+   "name": "Поза Каору §5(§dМульти вселенная§5) §8(Evangelion)",
+   "author": "SPEmotes",
+   "description": "Я такой же как и ты, у нас одна общая цель",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Evangelion"
+   ]
+  },
+  {
+   "id": "spe_karate",
+   "name": "Карате §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Пять ударов, которые положат тебя на пол",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_kashimashipose",
+   "name": "Поза Кашимаши §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "На твоей голове завязан галстук",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_kashimashirun",
+   "name": "Бег Кашимаши §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Ты осквернена!",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_kashimashiwalk",
+   "name": "Походка Кашимаши §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Ты предательница!",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_katana_strike1",
+   "name": "Удар катаной §8(1 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "На!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_katana_strike2",
+   "name": "Удар катаной §8(2 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Круговорот!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_katana_strike3",
+   "name": "Удар катаной §8(3 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Сюда-а-а!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_kazotsky_kick",
+   "name": "Казоцкий кик §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Ех-ха!",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_keep_the_safety_on_the_weapon",
+   "name": "Держать оружие на предохранителе §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Готов к обороне!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_kick_out",
+   "name": "Выкид ноги §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Не помешало бы найти соперника",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_kick",
+   "name": "Удар ногой",
+   "author": "SPEmotes",
+   "description": "Прямо в цель",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_kickboxing",
+   "name": "Кикбоксинг §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Хук-кик",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_kill_yourself_with_a_katana",
+   "name": "Убить себя катаной §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Чёрт, я сам себя убил",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_killer_s_gait",
+   "name": "Походка убийцы §6(Кошмары) (§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Лори, я уже иду за тобой",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_killerdance",
+   "name": "Танец Убийцы §6(Кошмары) §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Открывай двери!",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_kira_yoshikage_s_pose",
+   "name": "Поза Киры Йошикаге §5(§dМульти вселенная§5) §8(JoJo)",
+   "author": "SPEmotes",
+   "description": "Эм, ну у меня есть чужая рука, и что",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "JoJo"
+   ]
+  },
+  {
+   "id": "spe_kiss_your_feet",
+   "name": "Поцелуй ноги §5(§dМульти вселенная§5) §8(Tokyo Avengers)",
+   "author": "SPEmotes",
+   "description": "Трудности мира нужно решать через боль",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Tokyo Avengers"
+   ]
+  },
+  {
+   "id": "spe_knee_twists",
+   "name": "Коленные скручивания §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Локоть к колену",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_kneel_down_with_your_hands_back",
+   "name": "Встать на колени с руками назад",
+   "author": "SPEmotes",
+   "description": "Это же не относится к сексуальным нравам?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_kneel_down",
+   "name": "Встать на колени",
+   "author": "SPEmotes",
+   "description": "Не удобно, но терпимо",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_knifecheck",
+   "name": "Проверка ножа §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Остренький, повезло!",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_knocking_on_the_door",
+   "name": "Стучать в дверь §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "А вот и Джони!",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_kochak",
+   "name": "Кочак §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Движ-ж-жения ко-ч-ч-чака",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_koi",
+   "name": "Кои §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "То же самое лицо, то же вымышленное",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_kotinash",
+   "name": "Котинэш §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Отличный танец для вечерних закатов",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_laugh",
+   "name": "Посмеяться",
+   "author": "SPEmotes",
+   "description": "Полная умора",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_lay",
+   "name": "Лежать",
+   "author": "SPEmotes",
+   "description": "Ляжь на землю",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_lean_back_on_the_block",
+   "name": "Облокотиться спиной на блок",
+   "author": "SPEmotes",
+   "description": "А я и не знал, что здесь так красиво",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_lean_in_front_of_the_block",
+   "name": "Облокотиться передом на блок",
+   "author": "SPEmotes",
+   "description": "Интересный вид, так всё красиво выглядит",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_lean_with_a_straight_hand_against_the_wall",
+   "name": "Опереться прямой рукой о стену §8(Левая рука)",
+   "author": "SPEmotes",
+   "description": "Эй, потише, давай поговорим?",
+   "icon": true,
+   "tags": [
+    "Левая рука"
+   ]
+  },
+  {
+   "id": "spe_lean_with_a_straight_hand_against_the_wall1",
+   "name": "Опереться прямой рукой о стену §8(Правая рука)",
+   "author": "SPEmotes",
+   "description": "Детка, да ты горишь",
+   "icon": true,
+   "tags": [
+    "Правая рука"
+   ]
+  },
+  {
+   "id": "spe_lean_your_elbow_on_the_wall",
+   "name": "Опереться локтём о стену §8(Правая рука)",
+   "author": "SPEmotes",
+   "description": "Да, я слушаю",
+   "icon": true,
+   "tags": [
+    "Правая рука"
+   ]
+  },
+  {
+   "id": "spe_lean_your_elbow_on_the_wall1",
+   "name": "Опереться локтём о стену §8(Левая рука)",
+   "author": "SPEmotes",
+   "description": "Угу, я понимаю",
+   "icon": true,
+   "tags": [
+    "Левая рука"
+   ]
+  },
+  {
+   "id": "spe_lean_your_hand_on_the_block",
+   "name": "Опереться локтём об блок §8(Левая рука)",
+   "author": "SPEmotes",
+   "description": "Знаешь, мне не очень нравится твоё отношение ко мне",
+   "icon": true,
+   "tags": [
+    "Левая рука"
+   ]
+  },
+  {
+   "id": "spe_lean_your_hand_on_the_block1",
+   "name": "Опереться локтём об блок §8(Правая рука)",
+   "author": "SPEmotes",
+   "description": "Потому что за твоей милой улыбкой скрывается страшная личность",
+   "icon": true,
+   "tags": [
+    "Правая рука"
+   ]
+  },
+  {
+   "id": "spe_leaning_to_the_sides",
+   "name": "Наклоны в стороны §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Разминаем спинку",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_levitating_ecco_stand",
+   "name": "Левитирующая стойка Экко §5(§dМульти вселенная§5) §8(League of Legends)",
+   "author": "SPEmotes",
+   "description": "Самое время подебоширить",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "League of Legends"
+   ]
+  },
+  {
+   "id": "spe_levitation_of_the_mob",
+   "name": "Левитация Моба §5(§dМульти вселенная§5) §8(Моб Психо 100)",
+   "author": "SPEmotes",
+   "description": "Какого это, почувствовать силу истинного экстрасенса?",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Моб Психо 100"
+   ]
+  },
+  {
+   "id": "spe_lezginka",
+   "name": "Лезгинка §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Только танцуем тихо, а то все спят",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_lie_on_your_stomach",
+   "name": "Лежать на животе",
+   "author": "SPEmotes",
+   "description": "Животик в покое",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_lifting_the_legs_lying_down",
+   "name": "Поднятие ног лёжа §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Ножками туды-сюды",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_little_babijon",
+   "name": "Маленький бабиджон §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Кто мне подскажет, кто расскажет, где же он, где же, он?",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_look_at_the_sky",
+   "name": "Смотреть на небо",
+   "author": "SPEmotes",
+   "description": "Пахнет так вкусно утренней росой",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_look_back",
+   "name": "Оглянуться",
+   "author": "SPEmotes",
+   "description": "Э, что это только что было?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_look_into_the_distance",
+   "name": "Смотреть вдаль §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "О, там кто-то есть!",
+   "icon": true,
+   "tags": [
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_looking_at_the_earth",
+   "name": "Разглядывать землю",
+   "author": "SPEmotes",
+   "description": "Вон букашка ползёт",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_lose_consciousness",
+   "name": "Потерять сознание §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Мне поплохело...",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_lublin",
+   "name": "Люблино §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Москва метро Люблино, работаем!",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_luck",
+   "name": "Удача §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Никаких лишних движений, моем невидимое стекло",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_luffy_stand",
+   "name": "Стойка Луффи §5(§dМульти вселенная§5) §8(One Piece)",
+   "author": "SPEmotes",
+   "description": "Много мяса, нет салата — это завтрак для пирата",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "One Piece"
+   ]
+  },
+  {
+   "id": "spe_lumbar_puncture",
+   "name": "Люмбальная пункция §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Слушай, а убер-пила очень даже хорошая вещь",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_lying_sex",
+   "name": "Лежать раком",
+   "author": "SPEmotes",
+   "description": "Да! Ещё!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_lying_in_a_boat",
+   "name": "Лежать в лодке §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Деревянная кроватка",
+   "icon": true,
+   "tags": [
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_lying_in_a_trolley",
+   "name": "Лежать в вагонетке §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Неудобно, но прикольно",
+   "icon": true,
+   "tags": [
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_lying_on_a_hellish_baldezh",
+   "name": "Лежать на Адском Балдёже §4(§cКСЭПСП§4) §8(1 Вариант)",
+   "author": "SPEmotes",
+   "description": "О, у меня тут завалялась бутылка медового кваса",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_lying_on_a_hellish_baldezh1",
+   "name": "Лежать на Адском Балдёже §4(§cКСЭПСП§4) §8(2 Вариант)",
+   "author": "SPEmotes",
+   "description": "Так приятно отдохнуть после тяжёлого дня",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_lying_sideways1",
+   "name": "Лежать боком (Левая сторона)",
+   "author": "SPEmotes",
+   "description": "Приятненькая атмосферка сегодня",
+   "icon": true,
+   "tags": [
+    "Левая сторона"
+   ]
+  },
+  {
+   "id": "spe_lying_sideways2",
+   "name": "Лежать боком (Правая сторона)",
+   "author": "SPEmotes",
+   "description": "Как ты думаешь, та пьеса заслужила наших денег?",
+   "icon": true,
+   "tags": [
+    "Правая сторона"
+   ]
+  },
+  {
+   "id": "spe_lying_with_your_hands_behind_your_head",
+   "name": "Лежать с руками за головой",
+   "author": "SPEmotes",
+   "description": "Солнце так и печёт",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_malicious_refusal",
+   "name": "Злостный отказ",
+   "author": "SPEmotes",
+   "description": "НЕТ!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_maniac",
+   "name": "Maniac §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Я схожу с ума, как будто внутри меня болтливый маньяк",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_manipulation_of_chaos_energy",
+   "name": "Манипуляция энергией хаоса §5(§dМульти вселенная§5) §8(Marvel)",
+   "author": "SPEmotes",
+   "description": "Ох, ты еще здесь?",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Marvel"
+   ]
+  },
+  {
+   "id": "spe_manner",
+   "name": "Манера §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Крутим мир",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_march",
+   "name": "Маршировать §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Маршируем, не останавливаемся",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_marie_s_pose",
+   "name": "Поза Мари §5(§dМульти вселенная§5) §8(Evangelion)",
+   "author": "SPEmotes",
+   "description": "Пошли, Синдзи",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Evangelion"
+   ]
+  },
+  {
+   "id": "spe_masturbate",
+   "name": "Мастурбировать",
+   "author": "SPEmotes",
+   "description": "Только не занимайтесь этим прилюдно",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_memepose1",
+   "name": "Меме-поза §8(1 Вариант)",
+   "author": "SPEmotes",
+   "description": "Ничего не волнует",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_memepose2",
+   "name": "Меме-поза §8(2 Вариант)",
+   "author": "SPEmotes",
+   "description": "Ничего не знаю",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_memepose3",
+   "name": "Меме-поза §8(3 Вариант)",
+   "author": "SPEmotes",
+   "description": "Думаю",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_memepose4",
+   "name": "Меме-поза §8(4 Вариант)",
+   "author": "SPEmotes",
+   "description": "Голова болит",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_memepose5",
+   "name": "Меме-поза §8(5 Вариант)",
+   "author": "SPEmotes",
+   "description": "Важное помахивание",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_memepose6",
+   "name": "Меме-поза §8(6 Вариант)",
+   "author": "SPEmotes",
+   "description": "Сложенные ручки",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_mine_ore_with_a_pickaxe",
+   "name": "Добывать руду киркой §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Алмазы!",
+   "icon": true,
+   "tags": [
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_miss",
+   "name": "Скучать",
+   "author": "SPEmotes",
+   "description": "Что-то скучно мне",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_misunderstanding",
+   "name": "Непонимание",
+   "author": "SPEmotes",
+   "description": "А я откуда знаю?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_mjolnir_strike",
+   "name": "Удар Мьёльниром §5(§dМульти вселенная§5) §8(Marvel)",
+   "author": "SPEmotes",
+   "description": "Тяжелый!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Marvel"
+   ]
+  },
+  {
+   "id": "spe_model_gait",
+   "name": "Модельная походка §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Не тяфкай!",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_modelpose",
+   "name": "Модельная поза §8(1 Вариант)",
+   "author": "SPEmotes",
+   "description": "Ногу вверх, спину ровно, готово!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_modelpose1",
+   "name": "Модельная поза §8(2 Вариант)",
+   "author": "SPEmotes",
+   "description": "Прочь головную боль!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_modelpose3",
+   "name": "Модельная поза §8(4 Вариант)",
+   "author": "SPEmotes",
+   "description": "Руку вверх и стоим.",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_modelpose4",
+   "name": "Модельная поза §8(5 Вариант)",
+   "author": "SPEmotes",
+   "description": "Надеюсь не упаду",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_modelpose5",
+   "name": "Модельная поза §8(6 Вариант)",
+   "author": "SPEmotes",
+   "description": "Руки вместе и стоим",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_modelpose6",
+   "name": "Модельная поза §8(7 Вариант)",
+   "author": "SPEmotes",
+   "description": "Пригнувшись ты не обязательно станешь чьей-то целью",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_modelpose7",
+   "name": "Модельная поза §8(8 Вариант)",
+   "author": "SPEmotes",
+   "description": "Да не смотри ты туда, лучше бы в лицо так смотрел!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_modelpose8",
+   "name": "Модельная поза §8(9 Вариант)",
+   "author": "SPEmotes",
+   "description": "Кто сказал, что к небу нельзя тянуться",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_moonwalk",
+   "name": "Лунная походка §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "И ковбой, и луна",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_move_sideways",
+   "name": "Двигать боком §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Смотри, а ты так умеешь?",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_move_your_ass",
+   "name": "Двигай задом §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "О, вот это лучшая гимнастика для спины",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_mystery",
+   "name": "Мистерия §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Загадка",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_naruto_pose",
+   "name": "Поза Наруто §5(§dМульти вселенная§5) §8(Наруто)",
+   "author": "SPEmotes",
+   "description": "Никогда не сдаваться... Встать, когда все рухнуло — вот настоящая сила.",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Наруто"
+   ]
+  },
+  {
+   "id": "spe_narutorun",
+   "name": "Бег Наруто §6(§eПередвижение§6) §5(§dМульти вселенная§5) §8(Наруто)",
+   "author": "SPEmotes",
+   "description": "Я - будущий хокаге!",
+   "icon": true,
+   "tags": [
+    "Передвижение",
+    "Мульти вселенная",
+    "Наруто"
+   ]
+  },
+  {
+   "id": "spe_nausea",
+   "name": "Тошнота",
+   "author": "SPEmotes",
+   "description": "Буэ-э-э!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_nice_to_sit",
+   "name": "Миловидно сидеть",
+   "author": "SPEmotes",
+   "description": "Пу-пу-пу",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_no",
+   "name": "Нет",
+   "author": "SPEmotes",
+   "description": "Я не согласен",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_nostalgia",
+   "name": "Ностальгия §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Танцуем в отрыве!",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_obi-van_stand",
+   "name": "Стойка Оби-Вана Кеноби §5(§dМульти вселенная§5) §8(Star Wars)",
+   "author": "SPEmotes",
+   "description": "И это ты у нас убил джедая?",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Star Wars"
+   ]
+  },
+  {
+   "id": "spe_oddloop",
+   "name": "Oddloop §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Мы против запрета ночных клубов!",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_on_the_floor",
+   "name": "On the floor §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Танцую на полу",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_outrage",
+   "name": "Возмущение",
+   "author": "SPEmotes",
+   "description": "Это что?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_panama_hat",
+   "name": "Панамка §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Ножки вперёд и поехали!",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_pearl",
+   "name": "Пёрл §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Пожалуйста, я хочу быть звездой!",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_pee",
+   "name": "Писать",
+   "author": "SPEmotes",
+   "description": "Не ну, а что? Каждый должен уметь справлять нужду",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_peeking_out_from_behind_the_wall",
+   "name": "Выглядывать из за стены §8(Правая сторона)",
+   "author": "SPEmotes",
+   "description": "Так, там никого нет",
+   "icon": true,
+   "tags": [
+    "Правая сторона"
+   ]
+  },
+  {
+   "id": "spe_peeking_out_from_behind_the_wall1",
+   "name": "Выглядывать из за стены §8(Левая сторона)",
+   "author": "SPEmotes",
+   "description": "Тише, нам нельзя высовываться!",
+   "icon": true,
+   "tags": [
+    "Левая сторона"
+   ]
+  },
+  {
+   "id": "spe_penguin_club",
+   "name": "Клуб Пингвинов §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Клёвый джентельмен",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_petting_a_dog",
+   "name": "Гладить собаку/кошку",
+   "author": "SPEmotes",
+   "description": "Ты такой милашка, аж хочется затискать",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_phit_hon",
+   "name": "Пхит Хон §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Довольно просто, попасть под такой легкий бит",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_photogenic_pose",
+   "name": "Фотогеничная поза §8(1 Вариант)",
+   "author": "SPEmotes",
+   "description": "Нельзя расслабляться",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_photogenic_pose1",
+   "name": "Фотогеничная поза §8(2 Вариант)",
+   "author": "SPEmotes",
+   "description": "Руки на бок, спинку на искосок и снимаемся!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_photogenic_pose2",
+   "name": "Фотогеничная поза §8(3 Вариант)",
+   "author": "SPEmotes",
+   "description": "У меня не воняют подмышки!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_photogenic_pose3",
+   "name": "Фотогеничная поза §8(4 Вариант)",
+   "author": "SPEmotes",
+   "description": "Слышу фанатский крик",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_photogenic_pose4",
+   "name": "Фотогеничная поза §8(5 Вариант)",
+   "author": "SPEmotes",
+   "description": "Ещё не иду",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_photogenic_pose5",
+   "name": "Фотогеничная поза §8(6 Вариант)",
+   "author": "SPEmotes",
+   "description": "Красивый наряд требует красивой позы",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_photogenic_pose6",
+   "name": "Фотогеничная поза §8(7 Вариант)",
+   "author": "SPEmotes",
+   "description": "Перевес в плечах",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_photogenic_pose7",
+   "name": "Фотогеничная поза §8(8 Вариант)",
+   "author": "SPEmotes",
+   "description": "Смотрю на запад",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_photogenic_pose8",
+   "name": "Фотогеничная поза §8(9 Вариант)",
+   "author": "SPEmotes",
+   "description": "Нужна сумочка или чемоданчик",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_pico_singing",
+   "name": "Пение Пико §5(§dМульти вселенная§5) §8(Friday Night Funkin)",
+   "author": "SPEmotes",
+   "description": "Пи-пу",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Friday Night Funkin"
+   ]
+  },
+  {
+   "id": "spe_pinched_back",
+   "name": "Защемление спины",
+   "author": "SPEmotes",
+   "description": "Ай, моя спина!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_pistol_pirouette",
+   "name": "Пистолетный пируэт §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Кто же мог знать то, что любой пистолет способен вертеться в руке",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_plant_a_flower",
+   "name": "Посадить цветок §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Смотрите, это моё чудо",
+   "icon": true,
+   "tags": [
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_play_the_double_bass",
+   "name": "Играть на контрабасе §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Такая огромная штуковина,что даже играть трудно",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_play_the_drum_kit",
+   "name": "Играть на ударной установке §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Птумс, птыщ, птумс-пытыщ",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_play_the_guitar_slowly",
+   "name": "Медленно играть на гитаре §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Для спокойных и чилловых песен",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_play_the_guitar_vigorously",
+   "name": "Энергично играть на гитаре §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Я чувствую адреналин!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_play_the_synthesizer",
+   "name": "Играть на синтезаторе §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Волшебная музыка",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_play_the_violin",
+   "name": "Играть на скрипке §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Интересно, что же можно проиграть на этом инструменте?",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_plus_boy",
+   "name": "Plus Boy §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Стремятся к бесконечности тайные мои желанья",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_point_directly",
+   "name": "Указывать прямо",
+   "author": "SPEmotes",
+   "description": "Смотри, там что-то спереди!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_point_out",
+   "name": "Указать",
+   "author": "SPEmotes",
+   "description": "Где-то там",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_point_with_your_left_hand",
+   "name": "Указать левой рукой",
+   "author": "SPEmotes",
+   "description": "Ну, там",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_pointing_down",
+   "name": "Указывать вниз",
+   "author": "SPEmotes",
+   "description": "Смотри, там что-то на снизу!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_pointing_up",
+   "name": "Указывать вверх",
+   "author": "SPEmotes",
+   "description": "Смотри, там что-то в небе!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_poke",
+   "name": "Тыкнуть",
+   "author": "SPEmotes",
+   "description": "Тык!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_polite_hello",
+   "name": "Уважительное приветствие",
+   "author": "SPEmotes",
+   "description": "Здравствуйте",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_pomegranate",
+   "name": "Гранат §5(§dМульти вселенная§5) §1(§9Танец§1) §8(Stiven Universe)",
+   "author": "SPEmotes",
+   "description": "Я была кем-то, но кем — не знала",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Танец",
+    "Stiven Universe"
+   ]
+  },
+  {
+   "id": "spe_poop_running",
+   "name": "Обкаканный бег §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Не успеваю добежать до дома, сейчас усрусь",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_popular_vibe",
+   "name": "Popular vibe §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Вайб популярности",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_pose_with_a_cane1",
+   "name": "Поза с тростью §4(§cКСЭПСП§4) §8(1 Вариант)",
+   "author": "SPEmotes",
+   "description": "Важный тип, хороший тип",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_pose_with_a_cane2",
+   "name": "Поза с тростью §4(§cКСЭПСП§4) §8(2 Вариант)",
+   "author": "SPEmotes",
+   "description": "Стою с тростью, но не хромаю",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_posewithlantern",
+   "name": "Поза с фонарём §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Тут... Кто-то есть?",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_pray",
+   "name": "Молиться",
+   "author": "SPEmotes",
+   "description": "Ганачка, Ганак, Гена, прости мне все мои грехи",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_protect_from_sun",
+   "name": "Защищаться от солнца",
+   "author": "SPEmotes",
+   "description": "Светит так сильно, что ничего не видно",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_pull_-_ups",
+   "name": "Подтягивания §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Рукам больно, а мышцам классно",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_pull_out_the_weed",
+   "name": "Вырвать сорняк §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Ой, какой длинный",
+   "icon": true,
+   "tags": [
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_purple_man",
+   "name": "Фиолетовый человек §6(Кошмары) §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "I hope you die in the fire",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_push-ups",
+   "name": "Отжимания §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Мышцы-мышцы!",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_put_on_a_hat",
+   "name": "Надеть шапку",
+   "author": "SPEmotes",
+   "description": "О, а это ничего такая",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_put_on_outerwear",
+   "name": "Надеть верхнюю одежду",
+   "author": "SPEmotes",
+   "description": "Неплохая курточка",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_put_on_shoes",
+   "name": "Обуться",
+   "author": "SPEmotes",
+   "description": "Зачётные кеды",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_put_on_your_pants",
+   "name": "Надеть штаны",
+   "author": "SPEmotes",
+   "description": "Да блин! Надо уже похудеть!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_pyramidheadattack",
+   "name": "Удар Пирамидоголового §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "...",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_pyramidheadcut",
+   "name": "Разрез Пирамидоголового §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "...",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_pyramidheadpose",
+   "name": "Поза Пирамидоголового §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "...",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_pyramidheadrun",
+   "name": "Бег Пирамидоголового §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "...",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_pyramidheadwalk",
+   "name": "Походка Пирамидоголового §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "...",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_quick_break",
+   "name": "Быстрый брейк §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Верчу-верчусь, запутать хочу",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_quietly",
+   "name": "Тихо!",
+   "author": "SPEmotes",
+   "description": "Помолчите пару секунд!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_rasputin",
+   "name": "Распутин §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Не распускаем руки,а танцуем",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_read_a_book_sitting_down",
+   "name": "Читать книгу сидя",
+   "author": "SPEmotes",
+   "description": "Ого, вот это сюжет!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_reassure",
+   "name": "Успокаивать",
+   "author": "SPEmotes",
+   "description": "Тих-тих, не кипишуй",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_reigen_s_arataka_pose",
+   "name": "Поза Аратаки Рейгена §5(§dМульти вселенная§5) §8(Моб Психо 100)",
+   "author": "SPEmotes",
+   "description": "Магическая соль!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Моб Психо 100"
+   ]
+  },
+  {
+   "id": "spe_reload_your_weapon",
+   "name": "Перезарядить оружие §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Нужно работать как можно быстрее",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_repair_under_the_plane",
+   "name": "Чинить самолёт снизу §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Жалко тебя, видимо ты очень потрепалась во время боя",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_requiem",
+   "name": "Реквием §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Реквием лоли-бога",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_rhythmic_clapping",
+   "name": "Ритмичные хлопки",
+   "author": "SPEmotes",
+   "description": "Здесь и сейчас, мы хлопаем вместе",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_rhythmic_guitar_playing",
+   "name": "Ритмично играть на гитаре §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Я будто в ритм игре?",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_rhythmic_jock",
+   "name": "Ритмичный качок",
+   "author": "SPEmotes",
+   "description": "Прекрасно чувствую",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_rickroll",
+   "name": "Рикролл §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Опять попался",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_ride_sanchez",
+   "name": "Ездить на Санчезе §4(§cКСЭПСП§4) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Да хоть попробуй обгони!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_ride_a_chopper",
+   "name": "Ездить на Чоппере §4(§cКСЭПСП§4) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Пока ты там еле едешь, я уже у точки",
+   "icon": true,
+   "tags": [
+    "КСЭПСП",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_rider",
+   "name": "Наездница §8(Парная эмоция)",
+   "author": "SPEmotes",
+   "description": "Время покоя",
+   "icon": true,
+   "tags": [
+    "Парная эмоция"
+   ]
+  },
+  {
+   "id": "spe_riding_a_chainsaw",
+   "name": "Кататься на бензопиле §6(Кошмары) §6(§eПередвижение§6) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Тебе от меня не уйти!",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение",
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_riding_a_horse_with_a_sword",
+   "name": "Скакать на лошади с мечом §5(§dМульти вселенная§5) §6(§eПередвижение§6) §2(§aПрирода§2) §8(Ведьмак)",
+   "author": "SPEmotes",
+   "description": "Шевелись, плотва!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Передвижение",
+    "Природа",
+    "Ведьмак"
+   ]
+  },
+  {
+   "id": "spe_riding_a_pig",
+   "name": "Кататься на свинье §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Катаюсь на свином стейке",
+   "icon": true,
+   "tags": [
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_riding_standing_on_a_horse",
+   "name": "Кататься стоя на лошади §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Главное не свалиться",
+   "icon": true,
+   "tags": [
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_rock_climber",
+   "name": "Скалолаз §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Нужно подтянуть живот? Да легко!",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_rock_paper_scissors",
+   "name": "Камень Ножницы Бумага",
+   "author": "SPEmotes",
+   "description": "Поиграй в камень ножницы бумага",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_romantic_sit",
+   "name": "Романтично сидеть",
+   "author": "SPEmotes",
+   "description": "Небо сегодня такое красивое",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_run",
+   "name": "Бег §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Я добегу до финиша!",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_runwithlantern",
+   "name": "Бег с фонарём §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Отстань от меня!",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_running_giyu_tomioki",
+   "name": "Бег Гию Томиоки §5(§dМульти вселенная§5) §6(§eПередвижение§6) §8(Demon Slayer)",
+   "author": "SPEmotes",
+   "description": "Если понадобится, я истреблю всех демонов на своём пути.",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Передвижение",
+    "Demon Slayer"
+   ]
+  },
+  {
+   "id": "spe_running_on_the_spot",
+   "name": "Бег на месте §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Если лень бегать на улице - побегай дома",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_running_on_the_wall",
+   "name": "Бег по стене §6(§eПередвижение§6) §8(Правая cторона)",
+   "author": "SPEmotes",
+   "description": "Тут будет сложно перепрыгнуть, хорошо что рядом есть стена",
+   "icon": true,
+   "tags": [
+    "Передвижение",
+    "Правая cторона"
+   ]
+  },
+  {
+   "id": "spe_running_on_the_wall1",
+   "name": "Бег по стене §6(§eПередвижение§6) §8(Левая cторона)",
+   "author": "SPEmotes",
+   "description": "Тут опасно, нужно аккуратней пробежаться",
+   "icon": true,
+   "tags": [
+    "Передвижение",
+    "Левая cторона"
+   ]
+  },
+  {
+   "id": "spe_running_with_a_briefcase",
+   "name": "Бег с кейсом §6(§eПередвижение§6) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Главное не опаздать",
+   "icon": true,
+   "tags": [
+    "Передвижение",
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_running_with_gun",
+   "name": "Бег с оружием §6(§eПередвижение§6) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Бегу искать преступников",
+   "icon": true,
+   "tags": [
+    "Передвижение",
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_running_with_gun1",
+   "name": "Бег с пистолетом §6(§eПередвижение§6) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Стоять, остановитесь!",
+   "icon": true,
+   "tags": [
+    "Передвижение",
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_running_with_swords",
+   "name": "Бег с мечами §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Бегу сражаться",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_running",
+   "name": "Бег §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Побежали!",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_sadcat",
+   "name": "SadCat §1(§9Танец§1) §8(§71 Вариант§8)",
+   "author": "SPEmotes",
+   "description": "Пим-парам",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_sadcat1",
+   "name": "SadCat §1(§9Танец§1) §8(§72 Вариант§8)",
+   "author": "SPEmotes",
+   "description": "Двигаю лапками",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_sailor_mars_pose",
+   "name": "Поза Сейлор Марс §5(§dМульти вселенная§5) §8(Sailor Moon)",
+   "author": "SPEmotes",
+   "description": "Я накажу тебя во имя Марса!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Sailor Moon"
+   ]
+  },
+  {
+   "id": "spe_sailor_mercury_pose",
+   "name": "Поза Сейлор Меркурий §5(§dМульти вселенная§5) §8(Sailor Moon)",
+   "author": "SPEmotes",
+   "description": "Если ты сдаешься, ты уступаешь судьбе",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Sailor Moon"
+   ]
+  },
+  {
+   "id": "spe_sailor_moon_pose",
+   "name": "Поза Сейлор Мун §5(§dМульти вселенная§5) §8(Sailor Moon)",
+   "author": "SPEmotes",
+   "description": "Ты можешь хоть на минуту забыть об учебе!? Тут молодость уходит!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Sailor Moon"
+   ]
+  },
+  {
+   "id": "spe_sakura_pose",
+   "name": "Поза Сакуры §5(§dМульти вселенная§5) §8(Наруто)",
+   "author": "SPEmotes",
+   "description": "Если мы умрем... то лучше умереть сражаясь, чем ничего не делать!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Наруто"
+   ]
+  },
+  {
+   "id": "spe_salute",
+   "name": "Отдать честь §8(1 Вариант)",
+   "author": "SPEmotes",
+   "description": "Слушаюсь!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_salute1",
+   "name": "Отдать честь §8(2 Вариант)",
+   "author": "SPEmotes",
+   "description": "А, я, не сплю!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sasuke_s_pose",
+   "name": "Поза Саске §5(§dМульти вселенная§5) §8(Наруто)",
+   "author": "SPEmotes",
+   "description": "Мои глаза давно закрыты, ведь цель моя лежит во тьме...",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Наруто"
+   ]
+  },
+  {
+   "id": "spe_say_so",
+   "name": "Say So §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "И днём, и ночью, и утром – наслаждайся мгновением вместе со мной",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_scare",
+   "name": "Напугать §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Бу!",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_scenario",
+   "name": "Сценарио §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Учись у лучших!",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_scratching_head",
+   "name": "Чесать голову",
+   "author": "SPEmotes",
+   "description": "Хм-м-м, тут нужно подумать, а думать я не умею",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_search_for_information_in_the_tablet",
+   "name": "Искать информацию в планшете §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Так, смотри, это то о чём ты говорил?",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_search",
+   "name": "Искать в куче",
+   "author": "SPEmotes",
+   "description": "Блин, да где же эта бумажка",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_search2",
+   "name": "Искать",
+   "author": "SPEmotes",
+   "description": "Ищу что-то, но найти не могу",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_selfie",
+   "name": "Селфи",
+   "author": "SPEmotes",
+   "description": "Выставлю это в историю, пусть поймут, как я крут",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_send",
+   "name": "Послать",
+   "author": "SPEmotes",
+   "description": "Иди прочь!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_separation_of_the_head",
+   "name": "Умереть с потерей головы §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Безбашенный",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_set_the_arm",
+   "name": "Вправить руку §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Больно, но терпимо!",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_seven",
+   "name": "Seven §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Люблю тебя без остановки",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_sexact",
+   "name": "Трахать",
+   "author": "SPEmotes",
+   "description": "Займитесь половым актом",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sexpass",
+   "name": "Встать раком",
+   "author": "SPEmotes",
+   "description": "Займите позу для вашего полового партнера",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_shadow_cloning_technique",
+   "name": "Техника теневого клонирования §5(§dМульти вселенная§5) §8(Наруто)",
+   "author": "SPEmotes",
+   "description": "Эх, не выйдет мне стать настоящим Шиноби",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Наруто"
+   ]
+  },
+  {
+   "id": "spe_shake_the_dust",
+   "name": "Встряхивать пыль с себя",
+   "author": "SPEmotes",
+   "description": "Фу, что это на мне такое",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_shaolin",
+   "name": "Шаолинь",
+   "author": "SPEmotes",
+   "description": "Я полностью спокоен",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sheep_ritual",
+   "name": "Овечий ритуал §1(§9Танец§1) §5(§dМульти вселенная§5) §8(Cult Of The Lamb)",
+   "author": "SPEmotes",
+   "description": "Каламанна!",
+   "icon": true,
+   "tags": [
+    "Танец",
+    "Мульти вселенная",
+    "Cult Of The Lamb"
+   ]
+  },
+  {
+   "id": "spe_shigeo_kageyama_pose",
+   "name": "Поза Шигео Кагеямы §5(§dМульти вселенная§5) §8(Моб Психо 100)",
+   "author": "SPEmotes",
+   "description": "Чувства, что это?",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Моб Психо 100"
+   ]
+  },
+  {
+   "id": "spe_shinji_pose",
+   "name": "Поза Синдзи §5(§dМульти вселенная§5) §8(Evangelion)",
+   "author": "SPEmotes",
+   "description": "Наверное, я просто хотел, чтобы отец мной гордился",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Evangelion"
+   ]
+  },
+  {
+   "id": "spe_shit",
+   "name": "Какать",
+   "author": "SPEmotes",
+   "description": "Ну, естественная красота",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_shock",
+   "name": "Шок",
+   "author": "SPEmotes",
+   "description": "Чтоооо...",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_shoot_a_bow",
+   "name": "Выстрелить из лука §8(1 Вариант)",
+   "author": "SPEmotes",
+   "description": "Моя стрела быстра, словно ветер",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_shoot_a_bow1",
+   "name": "Выстрелить из лука §8(2 Вариант)",
+   "author": "SPEmotes",
+   "description": "Мой лук сделан из прочного японского дерева",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_shoot_a_bow2",
+   "name": "Выстрелить из лука §8(3 Вариант)",
+   "author": "SPEmotes",
+   "description": "Пришлось прыгать",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_show",
+   "name": "Шоу §6(Кошмары) §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Внимание! Начинается шоу!",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_shrug_your_shoulders",
+   "name": "Пожать плечами",
+   "author": "SPEmotes",
+   "description": "Я не знаю",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_shrug_your_shoulders1",
+   "name": "Пожимание плечами §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Ничего не знаю, и не буду знать",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_shuffle",
+   "name": "Шаффл §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Современный джаз",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_side_scissors1",
+   "name": "Боковые ножницы §8(§7Спорт§8) (Правая нога)",
+   "author": "SPEmotes",
+   "description": "Поможет похудеть внутренней части бедра",
+   "icon": true,
+   "tags": [
+    "Спорт",
+    "Правая нога"
+   ]
+  },
+  {
+   "id": "spe_side_scissors2",
+   "name": "Боковые ножницы §8(§7Спорт§8) (Левая нога)",
+   "author": "SPEmotes",
+   "description": "Нога болит, но эффект удивит",
+   "icon": true,
+   "tags": [
+    "Спорт",
+    "Левая нога"
+   ]
+  },
+  {
+   "id": "spe_sing_into_the_microphone_on_the_stand",
+   "name": "Петь в микрофон на стойке §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "А вы не ожидали, что я так красиво спою?",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_sing_into_the_microphone",
+   "name": "Петь в микрофон",
+   "author": "SPEmotes",
+   "description": "Танцпол! Танцуйте!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sing_slowly_into_the_microphone",
+   "name": "Медленно петь в микрофон",
+   "author": "SPEmotes",
+   "description": "Ля-ля-ля",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sing_vigorously_into_the_microphone",
+   "name": "Энергично петь в микрофон",
+   "author": "SPEmotes",
+   "description": "Настолько классно пою, что могу попасть в город греха",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sing",
+   "name": "Петь",
+   "author": "SPEmotes",
+   "description": "Сегодня мелодия пронзит ваши сердца",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sit_by_the_fire",
+   "name": "Сидеть у костра §5(§dМульти вселенная§5) §8(Dark Souls)",
+   "author": "SPEmotes",
+   "description": "Эх, минута отдыха",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Dark Souls"
+   ]
+  },
+  {
+   "id": "spe_sit_cross-legged",
+   "name": "Сидеть скрестив ноги",
+   "author": "SPEmotes",
+   "description": "Уютненько",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sit_down_like_a_genius",
+   "name": "Сесть как гений",
+   "author": "SPEmotes",
+   "description": "Держу руку за руку",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sit_elegantly",
+   "name": "Элегантно сидеть",
+   "author": "SPEmotes",
+   "description": "Ножку на ножку",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sit_on_the_raslabon",
+   "name": "Сидеть на расслабоне",
+   "author": "SPEmotes",
+   "description": "Душистый аромат",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sit_relaxed",
+   "name": "Расслабленно сидеть",
+   "author": "SPEmotes",
+   "description": "Сегодня, я хочу смотреть лишь на звёзды",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sit_thoughtfully",
+   "name": "Задумчиво сидеть §8(Прямые ноги)",
+   "author": "SPEmotes",
+   "description": "Очень трудная ситуация, которая требует размышления",
+   "icon": true,
+   "tags": [
+    "Прямые ноги"
+   ]
+  },
+  {
+   "id": "spe_sit_thoughtfully1",
+   "name": "Задумчиво сидеть §8(Согнутые ноги)",
+   "author": "SPEmotes",
+   "description": "Если это должно было произойти так, то кто мог являться виновником?",
+   "icon": true,
+   "tags": [
+    "Согнутые ноги"
+   ]
+  },
+  {
+   "id": "spe_sit_with_swords",
+   "name": "Сидеть с мечами",
+   "author": "SPEmotes",
+   "description": "Можно спокойно сложить оружие и наконец-то отдохнуть",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sit_with_your_hands_back",
+   "name": "Сидеть с руками назад",
+   "author": "SPEmotes",
+   "description": "Какой красивый закат сегодня, ты тоже видишь?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sit_with_your_hands_on_your_knees",
+   "name": "Сидеть с руками на коленях",
+   "author": "SPEmotes",
+   "description": "Эх, посидим.",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sit",
+   "name": "Сидеть",
+   "author": "SPEmotes",
+   "description": "Сядь на место",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sitting_down_to_play_the_guitar",
+   "name": "Сидя играть на гитаре §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Отдыхаем и слушаем песенку...",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_skibidi",
+   "name": "Скибиди §1(§9Танец§1) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Вернись в 2018 год",
+   "icon": true,
+   "tags": [
+    "Танец",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_slam",
+   "name": "Слэмить",
+   "author": "SPEmotes",
+   "description": "Давай, жги!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_slamming_with_two_hands",
+   "name": "Слэмить двумя руками",
+   "author": "SPEmotes",
+   "description": "Отдыхаем и слушаем песенку...",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sleep",
+   "name": "Спать",
+   "author": "SPEmotes",
+   "description": "Устали после работы, теперь можно и поспать!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sleeping_on_a_pig",
+   "name": "Спать на свинье §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Мягкий шашлык",
+   "icon": true,
+   "tags": [
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_sleeping_standing_up",
+   "name": "Спать стоя",
+   "author": "SPEmotes",
+   "description": "Да не, я не сплю... *хрык*",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_slick_back",
+   "name": "Slick Back §1(§9Танец§1) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Скользи по воздуху",
+   "icon": true,
+   "tags": [
+    "Танец",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_slip_up",
+   "name": "Подскользнуться",
+   "author": "SPEmotes",
+   "description": "Ай, упал прям на твёрдую поверхность",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_slip",
+   "name": "Проскользить §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Этот лёд такой тонкий",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_sloth",
+   "name": "Ленивец §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Не умею, но могу",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_slow_hands",
+   "name": "Медленные руки §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Не хватает большой толпы",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_smooth_movements",
+   "name": "Плавные движения §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Так и балету можно научиться",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_sneak_around",
+   "name": "Красться §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Только тихо, вдруг нас заметят",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_sneeze",
+   "name": "Чихнуть",
+   "author": "SPEmotes",
+   "description": "Фу, это же сопли",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_snow_angel",
+   "name": "Снежный ангел §4(§cНовый год§4) §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Смотри, я нарисовал(а) ангела",
+   "icon": true,
+   "tags": [
+    "Новый год",
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_solo",
+   "name": "Соло §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Танец одиночки",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_somersault_forward",
+   "name": "Кувырок вперёд §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Главное шею не сломать",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_somersault",
+   "name": "Кувырок §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Колесо, но кувырок",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_spear_stand1",
+   "name": "Стойка с копьём §8(1 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Неплохо",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_spear_stand2",
+   "name": "Стойка с копьём §8(2 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Не будем повторять старую песню",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_spear_stand3",
+   "name": "Стойка с копьём §8(3 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Не будем повторять старую песню",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_spear_strike1",
+   "name": "Удар копьём §8(1 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Кольсь!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_spear_strike2",
+   "name": "Удар копьём §8(2 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Получай!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_spear_strike3",
+   "name": "Удар копьём §8(3 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "И даже так умею!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_specify_the_time",
+   "name": "Указать на время",
+   "author": "SPEmotes",
+   "description": "Нам пора, закругляемся",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_spider-man_pose",
+   "name": "Поза Человека-паука §8(1 Вариант) §5(§dМульти вселенная§5) §8(Marvel)",
+   "author": "SPEmotes",
+   "description": "У всех есть тайны. Что-то скрываем мы, что-то скрывают от нас.",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Marvel"
+   ]
+  },
+  {
+   "id": "spe_spider-man_pose1",
+   "name": "Поза Человека-паука §8(2 Вариант) §5(§dМульти вселенная§5) §8(Marvel)",
+   "author": "SPEmotes",
+   "description": "Ну какой же ты никто, ты как минимум кто-то!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Marvel"
+   ]
+  },
+  {
+   "id": "spe_spider",
+   "name": "Паучок §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Страшное создание",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_spooky",
+   "name": "Спуки §6(Кошмары) §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Спуки парни!",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_stand_on_your_hands",
+   "name": "Стоять на руках §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Приложи немного сил и переведи всю силу на руки",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_stand_under_substances",
+   "name": "Стоять под веществами",
+   "author": "SPEmotes",
+   "description": "Типичная модельная поза каждого солевого человека",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_stand_with_a_heavy_sword1",
+   "name": "Стойка с тяжелым мечом §8(1 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Тяжело...",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_stand_with_a_heavy_sword2",
+   "name": "Стойка с тяжелым мечом §8(2 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Ой, он меня перевешивает",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_stand_with_a_heavy_sword3",
+   "name": "Стойка с тяжелым мечом §8(3 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Воткну ка его в землю.",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_stand_with_a_katana",
+   "name": "Стойка с катаной §8(1 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Кия!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_stand_with_a_katana2",
+   "name": "Стойка с катаной §8(2 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Держу и балансирую",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_stand_with_a_katana3",
+   "name": "Стойка с катаной §8(3 Вариант) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Один взмах и тебя не будет...",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_start_the_fireworks",
+   "name": "Запустить фейерверк",
+   "author": "SPEmotes",
+   "description": "А! Я аж подлетел!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_stomach_pain",
+   "name": "Боль в животе",
+   "author": "SPEmotes",
+   "description": "Прошу, помогите, мне плохо!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_strange_dance",
+   "name": "Странный танец §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Тут потолок сейчас упадёт",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_strange_to_shoot",
+   "name": "Странно выстрелить",
+   "author": "SPEmotes",
+   "description": "Не думаю что черная ворона, способна сказать что-то умное...",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_stretch_out",
+   "name": "Потянуться",
+   "author": "SPEmotes",
+   "description": "Эх, доброе утро",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_strike_with_a_sword1",
+   "name": "Ударить мечом §8(§71 Вариант§8)",
+   "author": "SPEmotes",
+   "description": "Больно?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_strike_with_a_sword2",
+   "name": "Ударить мечом §8(§72 Вариант§8)",
+   "author": "SPEmotes",
+   "description": "Разрез!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_strike_with_a_sword3",
+   "name": "Ударить мечом §8(§73 Вариант§8)",
+   "author": "SPEmotes",
+   "description": "Получай!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_striptease",
+   "name": "Стриптиз",
+   "author": "SPEmotes",
+   "description": "Гламурный зайчик, денюжек не желаешь дать?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_stylish_pose1",
+   "name": "Стильная поза §8(1 Вариант)",
+   "author": "SPEmotes",
+   "description": "Скажи мне, что ты хочешь...",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_stylish_pose2",
+   "name": "Стильная поза §8(2 Вариант)",
+   "author": "SPEmotes",
+   "description": "Чел",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_stylish_pose3",
+   "name": "Стильная поза §8(3 Вариант)",
+   "author": "SPEmotes",
+   "description": "Лёгкость движения - это то, что я люблю",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_stylish_pose4",
+   "name": "Стильная поза §8(4 Вариант)",
+   "author": "SPEmotes",
+   "description": "Немножко стесняюсь",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_stylish_pose5",
+   "name": "Стильная поза §8(5 Вариант)",
+   "author": "SPEmotes",
+   "description": "Деловой",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_stylish_pose6",
+   "name": "Стильная поза §8(6 Вариант)",
+   "author": "SPEmotes",
+   "description": "М, что говоришь?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_stylish_pose7",
+   "name": "Стильная поза §8(7 Вариант)",
+   "author": "SPEmotes",
+   "description": "Ножечки болят",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_stylish_pose8",
+   "name": "Стильная поза §8(8 Вариант)",
+   "author": "SPEmotes",
+   "description": "Прикрываю лицо",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_stylish_pose9",
+   "name": "Стильная поза §8(9 Вариант)",
+   "author": "SPEmotes",
+   "description": "Готов(а) обниматься",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_stytsaman",
+   "name": "Стыцамен §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Я особенный тип, слышишь этот мотив?",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_successful_pose",
+   "name": "Удачная поза",
+   "author": "SPEmotes",
+   "description": "Я настолько удачлив, что ты даже и не представляешь!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_suicide",
+   "name": "Самоубийство §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Хрусть и всё",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_super_shy",
+   "name": "Super shy §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Стесняшка",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_swallow",
+   "name": "Ласточка §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Удерживай равновесие так, чтобы не упасть",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_swim",
+   "name": "Плавать §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Оп, плывём-плывём",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_swing_the_sword",
+   "name": "Махать мечом",
+   "author": "SPEmotes",
+   "description": "Отойди, а то вдруг попаду",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_swinging_a_katana",
+   "name": "Замахивание катаной §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Настолько острая, что аж разрубит на 2 части",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_tackle_on_knees",
+   "name": "Подкат на коленях §6(§eПередвижение§6) ",
+   "author": "SPEmotes",
+   "description": "Катимся с болью",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_tackle",
+   "name": "Подкат §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Покатились!",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_tadam",
+   "name": "Та-дам §8(1 Вариант)",
+   "author": "SPEmotes",
+   "description": "Опа, сегодня твой праздник!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_tadam1",
+   "name": "Та-дам §8(2 Вариант)",
+   "author": "SPEmotes",
+   "description": "Опа, смотри что я подготовил(а)!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_take_advantage_of_the_peep-boy",
+   "name": "Воспользоваться Пип-Боем §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Что тут можно наклацать?",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_take_offence",
+   "name": "Обидеться",
+   "author": "SPEmotes",
+   "description": "Да иди ты!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_take_on_me",
+   "name": "Возьми меня §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Будто попал в 80-е",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_take_pictures_with_a_camera",
+   "name": "Фотографировать на фотоаппарат §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Иди встань рядом с цветочками, я тебя сфоткаю. Ну маааам!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_take_pictures_with_the_camera",
+   "name": "Фотографировать на камеру §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Старая фигофина, и как она работает?",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_talking_at_the_bar",
+   "name": "Разговаривать у барной стойки",
+   "author": "SPEmotes",
+   "description": "А ты слышал(а) что вчера случилось? Сейчас такого расскажу!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_talking_on_a_phone",
+   "name": "Разговаривать по телефону",
+   "author": "SPEmotes",
+   "description": "Да что ты? Да ну? Серьезно?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_talking",
+   "name": "Тихо разговаривать",
+   "author": "SPEmotes",
+   "description": "А ты знал, что вот он, своим вареником торгует?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_talking1",
+   "name": "Разговаривать",
+   "author": "SPEmotes",
+   "description": "А у меня скоро поезд в направлении кхм-кхм отправляется",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_talking2",
+   "name": "Злобно разговаривать",
+   "author": "SPEmotes",
+   "description": "Ты такой нудный, бесишь!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_tectonic_wave",
+   "name": "Тектоническая волна §5(§dМульти вселенная§5) §8(Genshin impact)",
+   "author": "SPEmotes",
+   "description": "Момент рождения!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Genshin impact"
+   ]
+  },
+  {
+   "id": "spe_tedious_to_sit",
+   "name": "Утомительно сидеть",
+   "author": "SPEmotes",
+   "description": "Ну, слушаю",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_teleportation_tracer",
+   "name": "Телепортация Трейсер §5(§dМульти вселенная§5) §8(Overwatch)",
+   "author": "SPEmotes",
+   "description": "Вжух, а я уже здесь!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Overwatch"
+   ]
+  },
+  {
+   "id": "spe_the_deadly_leg",
+   "name": "Смертоносная нога §5(§dМульти вселенная§5) §8(Street Fighter)",
+   "author": "SPEmotes",
+   "description": "Очаровательная Чун Ли может не только похвалить, но и убить",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Street Fighter"
+   ]
+  },
+  {
+   "id": "spe_the_flight_of_the_ghost",
+   "name": "Полёт привидения §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "У-у-у-у",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_the_gats_pose",
+   "name": "Поза Гатса §5(§dМульти вселенная§5) §8(Берсерк)",
+   "author": "SPEmotes",
+   "description": "Мы все находимся в руках великого течения, которое называют судьбой.",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Берсерк"
+   ]
+  },
+  {
+   "id": "spe_the_harley_quinn_pose",
+   "name": "Поза Харли Квинн §5(§dМульти вселенная§5) §8(Marvel)",
+   "author": "SPEmotes",
+   "description": "Бита - моя верная подруга",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Marvel"
+   ]
+  },
+  {
+   "id": "spe_the_killer_s_stance",
+   "name": "Стойка убийцы §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Нож уже весь в крови...",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_the_curse_of_vecna",
+   "name": "Проклятие Векны §5(§dМульти вселенная§5) §8(Stranger Things)",
+   "author": "SPEmotes",
+   "description": "Я не готова умирать, Лукас",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Stranger Things"
+   ]
+  },
+  {
+   "id": "spe_the_curse_of_vecna1",
+   "name": "Смертельное проклятие Векны §5(§dМульти вселенная§5) §8(Stranger Things)",
+   "author": "SPEmotes",
+   "description": "Косточки хрусть-хрусть",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Stranger Things"
+   ]
+  },
+  {
+   "id": "spe_the_worm",
+   "name": "Червячок §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Ну и склизкий",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_think",
+   "name": "Думать",
+   "author": "SPEmotes",
+   "description": "Думать, думать, а о чём подумать?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_throw_a_grenade",
+   "name": "Бросить гранату §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Бум! И всё взорвалось!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_throw_a_snowball",
+   "name": "Бросить снежок §4(§cНовый год§4) §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Смотри, да у тебя всё лицо в снегу, вот ты йети ",
+   "icon": true,
+   "tags": [
+    "Новый год",
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_tilt_head",
+   "name": "Наклонить голову",
+   "author": "SPEmotes",
+   "description": "А?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_to_die_from_a_severe_blow",
+   "name": "Умереть от сильного удара §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Я... ничего не чувствую!",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_to_die_in_one_place",
+   "name": "Умереть на одном месте",
+   "author": "SPEmotes",
+   "description": "Сердце... э-э..",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_to_die_with_a_bounce",
+   "name": "Умереть с отскоком",
+   "author": "SPEmotes",
+   "description": "Вот и помер...",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_to_die_with_my_arms_crossed",
+   "name": "Умереть скрестив руки",
+   "author": "SPEmotes",
+   "description": "Грустная ситуация",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_to_give_a_gift",
+   "name": "Подарить подарок §4(§cКСЭПСП§4) §4(§cНовый год§4)",
+   "author": "SPEmotes",
+   "description": "Это тебе <3",
+   "icon": true,
+   "tags": [
+    "КСЭПСП",
+    "Новый год"
+   ]
+  },
+  {
+   "id": "spe_to_sit_on_the_throne",
+   "name": "Сидеть на троне",
+   "author": "SPEmotes",
+   "description": "Ну давай, рассказывай, я тебя внимательно слушаю",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_to_smoke",
+   "name": "Курить",
+   "author": "SPEmotes",
+   "description": "Хорошую затяжку!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_torture_crackdown",
+   "name": "Пыточный разгон §1(§9Танец§1) §5(§dМульти вселенная§5) §8(JoJo)",
+   "author": "SPEmotes",
+   "description": "А мы на яхте",
+   "icon": true,
+   "tags": [
+    "Танец",
+    "Мульти вселенная",
+    "JoJo"
+   ]
+  },
+  {
+   "id": "spe_touch_my_face",
+   "name": "Потрогать лицо",
+   "author": "SPEmotes",
+   "description": "Что же так щекочет?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_tumbler",
+   "name": "Неваляшка §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "На один и на другой бок",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_tune_the_guitar",
+   "name": "Настроить гитару §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Так, вот так... и так!",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_turns_to_the_sides",
+   "name": "Повороты в стороны §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Стандартное упражнение для разминки перед тренировкой",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_tverk",
+   "name": "Твёрк §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Не стыдись своей пятой точки",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_twine",
+   "name": "Шпагат §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "У меня расстянулись суставы!",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_twist_the_sword",
+   "name": "Крутить меч",
+   "author": "SPEmotes",
+   "description": "Оп, опа-а-а!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_twisting",
+   "name": "Скручивания §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Тренировки дают только пользу!",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_typing_on_the_keyboard",
+   "name": "Печатать на клавиатуре",
+   "author": "SPEmotes",
+   "description": "Не отвлекай! У меня тут дело по работе!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_unknownpose",
+   "name": "Поза Неизвестного §6(Кошмары) §8(С анимацией)",
+   "author": "SPEmotes",
+   "description": "#!%&!&",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "С анимацией"
+   ]
+  },
+  {
+   "id": "spe_unknownpose1",
+   "name": "Поза Неизвестного §6(Кошмары) §8(Без анимации)",
+   "author": "SPEmotes",
+   "description": "*!%?!",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Без анимации"
+   ]
+  },
+  {
+   "id": "spe_unknownrun",
+   "name": "Бег Неизвестного §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "*!%@",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_unknownwalk",
+   "name": "Походка Неизвестного §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "%!@$@",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_unsuccessfully_feed_the_animal",
+   "name": "Неудачно покормить животное §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Ай, оно мне откусило руку!",
+   "icon": true,
+   "tags": [
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_vai_stand",
+   "name": "Стойка Вай §5(§dМульти вселенная§5) §8(League of Legends)",
+   "author": "SPEmotes",
+   "description": "Ну! Сопротивляйся же",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "League of Legends"
+   ]
+  },
+  {
+   "id": "spe_vampire",
+   "name": "Вампир §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Кричи, пока я не съем тебя всего!",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_view_flowers",
+   "name": "Рассматривать цветы §2(§aПрирода§2)",
+   "author": "SPEmotes",
+   "description": "Смотри, а вон там красивая розочка",
+   "icon": true,
+   "tags": [
+    "Природа"
+   ]
+  },
+  {
+   "id": "spe_vindictive_pose",
+   "name": "Мстительная поза",
+   "author": "SPEmotes",
+   "description": "Готов отдать свою жизнь?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_vulgarity_sit",
+   "name": "Пошло сидеть",
+   "author": "SPEmotes",
+   "description": "Хи-хи",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_wait_at_the_wall",
+   "name": "Ожидать у стены",
+   "author": "SPEmotes",
+   "description": "Ну где же он(а)?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_waiting_for_pico",
+   "name": "Ожидание Пико §5(§dМульти вселенная§5) §8(Friday Night Funkin)",
+   "author": "SPEmotes",
+   "description": "Узи с собой, вроде готов",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Friday Night Funkin"
+   ]
+  },
+  {
+   "id": "spe_waiting_for_a_boyfriend",
+   "name": "Ожидание Бойфренда §5(§dМульти вселенная§5) §8(Friday Night Funkin)",
+   "author": "SPEmotes",
+   "description": "Подожду своё начало",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Friday Night Funkin"
+   ]
+  },
+  {
+   "id": "spe_waiting_for_the_race",
+   "name": "Ожидание забега",
+   "author": "SPEmotes",
+   "description": "Дыхание в норме, думаю я смогу занять первое место",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_walkwithlantern",
+   "name": "Походка с фонарём §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Здесь-ь-ь кто-то был-л-л?",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_walking_head_jump",
+   "name": "Прыжок ходячей головы §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Прыг",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_walking_head_somersault",
+   "name": "Кувырок ходячей головы §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Кувыркаемся",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_walking_head_tackle",
+   "name": "Подкат ходячей головы §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Проныриваем",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_walking_head_dance",
+   "name": "Танец ходячей головы §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Танцуют только голова и ноги",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_walking_head_hit1",
+   "name": "Удар ходячей головы §8(Правая сторона)",
+   "author": "SPEmotes",
+   "description": "Кхя!",
+   "icon": true,
+   "tags": [
+    "Правая сторона"
+   ]
+  },
+  {
+   "id": "spe_walking_head_hit2",
+   "name": "Удар ходячей головы §8(Левая сторона)",
+   "author": "SPEmotes",
+   "description": "Ша!",
+   "icon": true,
+   "tags": [
+    "Левая сторона"
+   ]
+  },
+  {
+   "id": "spe_walking_head_run",
+   "name": "Бег ходячей головы §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Бего-о-ом!",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_walking_head_lay",
+   "name": "Ходячая голова лежит",
+   "author": "SPEmotes",
+   "description": "Смотрим туда!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_walking_head_sit",
+   "name": "Ходячая голова сидит",
+   "author": "SPEmotes",
+   "description": "Нужно отдохнуть",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_walking_head_waiting",
+   "name": "Ожидание ходячей головы",
+   "author": "SPEmotes",
+   "description": "Подождём пожалуй",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_walking_head",
+   "name": "Ходячая голова §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Руки прочь, ногам свободу",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_walking_on_crutches",
+   "name": "Походка на костылях §6(§eПередвижение§6) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Не быстро, но без боли",
+   "icon": true,
+   "tags": [
+    "Передвижение",
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_walking_with_a_cane",
+   "name": "Походка с тростью §6(§eПередвижение§6) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Эх, в 27 лет уже такой старый...",
+   "icon": true,
+   "tags": [
+    "Передвижение",
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_walking_with_a_gun",
+   "name": "Походка с пистолетом §6(§eПередвижение§6) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Хожу на страже порядка",
+   "icon": true,
+   "tags": [
+    "Передвижение",
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_walking_with_a_gun1",
+   "name": "Походка с оружием §6(§eПередвижение§6) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Охраняю контрольную точку",
+   "icon": true,
+   "tags": [
+    "Передвижение",
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_waltz1",
+   "name": "Вальс §1(§9Танец§1) §8(Первый партнёр) (Парная эмоция)",
+   "author": "SPEmotes",
+   "description": "Вальс запоздалый мой",
+   "icon": true,
+   "tags": [
+    "Танец",
+    "Первый партнёр",
+    "Парная эмоция"
+   ]
+  },
+  {
+   "id": "spe_waltz2",
+   "name": "Вальс §1(§9Танец§1) §8(Второй партнёр) (Парная эмоция)",
+   "author": "SPEmotes",
+   "description": "Ты ведь танцуешь со мной",
+   "icon": true,
+   "tags": [
+    "Танец",
+    "Второй партнёр",
+    "Парная эмоция"
+   ]
+  },
+  {
+   "id": "spe_wash_up",
+   "name": "Мыться",
+   "author": "SPEmotes",
+   "description": "Ой, я воняю",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_wash_your_hands",
+   "name": "Помыть руки",
+   "author": "SPEmotes",
+   "description": "Фе, все руки в какой-то фигне",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_wave_your_hand",
+   "name": "Махать рукой",
+   "author": "SPEmotes",
+   "description": "Эй, я здесь!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_wednesdaydance",
+   "name": "Танец Венсдей §6(Кошмары) §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Танцую со своими руками",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_wednesdaypose",
+   "name": "Поза Венсдей §6(Кошмары) §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Ты отморозок",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_witch_pose",
+   "name": "Поза Ведьмы §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Грациозна и обманчива",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_witch_s_suffocation",
+   "name": "Удушье ведьмы §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Помогите, я не могу... дышать..",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_withdrawal",
+   "name": "Ломка §1(§9Танец§1)",
+   "author": "SPEmotes",
+   "description": "Гучи, луи, прада-прада",
+   "icon": true,
+   "tags": [
+    "Танец"
+   ]
+  },
+  {
+   "id": "spe_worried_about_sitting",
+   "name": "Обеспокоено сидеть",
+   "author": "SPEmotes",
+   "description": "Зачем мы сюда пришли, мне здесь некомфортно",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_worship",
+   "name": "Поклоняться",
+   "author": "SPEmotes",
+   "description": "Хорошо мой повелитель",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_wounded_running",
+   "name": "Раненый бег §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Бегу до последнего",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_wounded_gait",
+   "name": "Раненая походка §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Больно...",
+   "icon": true,
+   "tags": [
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_writing_a_book",
+   "name": "Писать",
+   "author": "SPEmotes",
+   "description": "Напишите великий роман, о...",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_yandere_pose",
+   "name": "Поза Яндере §6(Кошмары)",
+   "author": "SPEmotes",
+   "description": "Я без ума от тебя!",
+   "icon": true,
+   "tags": [
+    "Кошмары"
+   ]
+  },
+  {
+   "id": "spe_yandere_run",
+   "name": "Бег Яндере §6(Кошмары) §6(§eПередвижение§6)",
+   "author": "SPEmotes",
+   "description": "Не убежишь!",
+   "icon": true,
+   "tags": [
+    "Кошмары",
+    "Передвижение"
+   ]
+  },
+  {
+   "id": "spe_yes",
+   "name": "Да",
+   "author": "SPEmotes",
+   "description": "Я согласен",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_zoro_pose",
+   "name": "Стойка Зоро §5(§dМульти вселенная§5) §8(One Piece)",
+   "author": "SPEmotes",
+   "description": "Месть мне претит, но... Порвать мне тебя захотелось",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "One Piece"
+   ]
+  },
+  {
+   "id": "spe_zweihander_strike",
+   "name": "Удар цвайхандером §5(§dМульти вселенная§5) §8(Dark Souls)",
+   "author": "SPEmotes",
+   "description": "Тяжелы-ый!",
+   "icon": true,
+   "tags": [
+    "Мульти вселенная",
+    "Dark Souls"
+   ]
+  },
+  {
+   "id": "spe_aim_lying_down",
+   "name": "Целиться лёжа §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Меня точно никто не видит?",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_crouch",
+   "name": "Приседания §8(§7Спорт§8)",
+   "author": "SPEmotes",
+   "description": "Ноги точно не будут болеть",
+   "icon": true,
+   "tags": [
+    "Спорт"
+   ]
+  },
+  {
+   "id": "spe_look_through_a_magnifying_glass",
+   "name": "Смотреть в лупу",
+   "author": "SPEmotes",
+   "description": "Вроде ничего не вижу",
+   "icon": false,
+   "tags": []
+  },
+  {
+   "id": "spe_look_through_the_telescope",
+   "name": "Смотреть в телескоп §4(§cКСЭПСП§4)",
+   "author": "SPEmotes",
+   "description": "Ого, да тут целый парад планет",
+   "icon": true,
+   "tags": [
+    "КСЭПСП"
+   ]
+  },
+  {
+   "id": "spe_lying_with_your_hands_tied",
+   "name": "Лежать с завязанными руками",
+   "author": "SPEmotes",
+   "description": "Я невиновен! За что?",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_modelpose2",
+   "name": "Модельная поза §8(3 Вариант)",
+   "author": "SPEmotes",
+   "description": "Фоткай быстрее, у меня уже нога затекла.",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sit_down_like_a_boss",
+   "name": "Сесть как босс",
+   "author": "SPEmotes",
+   "description": "Эй, кофейку мне сюда!",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_sit2",
+   "name": "Сесть сложа руки",
+   "author": "SPEmotes",
+   "description": "Не самый приятный день",
+   "icon": true,
+   "tags": []
+  },
+  {
+   "id": "spe_t-pose",
+   "name": "Т-Поза",
+   "author": "SPEmotes",
+   "description": "Я... Чучело? Почему на меня садятся вороны?",
+   "icon": false,
+   "tags": []
+  },
+  {
+   "id": "spe_the_bar1",
+   "name": "Планка §8(§7Спорт§8) (Прямые руки)",
+   "author": "SPEmotes",
+   "description": "Мне уже тяжело так стоять, когда это всё закончится?",
+   "icon": true,
+   "tags": [
+    "Спорт",
+    "Прямые руки"
+   ]
+  },
+  {
+   "id": "spe_the_bar2",
+   "name": "Планка §8(§7Спорт§8) (Согнутые руки)",
+   "author": "SPEmotes",
+   "description": "С согнутыми руками вроде и легче, но всё так же сложнее",
+   "icon": true,
+   "tags": [
+    "Спорт",
+    "Согнутые руки"
+   ]
+  },
+  {
+   "id": "spe_to_die_by_hitting_the_wall",
+   "name": "Умереть ударом об стену",
+   "author": "SPEmotes",
+   "description": "Моя жизнь окончена.",
+   "icon": true,
+   "tags": []
+  }
+ ],
+ "categories": {
+  "Танец": [],
+  "Передвижение": [],
+  "Мульти вселенная": [
+   "JoJo",
+   "Marvel",
+   "Наруто",
+   "Evangelion",
+   "Friday Night Funkin",
+   "Genshin impact",
+   "League of Legends",
+   "Star Wars",
+   "Street Fighter",
+   "Моб Психо 100",
+   "Sailor Moon"
+  ],
+  "КСЭПСП": [],
+  "Кошмары": [],
+  "Спорт": [],
+  "Природа": [
+   "Новый год"
+  ],
+  "Парная эмоция": [],
+  "Прочее": [
+   "Правая рука",
+   "Левая рука",
+   "Правая сторона",
+   "Левая сторона",
+   "Полный танец",
+   "Не циклично",
+   "Циклично",
+   "Цикличный танец",
+   "Прямые ноги",
+   "Согнутые ноги"
+  ]
+ }
+}

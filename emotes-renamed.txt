@@ -1,0 +1,22 @@
+# Animations kept, but under a different name.
+#
+# One per line: an id, an equals sign, and the name to show instead.
+# Blank lines and lines starting with # are ignored.
+#
+# Applied to BOTH builds — this is not about hiding anything, it is about four
+# animations whose only problem was what they were called.
+#
+#
+# WHY THIS FILE EXISTS
+#
+# A moderator, and a player browsing a store page, reads a list of names. Nobody
+# watches 712 animations. So a crude name on an innocent animation costs the
+# animation its place for no reason at all — and renaming it costs nothing.
+#
+# Each of these is a perfectly ordinary movement wearing a bad label: a run, two
+# sways, and a dance.
+
+spe_poop_running = Паническое бегство
+spe_stand_under_substances = Стоять пошатываясь
+spe_hanging_out_under_substances = Шататься
+spe_move_your_ass = Танец бёдрами
