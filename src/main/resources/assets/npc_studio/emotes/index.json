@@ -1649,24 +1649,6 @@
    ]
   },
   {
-   "id": "spe_fucking_lying_down",
-   "name": "Трахать лёжа §8(Парная эмоция)",
-   "author": "SPEmotes",
-   "description": "Оу, ты так хорошо прыгаешь",
-   "icon": true,
-   "tags": [
-    "Парная эмоция"
-   ]
-  },
-  {
-   "id": "spe_fucking_sitting_down",
-   "name": "Трахать сидя",
-   "author": "SPEmotes",
-   "description": "Ах, ох!",
-   "icon": true,
-   "tags": []
-  },
-  {
    "id": "spe_gait_with_a_sword_on_belt",
    "name": "Походка с мечом на поясе §6(§eПередвижение§6)",
    "author": "SPEmotes",
@@ -3314,14 +3296,6 @@
    ]
   },
   {
-   "id": "spe_lying_sex",
-   "name": "Лежать раком",
-   "author": "SPEmotes",
-   "description": "Да! Ещё!",
-   "icon": true,
-   "tags": []
-  },
-  {
    "id": "spe_lying_in_a_boat",
    "name": "Лежать в лодке §2(§aПрирода§2)",
    "author": "SPEmotes",
@@ -3448,14 +3422,6 @@
     "Мульти вселенная",
     "Evangelion"
    ]
-  },
-  {
-   "id": "spe_masturbate",
-   "name": "Мастурбировать",
-   "author": "SPEmotes",
-   "description": "Только не занимайтесь этим прилюдно",
-   "icon": true,
-   "tags": []
   },
   {
    "id": "spe_memepose1",
@@ -3771,14 +3737,6 @@
    "tags": [
     "Танец"
    ]
-  },
-  {
-   "id": "spe_pee",
-   "name": "Писать",
-   "author": "SPEmotes",
-   "description": "Не ну, а что? Каждый должен уметь справлять нужду",
-   "icon": true,
-   "tags": []
   },
   {
    "id": "spe_peeking_out_from_behind_the_wall",
@@ -4412,16 +4370,6 @@
    ]
   },
   {
-   "id": "spe_rider",
-   "name": "Наездница §8(Парная эмоция)",
-   "author": "SPEmotes",
-   "description": "Время покоя",
-   "icon": true,
-   "tags": [
-    "Парная эмоция"
-   ]
-  },
-  {
    "id": "spe_riding_a_chainsaw",
    "name": "Кататься на бензопиле §6(Кошмары) §6(§eПередвижение§6) §4(§cКСЭПСП§4)",
    "author": "SPEmotes",
@@ -4812,22 +4760,6 @@
    ]
   },
   {
-   "id": "spe_sexact",
-   "name": "Трахать",
-   "author": "SPEmotes",
-   "description": "Займитесь половым актом",
-   "icon": true,
-   "tags": []
-  },
-  {
-   "id": "spe_sexpass",
-   "name": "Встать раком",
-   "author": "SPEmotes",
-   "description": "Займите позу для вашего полового партнера",
-   "icon": true,
-   "tags": []
-  },
-  {
    "id": "spe_shadow_cloning_technique",
    "name": "Техника теневого клонирования §5(§dМульти вселенная§5) §8(Наруто)",
    "author": "SPEmotes",
@@ -4887,14 +4819,6 @@
     "Мульти вселенная",
     "Evangelion"
    ]
-  },
-  {
-   "id": "spe_shit",
-   "name": "Какать",
-   "author": "SPEmotes",
-   "description": "Ну, естественная красота",
-   "icon": true,
-   "tags": []
   },
   {
    "id": "spe_shock",
@@ -5568,14 +5492,6 @@
    "name": "Ударить мечом §8(§73 Вариант§8)",
    "author": "SPEmotes",
    "description": "Получай!",
-   "icon": true,
-   "tags": []
-  },
-  {
-   "id": "spe_striptease",
-   "name": "Стриптиз",
-   "author": "SPEmotes",
-   "description": "Гламурный зайчик, денюжек не желаешь дать?",
    "icon": true,
    "tags": []
   },
@@ -6785,8 +6701,8 @@
   "Природа": [
    "Новый год"
   ],
-  "Парная эмоция": [],
   "Прочее": [
+   "Парная эмоция",
    "Правая рука",
    "Левая рука",
    "Правая сторона",
