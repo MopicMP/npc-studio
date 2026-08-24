@@ -113,6 +113,35 @@ public record Sight(double range, float cone, double near) {
 	}
 
 	/**
+	 * How much of somebody is visible at this much light, nought to one.
+	 *
+	 * <h2>Why not simply the light level over fifteen</h2>
+	 *
+	 * Because eyes adapt and that number does not. Going from a torchlit room to a
+	 * bright one barely changes what you can make out; going from a dim one to a
+	 * pitch-dark one changes everything. So the curve is steep at the bottom and
+	 * nearly flat at the top, which is where the difference actually lives.
+	 *
+	 * <h2>And why it never reaches nothing</h2>
+	 *
+	 * Because it is not true, and because a floor of zero is a cheat waiting to be
+	 * found: dig a one-block hole, stand in it, become literally invisible at any
+	 * range. Even in the dark a moving shape at arm's length registers. It has to be
+	 * the sort of registering that fades with distance, and it is — this multiplies
+	 * a strength that is already falling off, so darkness shortens the range rather
+	 * than switching sight off.
+	 *
+	 * @param light the block's brightness, nought to fifteen, night already counted
+	 */
+	public static float byLight(int light) {
+		float lit = Math.clamp(light / 15f, 0f, 1f);
+		return IN_THE_DARK + (1 - IN_THE_DARK) * (float) Math.sqrt(lit);
+	}
+
+	/** What is left of sight with no light at all: a shape, close to, and no more. */
+	public static final float IN_THE_DARK = 0.12f;
+
+	/**
 	 * The angle between where something faces and where something else is, in
 	 * degrees, always nought to a hundred and eighty.
 	 *

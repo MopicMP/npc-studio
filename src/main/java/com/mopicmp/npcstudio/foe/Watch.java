@@ -229,6 +229,15 @@ public final class Watch {
 		float seen = sight.strength(distance, holding ? 0 : off);
 		if (seen <= 0) return null;
 
+		// Light and cover, both of which are properties of where the other person is
+		// standing rather than of the looking. Multiplied into a strength that is
+		// already falling off with distance, so darkness and crops shorten the range
+		// at which somebody is spotted rather than switching sight on and off.
+		seen *= Sight.byLight(self.level().getMaxLocalRawBrightness(player.blockPosition()));
+		seen *= 1 - Thicket.concealment(growthAt(player, 0), growthAt(player, 1)
+			|| (player.isShiftKeyDown() && growthAt(player, 0)));
+		if (seen <= 0) return null;
+
 		// Asked last, because it is the expensive one and most candidates have been
 		// ruled out by an angle or a distance that costs nothing.
 		if (!self.hasLineOfSight(player)) return null;
@@ -485,8 +494,35 @@ public final class Watch {
 	 */
 	public float loudnessOf(Player player) {
 		double pace = player.getKnownMovement().horizontalDistance();
-		return Noise.loudness(pace, player.isShiftKeyDown(),
+		float loudness = Noise.loudness(pace, player.isShiftKeyDown(),
 			player.isSprinting(), player.isInWater());
+		// The field gives and takes with the same hand: it hides you and it will not
+		// let you cross it quietly, and there is nothing to be done about the second
+		// except go round.
+		return Thicket.rustling(loudness, pace >= 0.005 && growthAt(player, 0));
+	}
+
+	/**
+	 * Whether there is something growing where somebody's feet or head are.
+	 *
+	 * <h2>Asked of the shape, not of a list of plants</h2>
+	 *
+	 * Anything solid enough to be a block and soft enough to walk through is growth
+	 * as far as this is concerned: wheat, tall grass, flowers, vines, ferns, sugar
+	 * cane, and whatever any other mod plants. There is no list to keep up to date
+	 * and nothing to forget, because the test is what the block <em>does</em> — a
+	 * thing you can stand inside is a thing you can hide inside.
+	 *
+	 * It also, pleasingly, takes in cobwebs and fire, which do both of those things
+	 * too and which nobody would have thought to write down.
+	 *
+	 * @param up how far above the feet to look: nought for the feet, one for the head
+	 */
+	private boolean growthAt(Player player, int up) {
+		var where = player.blockPosition().above(up);
+		var state = self.level().getBlockState(where);
+		if (state.isAir()) return false;
+		return state.getCollisionShape(self.level(), where).isEmpty();
 	}
 
 	/** What is actually reaching these ears from somebody, for a readout to show. */
