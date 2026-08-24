@@ -310,7 +310,11 @@ public class NpcEntity extends Avatar {
 	public static AttributeSupplier.Builder createAttributes() {
 		return LivingEntity.createLivingAttributes()
 			.add(Attributes.MAX_HEALTH, 20.0)
-			.add(Attributes.MOVEMENT_SPEED, 0.0)
+			// A walking pace, and it does not make anybody wander: nothing moves a
+			// character except being told to walk somewhere, and the only thing that
+			// does that is going to look at what made a noise. An NPC with no reason
+			// to go anywhere still stands exactly where it was put.
+			.add(Attributes.MOVEMENT_SPEED, 0.23)
 			.add(Attributes.STEP_HEIGHT, 0.6)
 			// The game's own scale, not one of ours. It carries the hitbox, the eye
 			// height, how far the character can reach and how big it is drawn — all
@@ -425,11 +429,157 @@ public class NpcEntity extends Avatar {
 		watch.tick();
 		entityData.set(DATA_MOOD, (byte) watch.mood().ordinal());
 
+		goAndLook();
+
 		Vec3 at = watch.lookingAt();
 		if (at == null) return;
 		var lead = watch.lead();
 		if (lead == null) return;
-		turnTowards(at, lead, watch.squaresUp());
+		// While walking, the feet decide which way the body faces and the head is
+		// free to look elsewhere. Somebody crossing a courtyard towards a noise while
+		// watching a window is doing two things at once, and that is what it should
+		// look like.
+		turnTowards(at, lead, watch.squaresUp() && !walk.walking());
+	}
+
+	private final com.mopicmp.npcstudio.foe.Walk walk = new com.mopicmp.npcstudio.foe.Walk();
+
+	/** Where she set off for, so that a new noise in the same place is not a new walk. */
+	private Vec3 headingFor;
+
+	/**
+	 * Walking over to see what that was.
+	 *
+	 * <h2>Why the finding and the walking happen at different rates</h2>
+	 *
+	 * Searching for a route is expensive and rarely needs redoing; putting one foot
+	 * in front of the other happens every tick. So a path is found when the
+	 * destination changes and followed until it runs out — the same arrangement as
+	 * looking and the alarm meter, for the same reason.
+	 */
+	private void goAndLook() {
+		Vec3 wanted = watch.worthInvestigating();
+		walk.moved(getX(), getZ());
+
+		if (wanted == null) {
+			stopWalking();
+			return;
+		}
+		// A fresh route only when the place has actually moved. Without this the
+		// search would run five times a second for as long as she was curious, which
+		// is the one thing that could make this expensive.
+		if (headingFor == null || headingFor.distanceToSqr(wanted) > 4 || walk.stuck()) {
+			headingFor = wanted;
+			walk.follow(routeTo(wanted));
+		}
+
+		double[] step = walk.heading(getX(), getY(), getZ());
+		if (step == null) {
+			stopWalking();
+			return;
+		}
+		stride(step);
+	}
+
+	private void stopWalking() {
+		if (walk.walking() || zza != 0) {
+			walk.stop();
+			headingFor = null;
+			zza = 0;
+			setSpeed(0);
+		}
+	}
+
+	/** How fast a character walks over to look at something. Unhurried; this is a look. */
+	private static final float STROLLING = 0.22f;
+
+	/**
+	 * One step towards the next waypoint.
+	 *
+	 * The physics is the game's own: the body is pointed at where it is going and
+	 * told to walk forward, and vanilla does gravity, collision, slabs, stairs and
+	 * water. Writing the movement by hand would mean reimplementing all of that
+	 * badly, and this character is a player in every other respect already.
+	 */
+	private void stride(double[] step) {
+		float bearing = (float) com.mopicmp.npcstudio.foe.Sight.yawTo(
+			getX(), getZ(), step[0], step[2]);
+		yBodyRot = bearing;
+		setYRot(bearing);
+
+		setSpeed(STROLLING);
+		zza = 1;
+		xxa = 0;
+
+		// Up a block, which needs a jump: the step height of a person is not a whole
+		// block, and the route deliberately allows climbing one because people climb.
+		if (onGround() && step[1] > getY() + 0.4) jumpFromGround();
+	}
+
+	/**
+	 * A route through the world, asked of the blocks.
+	 *
+	 * The ground rules are the honest ones: somewhere to put your feet, room for
+	 * your body, and nothing to walk through. Everything soft enough to walk through
+	 * — crops, grass, open doors — is clear, which is why a character crossing a
+	 * field walks through it rather than round it.
+	 */
+	private java.util.List<int[]> routeTo(Vec3 wanted) {
+		var level = level();
+		var to = net.minecraft.core.BlockPos.containing(wanted);
+		var from = blockPosition();
+
+		com.mopicmp.npcstudio.foe.Ways.Ground ground = new com.mopicmp.npcstudio.foe.Ways.Ground() {
+			@Override
+			public boolean clear(int x, int y, int z) {
+				var where = new net.minecraft.core.BlockPos(x, y, z);
+				var state = level.getBlockState(where);
+				return state.isAir() || state.getCollisionShape(level, where).isEmpty();
+			}
+
+			@Override
+			public boolean solid(int x, int y, int z) {
+				var where = new net.minecraft.core.BlockPos(x, y, z);
+				return !level.getBlockState(where).getCollisionShape(level, where).isEmpty();
+			}
+		};
+
+		// The place a noise came from is a guess and may well be inside a wall or in
+		// mid-air. Walking to the nearest standable block beside it is what somebody
+		// would do anyway: you go and look at the spot, not into it.
+		var landing = nearestFooting(ground, to);
+		if (landing == null) return java.util.List.of();
+		return com.mopicmp.npcstudio.foe.Ways.to(ground,
+			from.getX(), from.getY(), from.getZ(),
+			landing.getX(), landing.getY(), landing.getZ());
+	}
+
+	/** Somewhere near the guess that somebody could actually stand. */
+	private net.minecraft.core.BlockPos nearestFooting(
+			com.mopicmp.npcstudio.foe.Ways.Ground ground, net.minecraft.core.BlockPos about) {
+		for (int spread = 0; spread <= 3; spread++) {
+			for (int dx = -spread; dx <= spread; dx++) {
+				for (int dz = -spread; dz <= spread; dz++) {
+					for (int dy = spread; dy >= -spread; dy--) {
+						if (Math.max(Math.abs(dx), Math.max(Math.abs(dy), Math.abs(dz))) != spread) {
+							continue;
+						}
+						int x = about.getX() + dx;
+						int y = about.getY() + dy;
+						int z = about.getZ() + dz;
+						if (com.mopicmp.npcstudio.foe.Ways.standable(ground, x, y, z)) {
+							return new net.minecraft.core.BlockPos(x, y, z);
+						}
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	/** How far along a walk she is, for a readout. */
+	public com.mopicmp.npcstudio.foe.Walk walking() {
+		return walk;
 	}
 
 	/**

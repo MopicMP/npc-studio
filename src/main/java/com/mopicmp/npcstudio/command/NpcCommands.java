@@ -256,6 +256,15 @@ public final class NpcCommands {
 					+ ", turning " + Math.round(lead.turningAt()) + "°/tick"), false);
 		}
 
+		// And whether she is on her way somewhere, which is the one thing that cannot
+		// be told apart from standing still by looking at her for a moment.
+		var walk = npc.walking();
+		if (walk.walking()) {
+			source.sendSuccess(() -> Component.literal(
+				"walking — waypoint " + walk.reached() + " of " + walk.waypoints()
+					+ (walk.stuck() ? ", STUCK" : "")), false);
+		}
+
 		String said = "watching — " + watch.mood()
 			+ ", alarm " + Math.round(watch.alarm() * 100) + "%"
 			+ (quarry == null ? ", nobody identified"

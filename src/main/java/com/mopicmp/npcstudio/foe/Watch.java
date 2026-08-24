@@ -591,4 +591,35 @@ public final class Watch {
 		if (mood == Alarm.Mood.CALM || lead == null) return null;
 		return lead.seen() && lead.who() != null ? lead.who().getEyePosition() : lead.at();
 	}
+
+	/**
+	 * Somewhere worth walking to and having a look, or null.
+	 *
+	 * <h2>What separates looking from going</h2>
+	 *
+	 * Two things, and both matter. It has to be something she cannot simply see —
+	 * nobody walks over to investigate a person standing in front of them — and it
+	 * has to have got past being a passing curiosity, because a character who sets
+	 * off across a courtyard every time a door shuts is not investigating, she is
+	 * being led about.
+	 *
+	 * This is the payoff for the whole of the noticing. Until now she could work out
+	 * with some subtlety that somebody was there and then do nothing whatever about
+	 * it, which is the dullest possible ending. The place remembered at the moment
+	 * of noticing was built as the hook for exactly this.
+	 */
+	public Vec3 worthInvestigating() {
+		if (lead == null || lead.seen()) return null;
+		if (mood != Alarm.Mood.ALERT && lead.urgency() < WORTH_A_WALK) return null;
+		return lead.at();
+	}
+
+	/**
+	 * How urgent a thing has to be before it is worth crossing a room for.
+	 *
+	 * Above a footstep and below a bang, so that a shot or an explosion is
+	 * investigated at once while somebody moving about beyond a wall only draws her
+	 * over once she is sure enough about it — which is what the mood check is for.
+	 */
+	private static final float WORTH_A_WALK = 0.5f;
 }
