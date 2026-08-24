@@ -212,8 +212,11 @@ public final class NpcCommands {
 		// while walking backwards, and "62%" is legible where "0.6183" is not.
 		String said = "watching — " + watch.mood()
 			+ ", alarm " + Math.round(watch.alarm() * 100) + "%"
-			+ (quarry == null ? ", nobody in sight"
-				: ", on " + quarry.getName().getString()
+			+ (quarry == null ? ", nothing noticed"
+				// Which sense it is going on, because the two mean very different
+				// things and look identical from outside: seeing you is what makes it
+				// certain, hearing you never can.
+				: (watch.bySight() ? ", sees " : ", hears ") + quarry.getName().getString()
 					+ " at " + Math.round(npc.distanceTo(quarry)) + " blocks");
 		source.sendSuccess(() -> Component.literal(said), false);
 		return 1;

@@ -44,12 +44,34 @@ class SightTest {
 	}
 
 	@Test
-	@DisplayName("somebody at your shoulder is noticed whatever you are facing")
-	void closeEnoughIsAlwaysSeen() {
-		// Without this a character breathing on you is invisible because he happens
-		// to be facing a wall, which reads as broken rather than as sneaky.
-		assertEquals(1f, EYES.strength(1, 180), 1e-4);
-		assertEquals(1f, EYES.strength(EYES.near() - 0.01, 179), 1e-4);
+	@DisplayName("somebody at your shoulder is sensed, not seen")
+	void closeEnoughIsSensed() {
+		// This used to answer "seen, completely", and it was reported as vision
+		// working through the whole circle: walk up behind a character and she knew
+		// exactly where you were at once. Now it is the feeling that somebody is
+		// there — enough to turn towards, not enough to be sure of.
+		assertEquals(Sight.SENSED, EYES.strength(1, 180), 1e-4);
+		assertEquals(Sight.SENSED, EYES.strength(EYES.near() - 0.01, 179), 1e-4);
+
+		// And a step further away it is nothing at all, which is what makes walking
+		// round behind somebody a thing worth doing.
+		assertEquals(0f, EYES.strength(EYES.near() + 0.5, 180), 1e-4);
+	}
+
+	@Test
+	@DisplayName("but being sensed is a long way from being certain")
+	void sensingDoesNotConvict() {
+		// The chain this is built for: sensed, turned towards, seen, sure. Standing
+		// behind somebody has to take a good deal longer to give you away than
+		// standing in front of them, or there was no point separating the two.
+		float alarm = 0;
+		int behind = 0;
+		while (alarm < 1f && behind < 200) {
+			alarm = Alarm.next(alarm, Sight.SENSED);
+			behind++;
+		}
+		assertTrue(behind > 40, "it took " + behind + " ticks from behind");
+		assertTrue(behind < 60, "and not so long as to be silly: " + behind);
 	}
 
 	@Test

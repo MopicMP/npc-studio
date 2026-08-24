@@ -69,10 +69,31 @@ public final class Alarm {
 	 * @return what it becomes, clamped to nought and one
 	 */
 	public static float next(float now, float strength) {
+		return next(now, strength, 1f);
+	}
+
+	/**
+	 * The same, but with a limit on how far this kind of evidence can take it.
+	 *
+	 * <h2>What the ceiling is for</h2>
+	 *
+	 * Hearing. A guard who hears footsteps knows something is there and does not
+	 * know what or exactly where, and the difference between that and seeing you is
+	 * the whole of what makes hiding worth doing. So sound fills the meter to just
+	 * short of certain and stops — see {@link Noise#CEILING} — and only eyes finish
+	 * the job.
+	 *
+	 * The ceiling caps rising and never forces a fall. A character who has already
+	 * seen you and then loses sight of you while still hearing you must not be
+	 * dragged back down to merely suspicious by the sound of your feet; she forgets
+	 * at the ordinary rate, from wherever she was.
+	 */
+	public static float next(float now, float strength, float ceiling) {
 		float moved = strength > 0
 			? now + strength / FILLS_IN
 			: now - 1 / EMPTIES_IN;
-		return Math.clamp(moved, 0f, 1f);
+		moved = Math.clamp(moved, 0f, 1f);
+		return moved > now ? Math.min(moved, Math.max(now, ceiling)) : moved;
 	}
 
 	/**

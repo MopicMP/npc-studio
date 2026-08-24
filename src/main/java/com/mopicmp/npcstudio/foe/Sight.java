@@ -27,15 +27,35 @@ package com.mopicmp.npcstudio.foe;
  * @param range how far this can see at all, in blocks
  * @param cone  the whole width of vision in degrees, split either side of the
  *              nose: 120 means sixty degrees each way
- * @param near  how close somebody has to be to be noticed whatever the angle.
- *              Not a nicety — without it a character standing at your shoulder,
- *              breathing on you, is invisible because he happens to be facing a
- *              wall, and that reads as broken rather than as sneaky
+ * @param near  how close somebody has to be to be <em>sensed</em> whatever the
+ *              angle. Sensed, not seen — see {@link #SENSED}
  */
 public record Sight(double range, float cone, double near) {
 
 	/** What an ordinary watchful character can see: a wide human cone. */
-	public static final Sight ORDINARY = new Sight(24, 120, 3.5);
+	public static final Sight ORDINARY = new Sight(24, 120, 2.0);
+
+	/**
+	 * How strongly somebody standing right behind you registers.
+	 *
+	 * <h2>The bug this number is the fix for</h2>
+	 *
+	 * This used to be full strength over three and a half blocks, and it made
+	 * vision appear to work through the whole circle: walk up behind a character
+	 * and she knew exactly where you were, at once, as surely as if she were
+	 * staring at you. That was reported, and it was fair.
+	 *
+	 * The opposite is worse, though, and is why the radius exists at all. A
+	 * character with somebody breathing on the back of her neck who notices
+	 * nothing whatever is not stealthy — she is broken.
+	 *
+	 * What a person has there is not sight, it is the feeling that somebody is
+	 * there. So it registers weakly: enough to stir, not enough to be sure. She
+	 * turns her head, and <em>then</em> she sees you, and then she is sure. That
+	 * chain — sensed, turned, seen — is worth more than either extreme and costs
+	 * one constant.
+	 */
+	public static final float SENSED = 0.35f;
 
 	public Sight {
 		range = Math.max(0, range);
@@ -64,11 +84,15 @@ public record Sight(double range, float cone, double near) {
 	 * @param angleOff how far from straight ahead, in degrees, never negative
 	 */
 	public float strength(double distance, double angleOff) {
-		if (distance <= near) return 1;
-		if (distance > range || range <= 0) return 0;
+		if (distance > range || range <= 0) {
+			// Still sensed if they are practically touching you, even past the range —
+			// which can only happen with a range set absurdly short, and answering
+			// "nothing" there would be a stranger lie than answering "something".
+			return distance <= near ? SENSED : 0;
+		}
 
 		float half = cone / 2f;
-		if (angleOff > half) return 0;
+		if (angleOff > half) return distance <= near ? SENSED : 0;
 
 		double far = range / 2;
 		float byDistance = distance <= far ? 1
@@ -79,7 +103,13 @@ public record Sight(double range, float cone, double near) {
 		float byAngle = half <= 0 ? 1 : 1 - (float) (angleOff / half);
 		byAngle *= byAngle;
 
-		return Math.clamp(byDistance * byAngle, 0f, 1f);
+		float seen = byDistance * byAngle;
+		// Never less than sensed when they are close enough to touch. Inside the cone
+		// but right at its edge, the squared falloff drops to nearly nothing, and a
+		// character noticing somebody less at arm's length than at nine paces is the
+		// sort of thing nobody would ever guess was arithmetic.
+		if (distance <= near) seen = Math.max(seen, SENSED);
+		return Math.clamp(seen, 0f, 1f);
 	}
 
 	/**

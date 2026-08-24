@@ -427,10 +427,61 @@ public class NpcEntity extends Avatar {
 
 		Vec3 at = watch.lookingAt();
 		if (at == null) return;
-		// Through the game's own turning rather than by writing the angles: it walks
-		// the head towards the target at the rate a neck moves, and setting yHeadRot
-		// outright makes a character snap round like a turret.
-		lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES, at);
+		turnTowards(at, watch.mood() == com.mopicmp.npcstudio.foe.Alarm.Mood.ALERT);
+	}
+
+	/** How far the head may swing in one tick: a glance, and a snap round. */
+	private static final float GLANCING = 6f;
+	private static final float SHARPLY = 15f;
+
+	/** And the body, which always lags the head. */
+	private static final float SHOULDERS = 5f;
+
+	/**
+	 * Turns to look at a point, head first and body only when the neck runs out.
+	 *
+	 * <h2>Why not the game's own lookAt</h2>
+	 *
+	 * Because it is not a turn, it is three instant assignments — pitch, body yaw,
+	 * and the head snapped to the body — all in one tick. Used here it made a
+	 * character noticing you spin bodily on the spot, which was reported as the
+	 * head snapping round and, separately, as vision seeming to work through the
+	 * whole circle. The second follows from the first: once the body has spun to
+	 * face you, you are in front of it, and everything after that is consistent
+	 * with having been seen all along.
+	 *
+	 * <h2>Two speeds, and what they say</h2>
+	 *
+	 * A suspicious character glances; an alert one snaps round. Reproducing that is
+	 * not decoration — from across a room those two mean "I might still get away"
+	 * and "I will not", and that is information the player needs and has no other
+	 * way of getting.
+	 */
+	private void turnTowards(Vec3 at, boolean sharply) {
+		float wanted = (float) com.mopicmp.npcstudio.foe.Sight.yawTo(getX(), getZ(), at.x, at.z);
+		float head = com.mopicmp.npcstudio.foe.Neck.step(getYHeadRot(), wanted,
+			sharply ? SHARPLY : GLANCING);
+
+		// The body follows only once the head cannot turn any further, and the game
+		// already has an opinion about how far that is. A character following
+		// somebody across a doorway with her eyes should not shuffle round on the
+		// spot to do it.
+		float limit = getMaxHeadRotationRelativeToBody();
+		float excess = com.mopicmp.npcstudio.foe.Neck.overTurn(head, yBodyRot, limit);
+		if (excess != 0) {
+			float body = com.mopicmp.npcstudio.foe.Neck.step(yBodyRot, yBodyRot + excess, SHOULDERS);
+			yBodyRot = body;
+			setYRot(body);
+		}
+
+		// Last, and after the body has moved. The head turns three times as fast as
+		// the shoulders, so between reaching the limit and the body catching up it
+		// goes on outrunning it — which came out as a neck bent ten degrees further
+		// than a neck bends, for a fifth of a second, every time she turned round.
+		setYHeadRot(com.mopicmp.npcstudio.foe.Neck.held(head, yBodyRot, limit));
+		Vec3 eye = getEyePosition();
+		float pitch = com.mopicmp.npcstudio.foe.Neck.pitchTo(eye.x, eye.y, eye.z, at.x, at.y, at.z);
+		setXRot(com.mopicmp.npcstudio.foe.Neck.step(getXRot(), pitch, sharply ? SHARPLY : GLANCING));
 	}
 
 	private EntityDataAccessor<String> slotFor(Motion motion) {
