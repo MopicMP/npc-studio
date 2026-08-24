@@ -76,6 +76,14 @@ public final class PreviewFigure {
 		facing.mul(tilt);
 
 		Vector3f middle = new Vector3f(0, state.boundingBoxHeight / 2 + yOffset, 0);
-		graphics.entity(state, scale, middle, facing, tilt, left, top, right, bottom);
+		// Through the pose by hand, because a picture in a picture does not go
+		// through it by itself. Inside a panel — which is where all of these live
+		// now — the dock has translated the matrix to the panel's corner, and four
+		// raw numbers put the figure that far from the corner of the window
+		// instead. It is then clipped away by the panel's own scissor, so what this
+		// looked like was not a figure in the wrong place but no figure at all.
+		int[] box = com.mopicmp.npcstudio.client.workspace.Pip.box(
+			graphics, left, top, right, bottom);
+		graphics.entity(state, scale, middle, facing, tilt, box[0], box[1], box[2], box[3]);
 	}
 }

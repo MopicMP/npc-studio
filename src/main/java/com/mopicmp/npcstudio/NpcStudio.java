@@ -56,11 +56,49 @@ public class NpcStudio implements ModInitializer {
 			// The costume library belongs to the world, so it opens when the world
 			// does and closes with it — the same life as the dialogues beside it.
 			com.mopicmp.npcstudio.wardrobe.Wardrobes.open(server);
+			// And the models, for the same reason and one more: an object standing in
+			// a world is part of that world, so the drawing behind it has to travel
+			// with the world rather than sit in one person's config folder.
+			com.mopicmp.npcstudio.model.ServerModels.open(server);
+			// And the scenes, which are the strongest case of the three: a scene
+			// names the characters in it by ids this world hands out, so anywhere
+			// else it is a list of pointers to nothing.
+			com.mopicmp.npcstudio.scene.ServerScenes.open(server);
 		});
-		ServerLifecycleEvents.SERVER_STOPPED.register(server ->
-			com.mopicmp.npcstudio.wardrobe.Wardrobes.close());
-		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
-			DialogueDisplay.forget(handler.getPlayer()));
+		ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+			com.mopicmp.npcstudio.wardrobe.Wardrobes.close();
+			com.mopicmp.npcstudio.model.ServerModels.close();
+			com.mopicmp.npcstudio.scene.ServerScenes.close();
+		});
+
+		// Everything the world knows how to draw, handed over on the way in. Before
+		// this, a player who had not drawn a model saw an empty patch of air where
+		// somebody else's ship was, and there was no way for them to ever see it.
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+			for (String name : com.mopicmp.npcstudio.model.ServerModels.names()) {
+				String json = com.mopicmp.npcstudio.model.ServerModels.written(name);
+				if (json != null) {
+					sender.sendPacket(new com.mopicmp.npcstudio.net.NpcPayloads.ModelDocument(
+						name, json));
+				}
+			}
+			// The scenes as well, for the reason a scene exists at all: it has to be
+			// the same one it was before the world was closed.
+			for (String name : com.mopicmp.npcstudio.scene.ServerScenes.names()) {
+				String json = com.mopicmp.npcstudio.scene.ServerScenes.written(name);
+				if (json != null) {
+					sender.sendPacket(new com.mopicmp.npcstudio.net.ScenePayloads.Document(
+						name, json));
+				}
+			}
+		});
+
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+			DialogueDisplay.forget(handler.getPlayer());
+			// A scene half sent when somebody's connection went is a scene nobody is
+			// going to finish, and holding its pieces is holding memory for nothing.
+			com.mopicmp.npcstudio.net.SceneEditing.forget(handler.getPlayer());
+		});
 
 		LOGGER.info("NPC Studio ready");
 	}

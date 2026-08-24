@@ -48,12 +48,48 @@ public final class Costumes {
 		return versions;
 	}
 
+	/**
+	 * How many times the list has been replaced.
+	 *
+	 * A screen filters the library once when it opens and then draws from what it
+	 * filtered, which is right — refiltering a thousand costumes every frame to
+	 * find out that nothing changed is work for nothing. But it left no way to
+	 * find out when something <em>did</em>, and a costume added a moment ago
+	 * simply was not there until the screen was closed and opened again.
+	 *
+	 * A number that goes up is the cheapest way to ask: one comparison a frame,
+	 * and the answer is right for every screen looking at the library at once
+	 * rather than only for whichever one sent the change.
+	 */
+	private static int generation;
+
+	public static int generation() {
+		return generation;
+	}
+
 	public static void accept(List<WardrobePayloads.Costume> costumes) {
 		known = List.copyOf(costumes);
+		generation++;
 	}
 
 	public static void acceptVersions(List<String> names) {
 		versions = List.copyOf(names);
+	}
+
+	/**
+	 * Takes back the markings the world already holds.
+	 *
+	 * Arrives with the library and in batches after it, so what somebody marked
+	 * last week opens as what they marked rather than as the reading's guess at it.
+	 * Merged rather than replacing, because the batches are several and a costume
+	 * marked a moment ago in this session should not blink out while they arrive.
+	 */
+	public static void acceptMarks(List<com.mopicmp.npcstudio.net.WardrobePayloads.Mark> marks) {
+		for (var mark : marks) {
+			marked.put(mark.costumeId(),
+				com.mopicmp.npcstudio.entity.FaceMask.decode(mark.mask(), mark.byHand()));
+		}
+		generation++;
 	}
 
 	/** Asks the server for the whole list. Cheap, and the screen needs it to open. */
@@ -154,6 +190,7 @@ public final class Costumes {
 	public static void forget() {
 		known = List.of();
 		versions = List.of();
+		generation++;
 		asked.clear();
 		// The textures themselves are left registered: the texture manager owns
 		// them now, and a fingerprint always names the same picture, so a costume
@@ -211,12 +248,17 @@ public final class Costumes {
 	}
 
 	/**
-	 * What a costume's face was marked as this session.
+	 * Where each costume's eyes are, as far as this client knows.
 	 *
-	 * The list from the server does not carry the map, so without this a costume
-	 * marked a minute ago would open showing the reading again rather than the
-	 * answer somebody just gave. Kept only for the session, because the world's
-	 * own file is the record and this is a convenience.
+	 * Filled from two directions: what somebody has marked in this session, and
+	 * what the world already held, which arrives with the library.
+	 *
+	 * The second half is new and was the whole of a complaint. This map used to be
+	 * the session's only, because the library list carries no mask — so a marking
+	 * made last week was on disk, was being blinked with correctly, and was
+	 * nevertheless invisible to the editor, which opened on the reading's guess
+	 * instead. From the outside that is indistinguishable from the mod having
+	 * thrown the marking away and made its own.
 	 */
 	private static final Map<String, com.mopicmp.npcstudio.entity.FaceMask> marked = new HashMap<>();
 

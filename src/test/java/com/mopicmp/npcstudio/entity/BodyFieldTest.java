@@ -1,0 +1,192 @@
+package com.mopicmp.npcstudio.entity;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+/**
+ * What the body's surface is allowed to do.
+ *
+ * These are not tests of arithmetic — the arithmetic was never what went wrong.
+ * They are the statements that were false in the first telling and have to stay true
+ * in this one: an untouched character is the vanilla one, a pelvis is never narrower
+ * than the legs under it, and the top of a thigh and the bottom of a pelvis are the
+ * same width because they are the same number.
+ *
+ * The ones that used to sit here about knees and ankles have gone with the thing
+ * they described. A limb that is not the same width all the way down is made of
+ * segments now, and what a segment may be is {@link BodyChainTest}.
+ */
+class BodyFieldTest {
+
+	/** Half an arm across on the two models Minecraft ships. */
+	private static final float CLASSIC = 2f;
+	private static final float SLIM = 1.5f;
+
+	private static BodyShape shape(float hips, float legs) {
+		return new BodyShape(1, hips, 1, 1, legs, 1, 1, 0f, 0f);
+	}
+
+	@Test
+	@DisplayName("an untouched character is the vanilla model, to the pixel")
+	void defaultIsVanilla() {
+		BodyShape plain = BodyShape.DEFAULT;
+		for (float y = 0; y <= BodyField.HIP_Y; y += 0.5f) {
+			assertEquals(4f, BodyField.torsoHalf(plain, y), 1e-4f, "torso at " + y);
+		}
+		for (float y = BodyField.HIP_Y; y <= 24f; y += 0.5f) {
+			assertEquals(2f, BodyField.legHalf(plain, y), 1e-4f, "leg across at " + y);
+			assertEquals(2f, BodyField.legDepth(plain, y), 1e-4f, "leg through at " + y);
+			assertEquals(1.9f, BodyField.legMiddle(plain, y), 1e-4f, "leg middle at " + y);
+		}
+		for (float base : new float[] { CLASSIC, SLIM }) {
+			assertEquals(base, BodyField.armHalf(plain, base), 1e-4f);
+			// Six on a classic model and five and a half on a slim one, which is where
+			// Minecraft puts them: the torso's side plus the arm's own half-width.
+			assertEquals(4f + base, BodyField.armMiddle(plain, base), 1e-4f);
+		}
+		assertEquals(0f, BodyField.armSplay(plain), 1e-4f);
+	}
+
+	@Test
+	@DisplayName("the pelvis is never narrower than the legs standing under it")
+	void thickLegsWidenTheHips() {
+		// The whole of "one setting cannot move alone", in one assertion. Nobody wired
+		// the two sliders together; the pelvis is defined as what the legs need.
+		for (float legs = 0.5f; legs <= 2f; legs += 0.1f) {
+			BodyShape build = shape(1f, legs);
+			float pelvis = BodyField.torsoHalf(build, BodyField.HIP_Y);
+			float thighs = 2f * BodyField.legHalf(build, BodyField.THIGH_Y);
+			assertTrue(pelvis >= thighs - 1e-4f,
+				"pelvis " + pelvis + " cannot carry thighs " + thighs);
+		}
+	}
+
+	@Test
+	@DisplayName("the two thighs fill the pelvis exactly at the hip line")
+	void theJoinIsWatertight() {
+		for (float hips = 0.5f; hips <= 2f; hips += 0.1f) {
+			for (float legs = 0.5f; legs <= 2f; legs += 0.25f) {
+				BodyShape build = shape(hips, legs);
+				float pelvis = BodyField.torsoHalf(build, BodyField.HIP_Y);
+				float half = BodyField.legHalf(build, BodyField.HIP_Y);
+				assertEquals(pelvis / 2f, half, 1e-4f, "thigh at the hip, hips " + hips);
+
+				float middle = BodyField.legMiddle(build, BodyField.HIP_Y);
+				assertEquals(pelvis - BodyField.LEG_OVERLAP, middle + half, 1e-4f, "outer edge");
+				assertEquals(-BodyField.LEG_OVERLAP, middle - half, 1e-4f, "inner edge");
+			}
+		}
+	}
+
+	@Test
+	@DisplayName("a wide pelvis leaves the waist and the shoulders alone")
+	void hipsDoNotDragTheWholeTorso() {
+		BodyShape wide = shape(1.6f, 1f);
+		assertEquals(4f, BodyField.torsoHalf(wide, BodyField.SHOULDER_Y), 1e-4f);
+		assertEquals(4f, BodyField.torsoHalf(wide, BodyField.WAIST_Y), 1e-4f);
+		assertEquals(6.4f, BodyField.torsoHalf(wide, BodyField.HIP_Y), 1e-4f);
+	}
+
+	@Test
+	@DisplayName("the surface never falls faster than a pixel for a pixel")
+	void nothingIsACliff() {
+		// A cliff is what the old telling had at the hip — four pixels of nothing
+		// between the pelvis and the leg — and it is the one failure a still picture
+		// of a standing character hides.
+		for (float hips = 0.5f; hips <= 2f; hips += 0.25f) {
+			for (float legs = 0.5f; legs <= 2f; legs += 0.25f) {
+				BodyShape build = shape(hips, legs);
+				float was = BodyField.legHalf(build, BodyField.HIP_Y);
+				for (float y = BodyField.HIP_Y; y <= 24f; y += 0.1f) {
+					float now = BodyField.legHalf(build, y);
+					assertTrue(Math.abs(now - was) <= 0.1f + 1e-3f,
+						"leg jumped from " + was + " to " + now + " at " + y);
+					was = now;
+				}
+			}
+		}
+	}
+
+	@Test
+	@DisplayName("the joint lets go of the leg's turn, and only near the hip")
+	void theJointIsAWeight() {
+		BodyShape build = shape(1.4f, 1f);
+		assertEquals(1f, BodyField.atJoint(build, BodyField.HIP_Y), 1e-4f);
+		assertEquals(0f, BodyField.atJoint(build, BodyField.jointEnd(build)), 1e-4f);
+		assertTrue(BodyField.atJoint(build, 13.5f) > 0.2f, "the joint gives up too early");
+	}
+
+	@Test
+	@DisplayName("the shoulder holds a shorter band than the hip does")
+	void theShoulderIsTheTighterJoint() {
+		BodyShape build = shape(1f, 1f);
+		assertEquals(1f, BodyField.atShoulder(build, BodyField.SHOULDER_Y), 1e-4f);
+		assertEquals(0f, BodyField.atShoulder(build, BodyField.SHOULDER_JOINT), 1e-4f);
+		// An arm goes through more than twice the angle a leg does, so it gives its
+		// turn up over less of itself — otherwise a wave reads as rubber.
+		assertTrue(BodyField.SHOULDER_JOINT < BodyField.THIGH_Y - BodyField.HIP_Y);
+	}
+
+	@Test
+	@DisplayName("a slim arm stays slimmer than a classic one")
+	void slimStaysSlim() {
+		BodyShape thick = new BodyShape(1, 1, 1, 1.4f, 1, 1, 1, 0f, 0f);
+		assertTrue(BodyField.armHalf(thick, SLIM) < BodyField.armHalf(thick, CLASSIC));
+	}
+
+	@Test
+	@DisplayName("the arm's inner face is the torso's side, whatever the shoulders are")
+	void theArmSitsOnTheTorso() {
+		for (float shoulders = 0.5f; shoulders <= 2f; shoulders += 0.1f) {
+			BodyShape build = new BodyShape(shoulders, 1, 1, 1, 1, 1, 1, 0f, 0f);
+			float inner = BodyField.armMiddle(build, CLASSIC) - BodyField.armHalf(build, CLASSIC);
+			assertEquals(BodyField.torsoHalf(build, BodyField.SHOULDER_Y), inner, 1e-4f,
+				"shoulders " + shoulders);
+		}
+	}
+
+	@Test
+	@DisplayName("a chamfer moves the middle of a face nowhere and a corner inwards")
+	void softnessIsAChamfer() {
+		float half = 4f, deep = 2f, radius = 1f;
+		assertEquals(1f, BodyField.chamfer(1f, 0f, half, deep, radius), 1e-4f, "face middle");
+		assertEquals(1f, BodyField.chamfer(0f, 1f, half, deep, radius), 1e-4f, "face middle");
+
+		float corner = BodyField.chamfer(1f, 1f, half, deep, radius);
+		assertTrue(corner < 1f, "the corner was not drawn in");
+		assertTrue(corner > 0.7f, "the corner was drawn in further than the radius");
+		assertEquals(1f, BodyField.chamfer(1f, 1f, half, deep, 0f), 1e-4f);
+	}
+
+	@Test
+	@DisplayName("a chamfered surface stays inside the box it came from")
+	void theChamferNeverGrows() {
+		float half = 2f, deep = 2f;
+		for (float radius = 0f; radius <= 1.2f; radius += 0.1f) {
+			for (float u = -1f; u <= 1f; u += 0.1f) {
+				for (float w = -1f; w <= 1f; w += 0.1f) {
+					float factor = BodyField.chamfer(u, w, half, deep, radius);
+					assertTrue(Math.abs(u * half * factor) <= half + 1e-3f, "across");
+					assertTrue(Math.abs(w * deep * factor) <= deep + 1e-3f, "through");
+				}
+			}
+		}
+	}
+
+	@Test
+	@DisplayName("the arms swing out only as far as the hips push them")
+	void armsClearTheHips() {
+		assertEquals(0f, BodyField.armSplay(shape(1f, 1f)), 1e-4f);
+		assertEquals(0f, BodyField.armSplay(shape(0.7f, 0.7f)), 1e-4f, "narrow hips push nothing");
+
+		BodyShape wide = shape(1.6f, 1f);
+		float splay = BodyField.armSplay(wide);
+		float reach = BodyField.HIP_Y - BodyField.SHOULDER_PIVOT_Y;
+		float moved = (float) Math.sin(splay) * reach;
+		float overlap = BodyField.torsoHalf(wide, BodyField.HIP_Y) - BodyField.BODY_HALF;
+		assertEquals(overlap, moved, 1e-3f, "the arm did not clear the hip by exactly the overlap");
+	}
+}

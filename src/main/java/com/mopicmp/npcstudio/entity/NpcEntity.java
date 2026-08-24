@@ -172,7 +172,7 @@ public class NpcEntity extends Avatar {
 		if (index < 0 || index >= wardrobe.size()) return;
 		Outfit outfit = wardrobe.get(index);
 		worn = index;
-		setEyeMap(outfit.eyes());
+		setFaceMask(outfit.eyes());
 		if (outfit.isPicture()) setCustomSkin(outfit.pixels());
 		else {
 			setCustomSkin(null);
@@ -224,19 +224,20 @@ public class NpcEntity extends Avatar {
 	/**
 	 * Where the face this character is wearing keeps its eyes and brows.
 	 *
-	 * Two longs, a bit per pixel of the face — see {@link EyeMap}. Sent rather
-	 * than worked out on each client, so that a character blinks the same way for
-	 * everybody watching, and so that a face somebody marked out by hand is not
-	 * quietly replaced by a guess on somebody else's screen.
+	 * The mask as its own run-length text, at whatever size it was marked at.
+	 * Sent rather than worked out on each client, so that a character blinks the
+	 * same way for everybody watching, and so that a face somebody marked out by
+	 * hand is not quietly replaced by a guess on somebody else's screen.
+	 *
+	 * Text rather than the three longs it used to be, and that is the fix for
+	 * everything the eyes were doing wrong — see {@link #faceMask()}. Three longs
+	 * is exactly eight by eight, which is one bit per texel on an ordinary skin
+	 * and one bit per sixteen texels on a two-hundred-and-fifty-six-wide one.
+	 * Run-length text costs a few hundred characters for a face of any size,
+	 * because a face is mostly long runs of nothing.
 	 */
-	private static final EntityDataAccessor<Long> DATA_EYES =
-		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.LONG);
-
-	private static final EntityDataAccessor<Long> DATA_WHITES =
-		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.LONG);
-
-	private static final EntityDataAccessor<Long> DATA_BROWS =
-		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.LONG);
+	private static final EntityDataAccessor<String> DATA_FACE =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.STRING);
 
 	/** Whether that map was drawn by a person, as against read off the picture. */
 	private static final EntityDataAccessor<Boolean> DATA_EYES_AUTHORED =
@@ -332,9 +333,7 @@ public class NpcEntity extends Avatar {
 		builder.define(DATA_EXPRESSION_TICKS, 0);
 		builder.define(DATA_SHAPE, BodyShape.DEFAULT.packed());
 		builder.define(DATA_POSTURE, BodyShape.DEFAULT.packedPosture());
-		builder.define(DATA_EYES, 0L);
-		builder.define(DATA_WHITES, 0L);
-		builder.define(DATA_BROWS, 0L);
+		builder.define(DATA_FACE, "");
 		builder.define(DATA_EYES_AUTHORED, false);
 		builder.define(DATA_ANIM_IDLE, "");
 		builder.define(DATA_ANIM_WALK, "");
@@ -407,7 +406,70 @@ public class NpcEntity extends Avatar {
 		if (!level().isClientSide()) {
 			expireGesture();
 			expireExpression();
+			refreshFace();
 		}
+	}
+
+	/** Whether this character has yet asked the wardrobe where its eyes are. */
+	private boolean askedForItsFace;
+
+	/**
+	 * Takes the worn costume's face from the world's wardrobe, once, after loading.
+	 *
+	 * <h2>Why a character's own copy is not good enough</h2>
+	 *
+	 * Because it is a copy, and it was taken at the moment the character was
+	 * dressed. Everything since then — somebody marking the face properly, the mask
+	 * learning to keep the size it was marked at — happened to the wardrobe's record
+	 * and not to the copy. A character dressed before any of it goes on wearing the
+	 * eight-by-eight answer it was handed, on a face drawn at thirty-two, for ever.
+	 *
+	 * That is not a small difference and it is exactly the one that was reported
+	 * against: at eight cells a block is four texels by four, so the eye's opening
+	 * runs a whole texel row below the eye and two texels into the cheek. The iris
+	 * slides onto skin, skin travels with it, and the lash — one cell, honestly
+	 * measured — is the entire eyelid.
+	 *
+	 * The wardrobe is the record, so the wardrobe is asked. Once, on the first tick
+	 * after loading, and the answer is written back into the character's own outfit
+	 * so that the next load has nothing to do.
+	 */
+	private void refreshFace() {
+		if (askedForItsFace) return;
+		if (costumeId.isEmpty() || worn < 0 || worn >= wardrobe.size()) {
+			askedForItsFace = true;
+			return;
+		}
+
+		// Not marked as asked until there was somebody to ask. A character can tick
+		// before the world's wardrobe has opened, and giving up then would leave it
+		// on its own copy until the next load — which is the whole fault, once more
+		// and quieter.
+		var library = com.mopicmp.npcstudio.wardrobe.Wardrobes.library();
+		if (library == null) return;
+		askedForItsFace = true;
+		var found = library.find(costumeId);
+		if (found.isEmpty()) return;
+
+		FaceMask face = found.get().face();
+		if (face.equals(wardrobe.get(worn).eyes())) return;
+		wardrobe.set(worn, wardrobe.get(worn).looking(face));
+		setFaceMask(face);
+	}
+
+	/**
+	 * Puts a face on this character if it is wearing the costume named.
+	 *
+	 * So that marking a face is visible on everybody wearing it at once, rather
+	 * than on whoever is dressed next. Called by the wardrobe when somebody
+	 * finishes marking.
+	 */
+	public void refaceIfWearing(String costume, FaceMask face) {
+		if (costume == null || costume.isEmpty() || !costume.equals(costumeId)) return;
+		if (worn >= 0 && worn < wardrobe.size()) {
+			wardrobe.set(worn, wardrobe.get(worn).looking(face));
+		}
+		setFaceMask(face);
 	}
 
 	/** What the NPC is doing with itself, or empty for nothing. */
@@ -528,18 +590,59 @@ public class NpcEntity extends Avatar {
 		return BodyShape.unpack(entityData.get(DATA_SHAPE), entityData.get(DATA_POSTURE));
 	}
 
-	/** Where this character's face keeps its eyes, as everybody watching sees it. */
-	public EyeMap eyeMap() {
-		return new EyeMap(entityData.get(DATA_EYES), entityData.get(DATA_WHITES),
-			entityData.get(DATA_BROWS), entityData.get(DATA_EYES_AUTHORED));
+	/**
+	 * Where this character's face keeps its eyes, as everybody watching sees it.
+	 *
+	 * <h2>Why this is the whole mask and not the eighth-scale grid</h2>
+	 *
+	 * It was the grid, and the grid is eight by eight over the face. On an ordinary
+	 * sixty-four-wide skin that is one cell per texel and loses nothing. On a
+	 * two-hundred-and-fifty-six-wide skin the face is thirty-two texels across and
+	 * one cell is <b>four by four of them</b> — so an eye four texels tall became
+	 * one row, a pupil four wide became one column, and every mark somebody made by
+	 * hand was rounded to a block of sixteen texels.
+	 *
+	 * Everything reported about the eyes came from that one fact. Skin moved with
+	 * the pupil because a four-by-four block moved. Narrowing tore the drawing
+	 * because the patch painted over it was a four-by-four block. The lid borrowed
+	 * its colour "two rows above the eye", which is eight texels up and lands in the
+	 * eye itself or in the fringe. And a glance stepped a third of an eye at a time
+	 * instead of sliding.
+	 *
+	 * So the mask travels whole, at whatever size it was marked at, as its own
+	 * run-length text. The coarse grid is still here as a view for anything that
+	 * only ever wanted rows — it is a view of the record now rather than the record.
+	 */
+	public FaceMask faceMask() {
+		return FaceMask.decode(entityData.get(DATA_FACE), entityData.get(DATA_EYES_AUTHORED));
 	}
 
-	public void setEyeMap(EyeMap read) {
-		EyeMap map = read == null ? EyeMap.NONE : read;
-		entityData.set(DATA_EYES, map.eyes());
-		entityData.set(DATA_WHITES, map.whites());
-		entityData.set(DATA_BROWS, map.brows());
-		entityData.set(DATA_EYES_AUTHORED, map.authored());
+	public EyeMap eyeMap() {
+		return faceMask().reduce();
+	}
+
+	/**
+	 * The marking as it travels: one line of text, undecoded.
+	 *
+	 * For the one caller that runs every frame. Decoding a mask and reading a face
+	 * out of it is a walk over every cell of it — sixty-five thousand of them on a
+	 * face marked at the finest size — and the answer only changes when somebody
+	 * marks the face again. The text is the cheapest thing that says whether they
+	 * have.
+	 */
+	public String faceMaskText() {
+		return entityData.get(DATA_FACE);
+	}
+
+	/** Whether that marking was made by a person rather than read off the picture. */
+	public boolean faceByHand() {
+		return entityData.get(DATA_EYES_AUTHORED);
+	}
+
+	public void setFaceMask(FaceMask mask) {
+		FaceMask face = mask == null ? FaceMask.NONE : mask;
+		entityData.set(DATA_FACE, face.isNone() ? "" : face.encode());
+		entityData.set(DATA_EYES_AUTHORED, face.authored());
 	}
 
 	public void setBodyShape(BodyShape shape) {
@@ -642,9 +745,7 @@ public class NpcEntity extends Avatar {
 					java.util.Base64.getEncoder().encodeToString(outfit.pixels()));
 			}
 			if (!outfit.eyes().isNone()) {
-				output.putLong("Outfit" + i + "Eyes", outfit.eyes().eyes());
-				output.putLong("Outfit" + i + "Whites", outfit.eyes().whites());
-				output.putLong("Outfit" + i + "Brows", outfit.eyes().brows());
+				output.putString("Outfit" + i + "Face", outfit.eyes().encode());
 				output.putBoolean("Outfit" + i + "EyesByHand", outfit.eyes().authored());
 			}
 		}
@@ -672,8 +773,11 @@ public class NpcEntity extends Avatar {
 		}
 		// A character placed before shapes existed is shaped like everybody else.
 		entityData.set(DATA_SHAPE, input.getLongOr("Shape", BodyShape.DEFAULT.packed()));
-		entityData.set(DATA_POSTURE,
-			input.getLongOr("Posture", BodyShape.DEFAULT.packedPosture()));
+		// Through readPosture, because a character placed before height and taper
+		// existed has zeros where they now live, and zero in that encoding means
+		// the shortest possible person rather than an ordinary one.
+		entityData.set(DATA_POSTURE, BodyShape.readPosture(
+			input.getLongOr("Posture", BodyShape.DEFAULT.packedPosture())));
 		costumeId = input.getStringOr("Costume", "");
 		wardrobe.clear();
 		int outfits = input.getIntOr("Outfits", 0);
@@ -683,11 +787,19 @@ public class NpcEntity extends Avatar {
 			String picture = input.getStringOr("Outfit" + i + "Skin", "");
 			// A costume saved before faces were read has no map, which is not the
 			// same as a face with no eyes: nought means "nobody has looked yet".
-			EyeMap read = new EyeMap(
-				input.getLongOr("Outfit" + i + "Eyes", 0L),
-				input.getLongOr("Outfit" + i + "Whites", 0L),
-				input.getLongOr("Outfit" + i + "Brows", 0L),
-				input.getBooleanOr("Outfit" + i + "EyesByHand", false));
+			//
+			// The eighth-scale form is still read, because worlds are full of it.
+			// Grown to a mask it is exactly as coarse as it was — nothing is
+			// invented — but it goes down one path from here rather than two.
+			boolean byHand = input.getBooleanOr("Outfit" + i + "EyesByHand", false);
+			String face = input.getStringOr("Outfit" + i + "Face", "");
+			FaceMask read = face.isEmpty()
+				? FaceMask.of(new EyeMap(
+					input.getLongOr("Outfit" + i + "Eyes", 0L),
+					input.getLongOr("Outfit" + i + "Whites", 0L),
+					input.getLongOr("Outfit" + i + "Brows", 0L),
+					byHand))
+				: FaceMask.decode(face, byHand);
 			if (picture.isEmpty()) {
 				wardrobe.add(Outfit.named(label, name).looking(read));
 			} else {
@@ -702,6 +814,22 @@ public class NpcEntity extends Avatar {
 			}
 		}
 		worn = Math.clamp(input.getIntOr("Worn", -1), -1, wardrobe.size() - 1);
+
+		// And put the worn costume's face back on.
+		//
+		// This is why a face marked out by hand came back forgotten. The map lives
+		// in the synchronised data so that everybody watching blinks the same way,
+		// and synchronised data is not saved with the entity — it is set when the
+		// costume is put on. Loading restored the wardrobe and which costume was
+		// worn, and stopped there, so the map came back at its default: nought,
+		// which means "nobody has looked at this face yet". The renderer then did
+		// what it is supposed to do with that and read the face afresh, throwing
+		// away the answer somebody had given it.
+		//
+		// Only the map, not the whole of wearing: the skin is restored below from
+		// its own entry, and calling wear() here would set it twice — once from the
+		// outfit and once from the file, with the second silently winning.
+		if (worn >= 0) setFaceMask(wardrobe.get(worn).eyes());
 
 		String saved = input.getStringOr("SkinFile", "");
 		if (!saved.isEmpty()) {

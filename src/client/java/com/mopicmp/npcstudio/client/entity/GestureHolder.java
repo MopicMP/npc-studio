@@ -41,4 +41,18 @@ public interface GestureHolder {
 
 	void npcStudio$setShape(com.mopicmp.npcstudio.entity.BodyShape shape);
 
+	/**
+	 * What the scene says this character is doing, or null when it is in none.
+	 *
+	 * Carried across rather than looked up where it is needed, because where it is
+	 * needed is inside the model posing itself, and by then the entity is gone —
+	 * the model is handed a render state and nothing else. The whole sample rather
+	 * than a list of numbers, so that each part can ask for its own channels and
+	 * hand over its own fallback; a scene has to be able to say nothing about a
+	 * bone and leave it doing whatever it was doing.
+	 */
+	com.mopicmp.npcstudio.client.scene.Playing.Sample npcStudio$staged();
+
+	void npcStudio$setStaged(com.mopicmp.npcstudio.client.scene.Playing.Sample staged);
+
 }

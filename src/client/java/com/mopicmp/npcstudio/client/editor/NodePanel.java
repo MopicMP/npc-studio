@@ -48,6 +48,13 @@ public class NodePanel {
 
 	private record Label(String text, int x, int y) { }
 
+	/** How tall the fields came out, measured from the top the panel was given. */
+	private int contentBottom;
+
+	public int contentHeight() {
+		return contentBottom + 34;
+	}
+
 	public NodePanel(GraphEditorScreen screen, EditorState state, int index) {
 		this.screen = screen;
 		this.state = state;
@@ -201,6 +208,10 @@ public class NodePanel {
 				labels.add(new Label("conditions are file-only for now", x, y));
 			}
 		}
+
+		// Where the fields ran out, so whoever is showing this panel knows whether
+		// it fits and by how much it does not.
+		contentBottom = y - top;
 
 		add.accept(new FlatButton(x, top + height - 26, 90, 18,
 			Component.literal("make start"), 0xFFFFCA28, () -> {

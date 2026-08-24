@@ -38,8 +38,23 @@ public record BodyShape(
 		float legs,
 		float chest,
 		float head,
-		float roundness,
-		float stoop) {
+		float softness,
+		float stoop,
+		float height,
+		float taper) {
+
+	/**
+	 * A build described by its girths alone, as everything was before limbs had
+	 * segments.
+	 *
+	 * The two that are missing come out at their vanilla values, which is the whole
+	 * point: a character nobody has stretched or stepped is the player model, and
+	 * stays on the fast path that hands it straight back to Minecraft.
+	 */
+	public BodyShape(float shoulders, float hips, float belly, float arms, float legs,
+			float chest, float head, float softness, float stoop) {
+		this(shoulders, hips, belly, arms, legs, chest, head, softness, stoop, 1f, 0f);
+	}
 
 	/** What a scale may be. One is the vanilla model, untouched. */
 	public static final float MIN_SCALE = 0.5f;
@@ -53,9 +68,31 @@ public record BodyShape(
 	 */
 	public static final float MAX_STOOP = 0.5f;
 
+	/**
+	 * How much taller or shorter a character may be built.
+	 *
+	 * This is length, not size. It stretches the segments a body is made of and
+	 * leaves the head alone, which is what being tall actually looks like — and it
+	 * is why a tall character reads as small-headed without anybody shrinking a
+	 * face. {@code Attributes.SCALE} is the other thing and stays separate: it
+	 * multiplies everything at once, head included, so it makes the same person
+	 * bigger rather than a different person taller.
+	 */
+	public static final float MIN_HEIGHT = 0.6f;
+	public static final float MAX_HEIGHT = 1.6f;
+
+	/**
+	 * How much narrower the lower half of a limb is than the upper, in pixels.
+	 *
+	 * A whole pixel is what the reference model uses — thigh three and a bit,
+	 * calf one less — and a whole pixel is the smallest step this art has. The
+	 * measurement that replaced two rounds of invented sub-pixel tapering.
+	 */
+	public static final float MAX_TAPER = 1.5f;
+
 	/** An ordinary player-shaped character. */
 	public static final BodyShape DEFAULT =
-		new BodyShape(1, 1, 1, 1, 1, 1, 1, 0, 0);
+		new BodyShape(1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0);
 
 	/**
 	 * A few builds worth having without doing the work.
@@ -70,6 +107,10 @@ public record BodyShape(
 	 */
 	public record Preset(String name, BodyShape shape) { }
 
+	// None of them stretches or steps anything yet: they were written for girths, and
+	// height and taper are new. They are worth revisiting once a segmented body has
+	// been seen in the game — a blacksmith is short and thick, an old man is short
+	// and thin, and neither of those is expressible by width alone.
 	public static final java.util.List<Preset> PRESETS = java.util.List.of(
 		new Preset("обычный", DEFAULT),
 		// Shoulders and arms, and a slight lean back: the weight is in the top half.
@@ -80,7 +121,7 @@ public record BodyShape(
 		new Preset("подросток", new BodyShape(0.85f, 0.85f, 0.9f, 0.8f, 0.85f, 0.9f, 1.08f, 0f, 0.04f)),
 		// The stoop is the whole character; the thin arms only agree with it.
 		new Preset("старик", new BodyShape(0.9f, 1f, 1.25f, 0.8f, 0.85f, 0.85f, 1, 0f, 0.3f)),
-		// Upright, square, and deliberately the least rounded of them.
+		// Upright, square, and deliberately the least softened of them.
 		new Preset("стражник", new BodyShape(1.25f, 1, 0.95f, 1.15f, 1.1f, 1.15f, 1, 0f, -0.1f)),
 		// Not a shape so much as an answer to "what does a woman look like here",
 		// which is the case the mod this grew out of exists for. One preset among
@@ -95,8 +136,14 @@ public record BodyShape(
 		legs = clampScale(legs);
 		chest = clampScale(chest);
 		head = clampScale(head);
-		roundness = Float.isFinite(roundness) ? Math.clamp(roundness, 0f, 1f) : 0f;
+		softness = clampShare(softness);
 		stoop = Float.isFinite(stoop) ? Math.clamp(stoop, -MAX_STOOP, MAX_STOOP) : 0f;
+		height = Float.isFinite(height) ? Math.clamp(height, MIN_HEIGHT, MAX_HEIGHT) : 1f;
+		taper = Float.isFinite(taper) ? Math.clamp(taper, 0f, MAX_TAPER) : 0f;
+	}
+
+	private static float clampShare(float value) {
+		return Float.isFinite(value) ? Math.clamp(value, 0f, 1f) : 0f;
 	}
 
 	private static float clampScale(float value) {
@@ -132,7 +179,9 @@ public record BodyShape(
 	 * buy space for one more.
 	 */
 	public long packedPosture() {
-		return signedByteOf(stoop, MAX_STOOP);
+		return signedByteOf(stoop, MAX_STOOP)
+			| (long) byteOf(height, MIN_HEIGHT, MAX_HEIGHT) << 8
+			| (long) byteOf(taper, 0f, MAX_TAPER) << 16;
 	}
 
 	public long packed() {
@@ -143,7 +192,31 @@ public record BodyShape(
 			| (long) byteOf(legs, MIN_SCALE, MAX_SCALE) << 32
 			| (long) byteOf(chest, MIN_SCALE, MAX_SCALE) << 40
 			| (long) byteOf(head, MIN_SCALE, MAX_SCALE) << 48
-			| (long) byteOf(roundness, 0f, 1f) << 56;
+			| (long) byteOf(softness, 0f, 1f) << 56;
+	}
+
+	/**
+	 * A stored posture as it has to be read back.
+	 *
+	 * Height and taper were added to this long after characters had already been
+	 * saved with it, and both sit in bytes that were simply zero before they
+	 * existed. Zero here is not "unset" — it is the bottom of the range — so an
+	 * old character read back literally came out at {@link #MIN_HEIGHT}, which is
+	 * to say a dwarf. Everything measured from the body followed it down, which
+	 * is why the eyes were in the wrong place too: they are placed on the head,
+	 * and the head had moved.
+	 *
+	 * So a stored value with nothing in either of those bytes is taken to predate
+	 * them. The one build this reads wrongly is a deliberate shortest-possible
+	 * character with no taper at all, which comes back at ordinary height — a
+	 * setting its author can put back in one drag. Being shrunk without asking is
+	 * not.
+	 */
+	public static long readPosture(long stored) {
+		boolean beforeHeightExisted = ((stored >>> 8) & 0xFFFF) == 0;
+		return beforeHeightExisted
+			? (stored & 0xFFL) | (DEFAULT.packedPosture() & ~0xFFL)
+			: stored;
 	}
 
 	public static BodyShape unpack(long packed, long posture) {
@@ -156,7 +229,9 @@ public record BodyShape(
 			floatOf(packed, 40, MIN_SCALE, MAX_SCALE),
 			floatOf(packed, 48, MIN_SCALE, MAX_SCALE),
 			floatOf(packed, 56, 0f, 1f),
-			signedFloatOf(posture, 0, MAX_STOOP));
+			signedFloatOf(posture, 0, MAX_STOOP),
+			floatOf(posture, 8, MIN_HEIGHT, MAX_HEIGHT),
+			floatOf(posture, 16, 0f, MAX_TAPER));
 	}
 
 	private static int byteOf(float value, float low, float high) {
@@ -209,8 +284,10 @@ public record BodyShape(
 		if (legs != 1) json.addProperty("legs", legs);
 		if (chest != 1) json.addProperty("chest", chest);
 		if (head != 1) json.addProperty("head", head);
-		if (roundness != 0) json.addProperty("roundness", roundness);
+		if (softness != 0) json.addProperty("softness", softness);
 		if (stoop != 0) json.addProperty("stoop", stoop);
+		if (height != 1) json.addProperty("height", height);
+		if (taper != 0) json.addProperty("taper", taper);
 		return json;
 	}
 
@@ -220,8 +297,14 @@ public record BodyShape(
 			number(json, "shoulders", 1), number(json, "hips", 1),
 			number(json, "belly", 1), number(json, "arms", 1),
 			number(json, "legs", 1), number(json, "chest", 1),
-			number(json, "head", 1), number(json, "roundness", 0),
-			number(json, "stoop", 0));
+			number(json, "head", 1),
+			// Read under its old name as well: a costume saved before limbs had a
+			// profile says "roundness", and losing somebody's setting on an update is
+			// worse than carrying one dead key.
+			json.has("softness") ? number(json, "softness", 0) : number(json, "roundness", 0),
+			number(json, "stoop", 0),
+			number(json, "height", 1),
+			number(json, "taper", 0));
 	}
 
 	private static float number(com.google.gson.JsonObject json, String key, float fallback) {

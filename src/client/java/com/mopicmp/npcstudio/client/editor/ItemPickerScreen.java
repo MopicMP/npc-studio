@@ -1,5 +1,9 @@
 package com.mopicmp.npcstudio.client.editor;
 
+import com.mopicmp.npcstudio.client.workspace.Icon;
+import com.mopicmp.npcstudio.client.workspace.IconTextButton;
+import com.mopicmp.npcstudio.client.workspace.IconTextButton.Spec;
+import com.mopicmp.npcstudio.client.workspace.WorkspaceScreen;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
@@ -87,21 +91,26 @@ public class ItemPickerScreen extends Screen {
 		// Whatever the player is holding, in one click. Most of the time the item
 		// somebody wants on an NPC is the one already in their hand, and this saves
 		// them finding it again in a grid of a thousand.
-		addRenderableWidget(new FlatButton(MARGIN, bottom, 120, 20,
-			Component.literal("from my hand"), ACCENT, () -> {
-				ItemStack held = minecraft.player == null ? ItemStack.EMPTY
-					: minecraft.player.getMainHandItem();
-				take(held.isEmpty() ? "" : BuiltInRegistries.ITEM.getKey(held.getItem()).toString());
-			}));
-		addRenderableWidget(new FlatButton(MARGIN + 128, bottom, 100, 20,
-			Component.literal("empty hand"), 0xFF8A99A6, () -> take("")));
-		addRenderableWidget(new FlatButton(MARGIN + 236, bottom, 100, 20,
-			Component.literal("cancel"), 0xFF8A99A6, () -> minecraft.setScreenAndShow(parent)));
+		// Laid out by the room there is rather than at three fixed offsets adding
+		// up to three hundred and thirty six pixels. In the left column of the
+		// workspace that put the last two buttons past the edge, where they could
+		// be seen and not pressed.
+		IconTextButton.row(MARGIN, bottom, width - MARGIN * 2, 20, java.util.List.of(
+			new Spec(Icon.MAIN_HAND, Component.translatable("npc_studio.items.from_hand"),
+				ACCENT, () -> {
+					ItemStack held = minecraft.player == null ? ItemStack.EMPTY
+						: minecraft.player.getMainHandItem();
+					take(held.isEmpty() ? "" : BuiltInRegistries.ITEM.getKey(held.getItem()).toString());
+				}),
+			new Spec(Icon.REMOVE, Component.translatable("npc_studio.items.empty"),
+				0xFF8A99A6, () -> take("")),
+			new Spec(Icon.CANCEL, Component.translatable("npc_studio.items.cancel"),
+				0xFF8A99A6, () -> leave())), this::addRenderableWidget);
 	}
 
 	private void take(String id) {
 		onPick.accept(id);
-		minecraft.setScreenAndShow(parent);
+		leave();
 	}
 
 	private int columns() {
@@ -141,7 +150,7 @@ public class ItemPickerScreen extends Screen {
 
 	@Override
 	public void onClose() {
-		minecraft.setScreenAndShow(parent);
+		leave();
 	}
 
 	@Override
@@ -175,4 +184,17 @@ public class ItemPickerScreen extends Screen {
 	public boolean isPauseScreen() {
 		return false;
 	}
+
+	/**
+	 * Goes back where it came from — unless there is nowhere to go back to.
+	 *
+	 * A null parent means this is living inside the workspace as a panel, and a
+	 * panel has no "back": the thing behind it is the rest of the workspace, and
+	 * handing the display to null would close all of it. So leaving becomes
+	 * staying, which is what a panel does when you have finished with it.
+	 */
+	private void leave() {
+		if (parent != null) minecraft.setScreenAndShow(parent);
+	}
+
 }

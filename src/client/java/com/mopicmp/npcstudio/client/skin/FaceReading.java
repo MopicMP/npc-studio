@@ -17,26 +17,47 @@ package com.mopicmp.npcstudio.client.skin;
  */
 public record FaceReading(
 		boolean hasEyes,
-		int eyeTop,
-		int eyeBottom,
-		int eyeInner,
-		int eyeOuter,
+		float eyeTop,
+		float eyeBottom,
+		float eyeInner,
+		float eyeOuter,
 		boolean hasBrows,
-		int browTop,
-		int browBottom,
+		float browTop,
+		float browBottom,
 		int browColour,
 		boolean prepared,
-		int irisInner,
-		int irisOuter,
-		int whiteAt,
-		int irisTop,
-		int irisBottom,
-		int browInner,
-		int browOuter) {
+		float irisInner,
+		float irisOuter,
+		float whiteAt,
+		float irisTop,
+		float irisBottom,
+		float browInner,
+		float browOuter,
+		/**
+		 * How wide one texel of this face is, in sixty-fourths.
+		 *
+		 * One on an ordinary skin, a quarter on a 256-wide one. Everything that
+		 * used to assume a whole unit — the width of the column a glance borrows
+		 * its sclera from, how far above the eye the lid takes its colour, how a
+		 * column is mirrored to the other side of the face — assumed it because a
+		 * unit and a texel were the same thing on the only skins anybody had tried.
+		 * They are not, and on a large skin the difference is a factor of four in
+		 * every one of those places.
+		 */
+		float texel,
+
+		/**
+		 * The eye's own shape, row by row, or null on a face nobody marked.
+		 *
+		 * Everything above is the box round it, which is what the drawing used to
+		 * work from and is now only a summary — see {@link EyeRows} for why a box
+		 * round an eye contains cheek and what that cost.
+		 */
+		EyeRows rows) {
 
 	/** Nothing recognisable: no blinking, no brows, leave the face alone. */
 	public static final FaceReading BLANK =
-		new FaceReading(false, 0, 0, 0, 0, false, 0, 0, 0, false, 0, 0, 0, 0, 0, 0, 0);
+		new FaceReading(false, 0, 0, 0, 0, false, 0, 0, 0, false, 0, 0, 0, 0, 0, 0, 0, 1, null);
 
 	/**
 	 * Whether the eye is drawn in two parts, so a glance has somewhere to go.
@@ -230,7 +251,155 @@ public record FaceReading(
 			irisRows == null ? FACE_TOP + rows[0] : FACE_TOP + irisRows[0],
 			irisRows == null ? FACE_TOP + rows[1] + 1 : FACE_TOP + irisRows[1] + 1,
 			browInner == 0 ? 0 : FACE_LEFT + browInner,
-			browInner == 0 ? 0 : FACE_LEFT + browOuter);
+			browInner == 0 ? 0 : FACE_LEFT + browOuter, 1,
+			EyeRows.of(com.mopicmp.npcstudio.entity.FaceMask.of(map)));
+	}
+
+	/**
+	 * The face as somebody marked it out, at the size they marked it.
+	 *
+	 * <h2>Why this had to exist</h2>
+	 *
+	 * The mask was being squeezed through {@link com.mopicmp.npcstudio.entity.EyeMap}
+	 * first, and that is eight by eight over the whole face. On an ordinary skin the
+	 * face is eight texels across and nothing is lost. On the 256-wide skin this was
+	 * reported against, the face is thirty-two texels across and one cell is four
+	 * texels by four — so an eye four texels tall was one row, an iris four texels
+	 * wide was one column, and every mark was rounded to a block of sixteen.
+	 *
+	 * Every complaint about the eyes was that one fact wearing different clothes:
+	 * unmarked skin travelling with the pupil, a torn drawing where the pupil
+	 * narrowed, a lid the colour of the iris, and a glance that jumped a third of an
+	 * eye instead of sliding. This reads the mask itself, in sixty-fourths with a
+	 * fraction, and none of those places rounds any more.
+	 */
+	public static FaceReading of(com.mopicmp.npcstudio.entity.FaceMask mask) {
+		if (mask == null || mask.isNone()) return BLANK;
+		int size = mask.size();
+		float texel = (float) FACE_SIZE / size;
+
+		float[] eye = span(mask, size, true);
+		if (eye == null) return BLANK;
+		float[] iris = span(mask, size, false);
+
+		// Which column is certainly white: the outermost one marked as white and not
+		// as iris. Taken as a texel rather than as a cell, which is the difference
+		// between borrowing one pixel of sclera and borrowing four.
+		float white = -1;
+		outer:
+		for (int x = 0; x < size; x++) {
+			for (int y = 0; y < size; y++) {
+				if (mask.is(com.mopicmp.npcstudio.entity.FaceMask.Kind.WHITE, x, y)
+					&& !mask.is(com.mopicmp.npcstudio.entity.FaceMask.Kind.EYE, x, y)) {
+					white = FACE_LEFT + x * texel;
+					break outer;
+				}
+			}
+		}
+
+		float[] brow = span(mask, size, com.mopicmp.npcstudio.entity.FaceMask.Kind.BROW);
+
+		return new FaceReading(true,
+			eye[1], eye[3], eye[2], eye[0],
+			brow != null, brow == null ? 0 : brow[1], brow == null ? 0 : brow[3],
+			0, false,
+			iris == null ? 0 : iris[2], iris == null ? 0 : iris[0],
+			white < 0 ? 0 : white,
+			iris == null ? eye[1] : iris[1], iris == null ? eye[3] : iris[3],
+			brow == null ? 0 : brow[2], brow == null ? 0 : brow[0],
+			texel, EyeRows.of(mask));
+	}
+
+	/**
+	 * The same reading, worked out once per marking rather than once per frame.
+	 *
+	 * Reading a mask is a walk over every cell of it, four kinds at a time. On an
+	 * ordinary face that is sixty-four cells and nobody would notice; on a face
+	 * marked at the finest size it is sixty-five thousand, per character, per
+	 * frame — which is not a cost anybody should pay for a wardrobe that has not
+	 * changed since the world loaded.
+	 *
+	 * Keyed by the mask's own text, which is what travels and what the entity
+	 * actually holds, so a mask somebody has just re-marked misses and a mask
+	 * nobody has touched hits. A handful of entries is plenty: a scene has a few
+	 * dozen characters and most of them share a costume.
+	 */
+	public static FaceReading forMask(String encoded, boolean authored) {
+		if (encoded == null || encoded.isBlank()) return BLANK;
+		String key = (authored ? "1" : "0") + encoded;
+		synchronized (READINGS) {
+			FaceReading known = READINGS.get(key);
+			if (known != null) return known;
+		}
+		FaceReading read = of(com.mopicmp.npcstudio.entity.FaceMask.decode(encoded, authored));
+		synchronized (READINGS) {
+			READINGS.put(key, read);
+		}
+		return read;
+	}
+
+	/** How many markings to remember at once. */
+	private static final int REMEMBERED = 32;
+
+	private static final java.util.LinkedHashMap<String, FaceReading> READINGS =
+		new java.util.LinkedHashMap<>(REMEMBERED * 2, 0.75f, true) {
+			@Override
+			protected boolean removeEldestEntry(java.util.Map.Entry<String, FaceReading> eldest) {
+				return size() > REMEMBERED;
+			}
+		};
+
+	/**
+	 * The box round one kind of mark, in sixty-fourths: outer, top, inner, bottom.
+	 *
+	 * Only the half of the face the drawing works from, mirrored from the other
+	 * half when this one is empty — the same compromise the lid makes, and for the
+	 * same reason: one drawing serves both eyes, so one side has to be the record.
+	 */
+	private static float[] span(com.mopicmp.npcstudio.entity.FaceMask mask, int size,
+			com.mopicmp.npcstudio.entity.FaceMask.Kind kind) {
+		float texel = (float) FACE_SIZE / size;
+		int outer = size;
+		int inner = -1;
+		int top = size;
+		int bottom = -1;
+		for (int x = 0; x < size / 2; x++) {
+			for (int y = 0; y < size; y++) {
+				if (!mask.is(kind, x, y)) continue;
+				outer = Math.min(outer, x);
+				inner = Math.max(inner, x);
+				top = Math.min(top, y);
+				bottom = Math.max(bottom, y);
+			}
+		}
+		if (inner < 0) {
+			for (int x = size / 2; x < size; x++) {
+				for (int y = 0; y < size; y++) {
+					if (!mask.is(kind, x, y)) continue;
+					outer = Math.min(outer, size - 1 - x);
+					inner = Math.max(inner, size - 1 - x);
+					top = Math.min(top, y);
+					bottom = Math.max(bottom, y);
+				}
+			}
+		}
+		if (inner < 0) return null;
+		return new float[] {
+			FACE_LEFT + outer * texel, FACE_TOP + top * texel,
+			FACE_LEFT + (inner + 1) * texel, FACE_TOP + (bottom + 1) * texel };
+	}
+
+	/** The eye's whole socket, or the iris alone. */
+	private static float[] span(com.mopicmp.npcstudio.entity.FaceMask mask, int size,
+			boolean whole) {
+		float[] iris = span(mask, size, com.mopicmp.npcstudio.entity.FaceMask.Kind.EYE);
+		if (!whole) return iris;
+		float[] white = span(mask, size, com.mopicmp.npcstudio.entity.FaceMask.Kind.WHITE);
+		if (iris == null) return white;
+		if (white == null) return iris;
+		return new float[] {
+			Math.min(iris[0], white[0]), Math.min(iris[1], white[1]),
+			Math.max(iris[2], white[2]), Math.max(iris[3], white[3]) };
 	}
 
 	/**
@@ -278,7 +447,8 @@ public record FaceReading(
 			runStart = -1;
 		}
 		if (top < 0) {
-			return new FaceReading(false, 0, 0, 0, 0, false, 0, 0, 0, prepared, 0, 0, 0, 0, 0, 0, 0);
+			return new FaceReading(false, 0, 0, 0, 0, false, 0, 0, 0, prepared,
+				0, 0, 0, 0, 0, 0, 0, 1, null);
 		}
 
 		// Brows and eyes both look like a pair, so a brow sitting on top of an eye
@@ -328,7 +498,13 @@ public record FaceReading(
 			// No glance and no brow to lift: this reading never told the iris from
 			// its white nor the brow from the band it sat in, which is most of why it
 			// was replaced.
-			browColour, prepared, 0, 0, 0, 0, 0, 0, 0);
+			browColour, prepared, 0, 0, 0, 0, 0, 0, 0, 1,
+			// Enough shape for a lid to be cut to the eye rather than stamped over
+			// its corner. No iris and no white, because this reading never told the
+			// two apart — so such a face blinks and does not glance, which is the
+			// state it has always been in.
+			EyeRows.box(FACE_TOP + top, FACE_TOP + bottom + 1,
+				FACE_LEFT + outer, FACE_LEFT + inner));
 	}
 
 	/**

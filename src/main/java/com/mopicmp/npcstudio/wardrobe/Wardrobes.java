@@ -65,6 +65,38 @@ public final class Wardrobes {
 		}
 		ServerPlayNetworking.send(player, new WardrobePayloads.Library(costumes));
 		ServerPlayNetworking.send(player, new WardrobePayloads.Versions(library.history()));
+		sendMarks(player);
+	}
+
+	/**
+	 * Sends back where every marked costume keeps its eyes.
+	 *
+	 * A marking used to go one way only — into the world's wardrobe, never back to
+	 * a client — so on the next visit the editor had nothing to open on but its own
+	 * guess, and marking a face again looked like the mod having decided to.
+	 *
+	 * Batched by how many bytes have gone in rather than by how many costumes,
+	 * because that is the thing the wire actually counts and because a mask is text:
+	 * the same hundred entries weigh differently depending on what is in them.
+	 */
+	private static void sendMarks(ServerPlayer player) {
+		List<WardrobePayloads.Mark> batch = new ArrayList<>();
+		int weight = 0;
+		for (SkinLibrary.Entry entry : library.entries()) {
+			if (entry.face().isNone()) continue;
+			String mask = entry.face().encode();
+			int size = mask.length() * 2 + entry.id().length() * 2 + 8;
+			if (weight + size > WardrobePayloads.PART && !batch.isEmpty()) {
+				ServerPlayNetworking.send(player, new WardrobePayloads.Marks(List.copyOf(batch)));
+				batch.clear();
+				weight = 0;
+			}
+			batch.add(new WardrobePayloads.Mark(entry.id(), mask, entry.face().authored()));
+			weight += size;
+		}
+		if (!batch.isEmpty()) {
+			ServerPlayNetworking.send(player, new WardrobePayloads.Marks(List.copyOf(batch)));
+		}
 	}
 
 	/**
@@ -253,8 +285,20 @@ public final class Wardrobes {
 			player.sendOverlayMessage(Component.literal("No such costume in this world's wardrobe."));
 			return;
 		}
-		library.relook(payload.costumeId(),
-			com.mopicmp.npcstudio.entity.FaceMask.decode(payload.mask(), payload.byHand()));
+		var face = com.mopicmp.npcstudio.entity.FaceMask.decode(payload.mask(), payload.byHand());
+		library.relook(payload.costumeId(), face);
+		// And onto everybody already wearing it. A character keeps its own copy of
+		// the face, taken when it was dressed, so without this the marking somebody
+		// has just finished shows on the next character dressed and on none of the
+		// twenty already standing there — which looks like the marking not having
+		// worked at all.
+		for (var level : player.level().getServer().getAllLevels()) {
+			for (var entity : level.getAllEntities()) {
+				if (entity instanceof NpcEntity npc) {
+					npc.refaceIfWearing(payload.costumeId(), face);
+				}
+			}
+		}
 		send(player);
 	}
 
@@ -264,7 +308,11 @@ public final class Wardrobes {
 			player.sendOverlayMessage(Component.literal("That character is not here any more."));
 			return;
 		}
-		if (npc.distanceToSqr(player) > 64.0) {
+		// The same reach as every other edit, and for the same reason: the wardrobe
+		// is a panel in a workspace with a camera that flies, so "walk over to it
+		// first" is a rule left over from when the only way in was a button held in
+		// your hand. Kept in one place so the two cannot drift apart again.
+		if (npc.distanceToSqr(player) > com.mopicmp.npcstudio.net.NpcEditing.REACH_SQUARED) {
 			player.sendOverlayMessage(Component.literal("That NPC is not here."));
 			return;
 		}
@@ -285,7 +333,10 @@ public final class Wardrobes {
 			// The face comes with the clothes, exactly as the build does — and it has
 			// to travel, because a client that is only watching has no wardrobe to
 			// look anything up in and would otherwise blink on its own guess.
-			npc.dressIn(Outfit.picture(entry.label(), png).looking(entry.eyes()));
+			// The whole mask, at the size it was marked at — not the eighth-scale
+			// view of it. That view was where every complaint about the eyes came
+			// from: on a 256-wide skin one of its cells is four texels by four.
+			npc.dressIn(Outfit.picture(entry.label(), png).looking(entry.face()));
 			// The build comes with the clothes. Copied rather than linked: every
 			// client that can see the character has to draw this, and only the ones
 			// editing have the wardrobe to look it up in.

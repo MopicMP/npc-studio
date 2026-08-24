@@ -44,6 +44,12 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 	@Override
 	public void extractRenderState(ClientNpcEntity npc, AvatarRenderState state, float partial) {
 		super.extractRenderState(npc, state, partial);
+		// Where the scene says this character is, if it is in one. Written over the
+		// state after vanilla has filled it in, which is the whole trick: a scene
+		// moves a character by drawing it somewhere else, not by moving it. Nothing
+		// is sent, nothing on the server changes, and scrubbing back and forth over
+		// a scene twenty times does not shove anybody around a shared world.
+		var staged = com.mopicmp.npcstudio.client.scene.Staging.place(npc, state, partial);
 		// The age is taken here rather than in the model, because this is the only
 		// place that still has the entity — by the time the model poses itself
 		// there is nothing left but the state.
@@ -79,6 +85,10 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 			strength = 1f;
 		}
 		GestureHolder holder = (GestureHolder) state;
+		// Carried across to the model, which is where the pose is actually put on.
+		// By then the entity is gone — a model is handed a render state and nothing
+		// else — so this is the last place that can hand it over.
+		holder.npcStudio$setStaged(staged);
 		// A build being dragged through a slider wins over the one the server knows,
 		// but only on the client doing the dragging and only while it is open.
 		var editing = ShapeEditing.of(npc.getId());
@@ -92,9 +102,16 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 		// of the pixels, always. That is the whole point of having marked it: the
 		// reading is right about the eye's rows on twenty-nine faces in thirty-eight,
 		// and a person is right on all of them.
-		var marked = npc.eyeMap();
-		var face = marked != null && !marked.isNone()
-			? com.mopicmp.npcstudio.client.skin.FaceReading.of(marked)
+		// The whole mask, at the size somebody marked it, rather than the
+		// eighth-scale view of it. On a 256-wide skin that view is one cell per
+		// four texels by four, and every complaint the eyes ever attracted was
+		// that rounding wearing a different hat.
+		// Read from the text rather than from a decoded mask, and remembered against
+		// it: this runs for every character in sight every frame, and reading a face
+		// marked at the finest size is a walk over sixty-five thousand cells.
+		String marked = npc.faceMaskText();
+		var face = marked != null && !marked.isBlank()
+			? com.mopicmp.npcstudio.client.skin.FaceReading.forMask(marked, npc.faceByHand())
 			: com.mopicmp.npcstudio.client.skin.SkinPixels.forNpc(npc);
 
 		// Worked out from the character's own id and age, so every client shows the

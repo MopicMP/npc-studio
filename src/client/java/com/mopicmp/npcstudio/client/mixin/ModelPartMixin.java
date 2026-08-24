@@ -84,17 +84,6 @@ public abstract class ModelPartMixin implements BendablePart {
 	@Unique private float npcStudio$bend;
 	@Unique private boolean npcStudio$failed;
 
-	/**
-	 * How far above the eyes to borrow the eyelid's colour from.
-	 *
-	 * Two rows rather than one: the row immediately above an eye is a brow or a
-	 * fringe as often as it is skin, and a lid the colour of somebody's hair is
-	 * worse than no lid at all. This is the whole trick — the eyelid is not
-	 * drawn, it is a piece of forehead moved down over the eye, so it comes out
-	 * the right colour on any skin without anybody preparing anything.
-	 */
-	@Unique private static final float BROW_GAP = 2f;
-
 	@Unique private com.mopicmp.npcstudio.client.skin.Eyes npcStudio$eyes;
 
 	@Override
@@ -147,9 +136,17 @@ public abstract class ModelPartMixin implements BendablePart {
 		npcStudio$round = npcStudio$build.roundness();
 	}
 
+	/** Which part of a body this is this frame, if the field has taken it over. */
+	@Unique private com.mopicmp.npcstudio.client.entity.BodyPlace npcStudio$place;
+
+	@Override
+	public void npcStudio$setPlace(com.mopicmp.npcstudio.client.entity.BodyPlace place) {
+		npcStudio$place = place;
+	}
+
 	@Override
 	public boolean npcStudio$built() {
-		return !npcStudio$build.isNone();
+		return npcStudio$place != null || !npcStudio$build.isNone();
 	}
 
 	/** Nought at the top of this part, one at its bottom. */
@@ -180,8 +177,144 @@ public abstract class ModelPartMixin implements BendablePart {
 	 * grid across a hand or the top of a head — move by their share rather than
 	 * being flung out to the surface with everything else.
 	 */
+	/**
+	 * Where the body says this point's surface is.
+	 *
+	 * Nothing here is a multiplier. The part hands over which surface the point is
+	 * on — how far across, how far through, as shares of its own box — and the field
+	 * hands back where that is in the body. A pelvis and a thigh therefore agree at
+	 * the hip line by construction rather than by correction, which is the whole
+	 * reason this exists.
+	 *
+	 * Heights go up into model pixels first. A vertex is in blocks and a pivot is in
+	 * pixels; the field speaks pixels, because that is the space the model was drawn
+	 * in.
+	 */
+	@Unique
+	private void npcStudio$byField(org.joml.Vector3f at,
+			com.mopicmp.npcstudio.client.entity.BodyPlace place) {
+		if (npcStudio$halfX <= 0 || npcStudio$halfZ <= 0) return;
+		var shape = place.shape();
+		float height = at.y * 16f + place.pivotY();
+		float lip = place.lip();
+
+		float u = (at.x - npcStudio$middleX) / npcStudio$halfX;
+		float w = (at.z - npcStudio$middleZ) / npcStudio$halfZ;
+
+		float half;
+		float deep;
+		float middle;
+		if (place.leg()) {
+			half = com.mopicmp.npcstudio.entity.BodyField.legHalf(shape, height) + lip;
+			deep = com.mopicmp.npcstudio.entity.BodyField.legDepth(shape, height) + lip;
+			middle = place.side()
+				* com.mopicmp.npcstudio.entity.BodyField.legMiddle(shape, height)
+				- place.pivotX();
+		} else if (place.arm()) {
+			half = com.mopicmp.npcstudio.entity.BodyField.armHalf(shape, place.base()) + lip;
+			deep = com.mopicmp.npcstudio.entity.BodyField.armDepth(shape) + lip;
+			middle = place.side()
+				* com.mopicmp.npcstudio.entity.BodyField.armMiddle(shape, place.base())
+				- place.pivotX();
+		} else {
+			half = com.mopicmp.npcstudio.entity.BodyField.torsoHalf(shape, height) + lip;
+			deep = com.mopicmp.npcstudio.entity.BodyField.BODY_DEEP + lip;
+			middle = 0;
+		}
+
+		float chamfer = com.mopicmp.npcstudio.entity.BodyField.chamfer(u, w, half, deep,
+			com.mopicmp.npcstudio.entity.BodyField.chamferRadius(shape, half, deep));
+		float across = u * half * chamfer;
+		float through = w * deep * chamfer;
+
+		at.x = (middle + across) / 16f;
+		at.z = through / 16f;
+
+		// The torso still carries its chest and its stomach the old way, as a push
+		// forwards on top of whatever the width came to. That half has not been
+		// rewritten yet, and leaving it working is the point: a node at a time is
+		// what the last rewrite failed to be.
+		if (place.kind() == com.mopicmp.npcstudio.client.entity.BodyPlace.Kind.TORSO) {
+			var build = npcStudio$build;
+			if (build.chest() != 0 || build.belly() != 0) {
+				float front = -at.z / (deep / 16f);
+				if (front > 0) {
+					at.z -= front * com.mopicmp.npcstudio.client.entity.BodyBuilder.forward(
+						npcStudio$down(at.y), across / half, build.chest(), build.belly());
+				}
+			}
+		}
+	}
+
+	/**
+	 * The turn this part is making, ready to be given back at the joint.
+	 *
+	 * Worked out once a frame rather than once a vertex, and left null when there is
+	 * nothing to give back — which is every part of every character that is standing
+	 * still, so the common case costs one comparison.
+	 */
+	@Unique private org.joml.Quaternionf npcStudio$undo;
+	@Unique private final org.joml.Quaternionf npcStudio$held = new org.joml.Quaternionf();
+
+	@Unique
+	private void npcStudio$prepareJoint() {
+		npcStudio$undo = null;
+		var place = npcStudio$place;
+		if (place == null || !place.turns()) return;
+		if (!place.leg() && !place.arm()) return;
+		// Minecraft applies a part's rotation as z, then y, then x, so its inverse is
+		// what has to be undone — not the angles negated, which is a different
+		// rotation the moment more than one axis is in play.
+		npcStudio$undo = new org.joml.Quaternionf()
+			.rotationZYX(place.turnZ(), place.turnY(), place.turnX())
+			.conjugate();
+	}
+
+	/**
+	 * Holds the top of a limb still while the rest of it swings.
+	 *
+	 * The band at the top of a thigh belongs to the pelvis: it was widened to meet
+	 * the pelvis, and a pelvis does not swing with the leg. Left to travel with the
+	 * limb it drives into the body in front and out of it behind — which is exactly
+	 * what a raised leg looked like before this.
+	 *
+	 * The pose already carries the full turn by the time a vertex is drawn, so what
+	 * is applied here is a share of the <em>inverse</em>: all of it on the hip line,
+	 * none of it by the end of the joint, and slid smoothly between. Interpolating
+	 * the rotation rather than the angle keeps that true for a turn about any axis.
+	 */
+	@Unique
+	private void npcStudio$holdJoint(org.joml.Vector3f at) {
+		npcStudio$hold(at, npcStudio$jointShare(at.y));
+	}
+
+	/** How much of the turn a point at this height, in the part's own space, is spared. */
+	@Unique
+	private float npcStudio$jointShare(float y) {
+		if (npcStudio$undo == null) return 0;
+		var place = npcStudio$place;
+		float height = y * 16f + place.pivotY();
+		// The hip holds the top of a thigh; the shoulder holds the top of an arm. The
+		// same idea at the two ends of the body, and the two are asked separately
+		// because an arm swings through more than twice the angle a leg does and
+		// cannot give its turn up over as long a band.
+		return place.leg()
+			? com.mopicmp.npcstudio.entity.BodyField.atJoint(place.shape(), height)
+			: com.mopicmp.npcstudio.entity.BodyField.atShoulder(place.shape(), height);
+	}
+
+	@Unique
+	private void npcStudio$hold(org.joml.Vector3f vector, float share) {
+		if (npcStudio$undo == null || share <= 0) return;
+		npcStudio$held.identity().slerp(npcStudio$undo, share).transform(vector);
+	}
+
 	@Unique
 	private void npcStudio$thicken(org.joml.Vector3f at) {
+		if (npcStudio$place != null) {
+			npcStudio$byField(at, npcStudio$place);
+			return;
+		}
 		if (!npcStudio$built()) return;
 		var build = npcStudio$build;
 		float t = npcStudio$down(at.y);
@@ -391,27 +524,21 @@ public abstract class ModelPartMixin implements BendablePart {
 	}
 
 	/**
-	 * One eye turned aside: the iris covered over and drawn again a column across.
+	 * One eye turned aside, or with its pupil at some other size than it was drawn.
 	 *
-	 * <h2>Why moving it means drawing it twice</h2>
+	 * <h2>Why this is a handful of small quads rather than three big ones</h2>
 	 *
-	 * The iris is already on the skin, and nothing here can take it off. So the
-	 * whole eye is painted over with the colour of its own white — one texel of
-	 * sclera, stretched, the same trick the lid uses with a texel of cheek — and
-	 * the iris is drawn back a pixel to one side.
+	 * Because an eye is not a rectangle and the rectangle round it contains cheek.
+	 * Drawing the box was the single cause of every complaint the eyes attracted:
+	 * unmarked skin travelling with the iris, a torn drawing wherever the pupil
+	 * narrowed, and a flat grey block where a shaded white belongs. See
+	 * {@link com.mopicmp.npcstudio.client.skin.EyeRows}.
 	 *
-	 * <h2>Why a whole pixel and no less</h2>
-	 *
-	 * An eye is two pixels across on nearly every skin: a white and an iris. There
-	 * is no third place for it to be, so a glance is the iris and the white
-	 * swapping columns, and that is what every animation pack does. Sliding it by
-	 * a fraction would only blur one pixel into the next.
-	 *
-	 * The two eyes turn the same way in the world, so both quads move by the same
-	 * amount in model x — which is not the same amount in texture columns, the far
-	 * eye being drawn mirrored. Each side is therefore clamped inside its own eye:
-	 * on an eye with no room left the iris simply stays where the skin drew it,
-	 * and the character looks with one eye rather than out through its cheek.
+	 * So the shape somebody marked decides the geometry.
+	 * {@link com.mopicmp.npcstudio.client.skin.EyePaint} cuts the movement to it
+	 * and hands back a list of quads that between them cover the marked opening
+	 * exactly once — no overlap, so no depths to arrange and nothing for the depth
+	 * buffer to argue with, which is the other thing the old three layers cost.
 	 */
 	@Unique
 	private void npcStudio$glance(PoseStack.Pose pose, VertexConsumer consumer,
@@ -422,6 +549,9 @@ public abstract class ModelPartMixin implements BendablePart {
 		var face = eyes.face();
 		// Under a lid that is more than half down there is nothing left to see.
 		if (eyes.shut(rightSide) > 0.5f) return;
+
+		var rows = npcStudio$rows(face, rightSide);
+		if (rows == null) return;
 
 		// Scaled here rather than inside the glance, because how far an eye ought to
 		// travel is a matter of taste about a drawing, and the arithmetic of where it
@@ -434,39 +564,70 @@ public abstract class ModelPartMixin implements BendablePart {
 			rightSide);
 		if (glance == null) return;
 
-		float top = face.eyeTop() - 16f;
-		float bottom = face.eyeBottom() - 16f;
-		// In front of the face and behind the lid, with every layer on its own
-		// plane. Two of these sharing a depth is not a near miss — it is the
-		// hatching again, the depth buffer unable to choose between two surfaces in
-		// the same place, picking differently for every pixel. Sclera, then the eye
-		// over it, then the pupil over that, and the lid at −4.02 over the lot.
-		float z = -4.005f;
+		// A hair in front of the face and behind the lid, which is at −4.02.
+		for (var patch : com.mopicmp.npcstudio.client.skin.EyePaint.eye(rows, glance)) {
+			npcStudio$quad(pose, consumer, light, overlay, colour, patch, -4.005f);
+		}
+	}
 
-		// The sclera behind the eye, at whichever edge the drawing has left. First,
-		// so the eye itself goes over it rather than under.
-		if (glance.fills()) {
-			npcStudio$column(pose, consumer, light, overlay, colour,
-				glance.fillFrom(), glance.fillTo(), top, bottom,
-				glance.white(), face.eyeTop(), face.eyeBottom(), z);
+	/**
+	 * The eye's marked shape on the side being drawn.
+	 *
+	 * The far one is the near one reflected, and the reflection is worked out once
+	 * for as long as the reading lasts rather than once for each of the three
+	 * things that want it — the lid, the lash and the glance all ask, and a
+	 * reading lasts a frame.
+	 */
+	@Unique private com.mopicmp.npcstudio.client.skin.EyeRows npcStudio$mirrored;
+	@Unique private com.mopicmp.npcstudio.client.skin.FaceReading npcStudio$mirroredOf;
+
+	@Unique
+	private com.mopicmp.npcstudio.client.skin.EyeRows npcStudio$rows(
+			com.mopicmp.npcstudio.client.skin.FaceReading face, boolean rightSide) {
+		if (face == null || face.rows() == null) return null;
+		if (rightSide) return face.rows();
+		if (npcStudio$mirroredOf != face) {
+			npcStudio$mirroredOf = face;
+			npcStudio$mirrored = face.rows().mirrored();
 		}
-		// And the eye's own pixels, moved. Not one texel stretched: the whole
-		// drawing, the same width it was, so a highlight stays a highlight.
-		if (glance.slides()) {
-			npcStudio$eyeAt(pose, consumer, light, overlay, colour,
-				glance.showFrom(), glance.showTo(), top, bottom,
-				glance.showAt(), face.eyeTop(), face.eyeBottom(), z - 0.005f);
-		}
-		// The pupil, last, because it sits on top of an eye. Two rectangles: the one
-		// the artist drew, painted out in the eye's own sclera, and the new one
-		// drawn in the eye's own iris over it. Both are columns of the skin, so an
-		// iris shaded down its height keeps that shading whatever size it becomes.
-		if (glance.resizes()) {
-			npcStudio$strip(pose, consumer, light, overlay, colour,
-				glance.erase(), face.irisTop(), face.irisBottom(), z - 0.01f);
-			npcStudio$strip(pose, consumer, light, overlay, colour,
-				glance.pupil(), face.irisTop(), face.irisBottom(), z - 0.015f);
-		}
+		return npcStudio$mirrored;
+	}
+
+	/**
+	 * One quad of the face: a piece of skin drawn somewhere else on the face.
+	 *
+	 * Both rectangles come in sixty-fourths, which is the space the marking, the
+	 * texture and the head's own front all agree in. The two conversions — a model
+	 * column is its u less twelve, a model row is its v less sixteen — happen here
+	 * and nowhere else.
+	 */
+	@Unique
+	private void npcStudio$quad(PoseStack.Pose pose, VertexConsumer consumer,
+			int light, int overlay, int colour,
+			com.mopicmp.npcstudio.client.skin.EyePaint.Patch patch, float z) {
+		// Nothing to do where the skin would land back on itself, which is most of
+		// the sclera of an eye that is only breathing.
+		if (patch.redundant()) return;
+
+		float x0 = patch.u0() - com.mopicmp.npcstudio.client.skin.EyePaint.MIDDLE;
+		float x1 = patch.u1() - com.mopicmp.npcstudio.client.skin.EyePaint.MIDDLE;
+		float y0 = patch.v0() - com.mopicmp.npcstudio.client.skin.EyePaint.HEAD;
+		float y1 = patch.v1() - com.mopicmp.npcstudio.client.skin.EyePaint.HEAD;
+		if (x1 - x0 <= 0.001f || y1 - y0 <= 0.001f) return;
+
+		float uFrom = patch.su0() / 64f;
+		float uTo = patch.su1() / 64f;
+		float vFrom = patch.sv0() / 64f;
+		float vTo = patch.sv1() / 64f;
+
+		Matrix4f matrix = pose.pose();
+		Vector3f normal = new Vector3f();
+		pose.transformNormal(0, 0, -1, normal);
+
+		npcStudio$corner(consumer, matrix, x0, y0, z, uFrom, vFrom, normal, light, overlay, colour);
+		npcStudio$corner(consumer, matrix, x0, y1, z, uFrom, vTo, normal, light, overlay, colour);
+		npcStudio$corner(consumer, matrix, x1, y1, z, uTo, vTo, normal, light, overlay, colour);
+		npcStudio$corner(consumer, matrix, x1, y0, z, uTo, vFrom, normal, light, overlay, colour);
 	}
 
 	/**
@@ -526,7 +687,8 @@ public abstract class ModelPartMixin implements BendablePart {
 		float z = -4.03f;
 
 		npcStudio$column(pose, consumer, light, overlay, colour,
-			x0, x1, top, bottom, face.browInner(), face.browTop(), face.browBottom(), z);
+			x0, x1, top, bottom, face.browInner(), face.texel(),
+			face.browTop(), face.browBottom(), z);
 		npcStudio$browAt(pose, consumer, light, overlay, colour,
 			x0, x1, top, bottom, liftAt0, liftAt1,
 			face.browOuter(), face.browTop(), face.browBottom(), z - 0.005f);
@@ -567,45 +729,6 @@ public abstract class ModelPartMixin implements BendablePart {
 			light, overlay, colour);
 	}
 
-	/** One of the pupil's two rectangles, in the column the glance chose for it. */
-	@Unique
-	private void npcStudio$strip(PoseStack.Pose pose, VertexConsumer consumer,
-			int light, int overlay, int colour,
-			com.mopicmp.npcstudio.client.skin.Glance.Strip strip, float v0, float v1, float z) {
-		if (!strip.any()) return;
-		npcStudio$column(pose, consumer, light, overlay, colour,
-			strip.from(), strip.to(), strip.top(), strip.bottom(), strip.column(), v0, v1, z);
-	}
-
-	/**
-	 * The eye's own pixels, drawn somewhere else on the face.
-	 *
-	 * A copy, one for one: the same number of texels across the same number of
-	 * pixels, only moved. That is what makes this a glance rather than a repaint —
-	 * whatever the eye was drawn with comes along, and the mod never has to have
-	 * an opinion about what an eye should look like.
-	 */
-	@Unique
-	private void npcStudio$eyeAt(PoseStack.Pose pose, VertexConsumer consumer,
-			int light, int overlay, int colour,
-			float x0, float x1, float y0, float y1, float u, float v0, float v1, float z) {
-		if (x1 - x0 <= 0.001f) return;
-
-		float uFrom = u / 64f;
-		float uTo = (u + (x1 - x0)) / 64f;
-		float vFrom = v0 / 64f;
-		float vTo = v1 / 64f;
-
-		Matrix4f matrix = pose.pose();
-		Vector3f normal = new Vector3f();
-		pose.transformNormal(0, 0, -1, normal);
-
-		npcStudio$corner(consumer, matrix, x0, y0, z, uFrom, vFrom, normal, light, overlay, colour);
-		npcStudio$corner(consumer, matrix, x0, y1, z, uFrom, vTo, normal, light, overlay, colour);
-		npcStudio$corner(consumer, matrix, x1, y1, z, uTo, vTo, normal, light, overlay, colour);
-		npcStudio$corner(consumer, matrix, x1, y0, z, uTo, vFrom, normal, light, overlay, colour);
-	}
-
 	/**
 	 * The sclera showing behind an eye that has looked away: one column of it,
 	 * down all of its own rows.
@@ -624,11 +747,12 @@ public abstract class ModelPartMixin implements BendablePart {
 	@Unique
 	private void npcStudio$column(PoseStack.Pose pose, VertexConsumer consumer,
 			int light, int overlay, int colour,
-			float x0, float x1, float y0, float y1, float u, float v0, float v1, float z) {
+			float x0, float x1, float y0, float y1, float u, float uWide,
+			float v0, float v1, float z) {
 		if (x1 - x0 <= 0.001f || y1 <= y0) return;
 
 		float uFrom = u / 64f;
-		float uTo = (u + 1f) / 64f;
+		float uTo = (u + uWide) / 64f;
 		float vFrom = v0 / 64f;
 		float vTo = v1 / 64f;
 
@@ -643,41 +767,21 @@ public abstract class ModelPartMixin implements BendablePart {
 	}
 
 	/**
-	 * A rectangle on the front of the face, filled with one texel of the skin.
+	 * One eyelid: a slip of skin lowered over an eye, and only over the eye.
 	 *
-	 * One texel rather than the matching patch of skin, always: whatever is being
-	 * covered is being covered because it is in the way, so copying its
-	 * neighbourhood would copy the thing itself. Stretching a single pixel is also
-	 * the one operation that cannot come out the wrong colour on a skin nobody
-	 * here has seen.
-	 */
-	@Unique
-	private void npcStudio$patch(PoseStack.Pose pose, VertexConsumer consumer,
-			int light, int overlay, int colour,
-			float x0, float x1, float y0, float y1, float u, float v, float z) {
-		if (x1 <= x0 || y1 <= y0) return;
-
-		float u0 = u / 64f;
-		float u1 = (u + 1f) / 64f;
-		float v0 = v / 64f;
-		float v1 = (v + 1f) / 64f;
-
-		Matrix4f matrix = pose.pose();
-		Vector3f normal = new Vector3f();
-		pose.transformNormal(0, 0, -1, normal);
-
-		npcStudio$corner(consumer, matrix, x0, y0, z, u0, v0, normal, light, overlay, colour);
-		npcStudio$corner(consumer, matrix, x0, y1, z, u0, v1, normal, light, overlay, colour);
-		npcStudio$corner(consumer, matrix, x1, y1, z, u1, v1, normal, light, overlay, colour);
-		npcStudio$corner(consumer, matrix, x1, y0, z, u1, v0, normal, light, overlay, colour);
-	}
-
-	/**
-	 * One eyelid: a slip of forehead lowered over an eye.
+	 * <h2>Two things were wrong with this and they looked like one</h2>
 	 *
-	 * It grows downwards from the top of the eye as the blink closes, which is
-	 * what an eyelid does. Set a hair in front of the face so that it wins the
-	 * depth test rather than fighting the skin for the same pixels.
+	 * It covered the rectangle round the eye, so on any face whose eye is not a
+	 * rectangle it stamped flat skin across the corners of somebody's drawing. And
+	 * the lash below it was a whole model pixel tall — which on a face marked at
+	 * thirty-two cells is four cells, on an eye three cells tall. The lash
+	 * therefore covered the entire lid, in the colour of the iris, and every blink
+	 * came down as a solid dark block. That is what "the blink uses the pupil's
+	 * texture" was.
+	 *
+	 * Both are the same mistake at different scales: a length written when a cell
+	 * and a pixel were the same thing. The lid is cut to the marking now and the
+	 * lash is one cell, whatever a cell is on this face.
 	 */
 	@Unique
 	private void npcStudio$eyelid(PoseStack.Pose pose, VertexConsumer consumer,
@@ -685,88 +789,21 @@ public abstract class ModelPartMixin implements BendablePart {
 		float shut = Math.clamp(npcStudio$eyes.shut(rightSide), 0f, 1f);
 		if (shut <= 0) return;
 		var face = npcStudio$eyes.face();
+		var rows = npcStudio$rows(face, rightSide);
+		if (rows == null) return;
 
-		// The face maps straight onto the head's front: a texture column is a model
-		// column. u 8..16 spans x −4..4, so x = u − 12; v 8..16 spans y −8..0, so
-		// y = v − 16. Both eyes are written as one pair of columns and its mirror
-		// about the middle of the face, which is where the other eye always is.
-		float uLeft = rightSide ? face.eyeOuter() : 24f - face.eyeInner();
-		float uRight = rightSide ? face.eyeInner() : 24f - face.eyeOuter();
-
-		float x0 = uLeft - 12f;
-		float x1 = uRight - 12f;
-		float y0 = face.eyeTop() - 16f;
-		float y1 = face.eyeTop() + (face.eyeBottom() - face.eyeTop()) * shut - 16f;
 		// A hair in front of the face, so the lid wins the depth test instead of
-		// fighting the skin for the same pixels.
-		float z = -4.02f;
-
-		// The lid is skin, so it is painted with skin — and the one place on a face
-		// that is certainly skin is the gap between the eyes. It has to be: a row
-		// only counted as a pair of eyes because there was nothing in the middle of
-		// it, so that column is bare face by construction.
-		//
-		// It used to sample two rows above the eye, on the reasoning that a lid
-		// comes down off the forehead. On a great many skins two rows above an eye
-		// is hair, and the result was an eyelid the colour of somebody's fringe
-		// sliding down over their face. One texel of cheek, stretched, is right on
-		// every skin and needs nothing to be true about the hairline.
-		float bare = face.eyeInner();
-		float u0 = bare / 64f;
-		float u1 = (bare + 1f) / 64f;
-		float v0 = face.eyeTop() / 64f;
-		float v1 = (face.eyeTop() + 1f) / 64f;
-
-		Matrix4f matrix = pose.pose();
-		Vector3f normal = new Vector3f();
-		pose.transformNormal(0, 0, -1, normal);
-
-		npcStudio$corner(consumer, matrix, x0, y0, z, u0, v0, normal, light, overlay, colour);
-		npcStudio$corner(consumer, matrix, x0, y1, z, u0, v1, normal, light, overlay, colour);
-		npcStudio$corner(consumer, matrix, x1, y1, z, u1, v1, normal, light, overlay, colour);
-		npcStudio$corner(consumer, matrix, x1, y0, z, u1, v0, normal, light, overlay, colour);
-
-		npcStudio$lash(pose, consumer, light, overlay, colour, x0, x1, y0, y1, z);
-	}
-
-	/**
-	 * The lash: the lid's own lower edge, in the colour of the eye it is shutting.
-	 *
-	 * <h2>Why a lid of bare skin looked wrong</h2>
-	 *
-	 * Because a closed eye is not a blank patch of face. Every character drawn by
-	 * hand has a line where the lids meet — that line is what reads as "shut", and
-	 * a rectangle of cheek without it reads as a hole in the head. It was the one
-	 * thing left over from the first version of the blink, which had no way of
-	 * knowing what colour such a line should be.
-	 *
-	 * Now it does: the iris is marked apart from its white, so the darkest thing
-	 * in the eye is known, and the lash is drawn with that very texel. Nothing is
-	 * tinted and nothing is invented — a green-eyed character gets a green lash, a
-	 * character drawn in charcoal gets charcoal, and a skin whose eye we could not
-	 * read gets none at all.
-	 *
-	 * It is a pixel tall and it travels with the lid's edge, so the eye closes to
-	 * a line rather than fading to a square.
-	 */
-	@Unique
-	private void npcStudio$lash(PoseStack.Pose pose, VertexConsumer consumer,
-			int light, int overlay, int colour,
-			float x0, float x1, float y0, float y1, float z) {
+		// fighting the skin for the same pixels, and in front of the glance so that
+		// a lid coming down covers whatever the eye was doing underneath.
+		for (var patch : com.mopicmp.npcstudio.client.skin.EyePaint.lid(
+				rows, face.eyeTop(), face.eyeBottom(), shut)) {
+			npcStudio$quad(pose, consumer, light, overlay, colour, patch, -4.02f);
+		}
 		if (!com.mopicmp.npcstudio.client.NpcStudioConfig.get().eyeLash) return;
-
-		var face = npcStudio$eyes.face();
-		// Only the iris is needed here, not the white — a face whose eye we could
-		// read but whose sclera we could not still gets its lash.
-		if (face.irisInner() <= face.irisOuter()) return;
-
-		// Never above the lid's own top: a lid a fraction of a pixel down would
-		// otherwise draw a whole pixel of lash out over the forehead.
-		float top = Math.max(y0, y1 - 1f);
-		if (y1 - top <= 0.01f) return;
-
-		npcStudio$patch(pose, consumer, light, overlay, colour,
-			x0, x1, top, y1, face.irisOuter(), face.eyeTop(), z - 0.005f);
+		for (var patch : com.mopicmp.npcstudio.client.skin.EyePaint.lash(
+				rows, face.eyeTop(), face.eyeBottom(), shut)) {
+			npcStudio$quad(pose, consumer, light, overlay, colour, patch, -4.025f);
+		}
 	}
 
 	@Unique
@@ -804,10 +841,15 @@ public abstract class ModelPartMixin implements BendablePart {
 	private void npcStudio$draw(PoseStack pose, VertexConsumer consumer,
 			int light, int overlay, int colour) {
 		if (Float.isNaN(npcStudio$top)) npcStudio$measure();
+		npcStudio$prepareJoint();
 
 		pose.pushPose();
 		translateAndRotate(pose);
-		if (!skipDraw) npcStudio$emit(pose.last(), consumer, light, overlay, colour);
+		// A limb built out of segments first; anything else — the torso, and a limb
+		// that only bends — the way it was.
+		if (!skipDraw && !npcStudio$emitChain(pose.last(), consumer, light, overlay, colour)) {
+			npcStudio$emit(pose.last(), consumer, light, overlay, colour);
+		}
 
 		// Children hang off the joint as they always did. A sleeve has a bend of
 		// its own and curves the same way; a hand would not, and should not.
@@ -824,6 +866,8 @@ public abstract class ModelPartMixin implements BendablePart {
 		npcStudio$bend = 0;
 		npcStudio$build = com.mopicmp.npcstudio.client.entity.PartBuild.NONE;
 		npcStudio$round = 0;
+		npcStudio$place = null;
+		npcStudio$undo = null;
 	}
 
 	@Unique
@@ -1000,6 +1044,101 @@ public abstract class ModelPartMixin implements BendablePart {
 	 * first axis collapses to one piece as well. A plain rounded arm therefore
 	 * costs four pieces a face rather than sixty-four.
 	 */
+	/**
+	 * Draws a limb as the chain of boxes it is, or says it cannot.
+	 *
+	 * The other path in this class cuts the part's own faces into bands and moves
+	 * every vertex. This one does not touch the vertices at all: it hands the part's
+	 * faces to {@link com.mopicmp.npcstudio.entity.SegmentMesh}, which gives back the
+	 * faces of a chain — a thigh and a calf, an upper arm and a forearm — each with
+	 * the slice of skin that belongs to it.
+	 *
+	 * A chain of one segment gives the part straight back, so a character nobody has
+	 * stretched or stepped comes out as the model Minecraft built. That is checked in
+	 * a test rather than hoped for here.
+	 *
+	 * @return whether it drew anything; false means the caller does it the old way
+	 */
+	@Unique
+	private boolean npcStudio$emitChain(PoseStack.Pose pose, VertexConsumer consumer,
+			int light, int overlay, int colour) {
+		var place = npcStudio$place;
+		if (place == null || !(place.leg() || place.arm())) return false;
+
+		java.util.List<com.mopicmp.npcstudio.entity.SegmentMesh.Quad> faces =
+			new java.util.ArrayList<>();
+		for (ModelPart.Cube cube : cubes) {
+			for (ModelPart.Polygon polygon : cube.polygons) {
+				ModelPart.Vertex[] corners = polygon.vertices();
+				if (corners.length < 4) continue;
+				faces.add(new com.mopicmp.npcstudio.entity.SegmentMesh.Quad(
+					npcStudio$corner(corners[0]), npcStudio$corner(corners[1]),
+					npcStudio$corner(corners[2]), npcStudio$corner(corners[3])));
+			}
+		}
+		if (faces.isEmpty()) return false;
+
+		// The mesh speaks model pixels and a vertex arrives in blocks. Sixteen apart,
+		// and the only place in the mod where the two have to meet.
+		float top = npcStudio$top * 16f;
+		float bottom = npcStudio$bottom * 16f;
+		var source = new com.mopicmp.npcstudio.entity.SegmentMesh.Source(
+			faces, top, bottom, npcStudio$middleX * 16f, npcStudio$middleZ * 16f);
+
+		var shape = place.shape();
+		var chain = place.leg()
+			? com.mopicmp.npcstudio.entity.BodyChain.leg(shape, top, bottom,
+				place.side(), place.pivotX(), npcStudio$middleZ * 16f, place.lip())
+			: com.mopicmp.npcstudio.entity.BodyChain.arm(shape, top, bottom,
+				place.side(), place.pivotX(), npcStudio$middleZ * 16f,
+				place.base(), place.lip());
+
+		Vector3f local = new Vector3f();
+		Vector3f normal = new Vector3f();
+		Vector3f at = new Vector3f();
+		for (var quad : com.mopicmp.npcstudio.entity.SegmentMesh.build(source, chain, null)) {
+			var corners = quad.corners();
+			npcStudio$facing(corners, local);
+			// Lit by the turn it is drawn with: a band held back at the joint faces
+			// where its parent faces, not where the limb is swinging.
+			npcStudio$hold(local, npcStudio$jointShare(corners[0].y() / 16f));
+			pose.transformNormal(local, normal);
+
+			for (var corner : corners) {
+				at.set(corner.x() / 16f, corner.y() / 16f, corner.z() / 16f);
+				npcStudio$holdJoint(at);
+				npcStudio$tuck(at);
+				npcStudio$bendPoint(at);
+				pose.pose().transformPosition(at);
+				consumer.addVertex(at.x, at.y, at.z, colour, corner.u(), corner.v(),
+					overlay, light, normal.x(), normal.y(), normal.z());
+			}
+		}
+		return true;
+	}
+
+	@Unique
+	private com.mopicmp.npcstudio.entity.SegmentMesh.Corner npcStudio$corner(
+			ModelPart.Vertex vertex) {
+		return new com.mopicmp.npcstudio.entity.SegmentMesh.Corner(
+			vertex.worldX() * 16f, vertex.worldY() * 16f, vertex.worldZ() * 16f,
+			vertex.u(), vertex.v());
+	}
+
+	/** Which way a generated face looks, taken from the face itself. */
+	@Unique
+	private void npcStudio$facing(
+			com.mopicmp.npcstudio.entity.SegmentMesh.Corner[] corners, Vector3f out) {
+		float ux = corners[1].x() - corners[0].x();
+		float uy = corners[1].y() - corners[0].y();
+		float uz = corners[1].z() - corners[0].z();
+		float vx = corners[3].x() - corners[0].x();
+		float vy = corners[3].y() - corners[0].y();
+		float vz = corners[3].z() - corners[0].z();
+		out.set(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx);
+		if (out.lengthSquared() > 1e-8f) out.normalize();
+	}
+
 	@Unique
 	private void npcStudio$emit(PoseStack.Pose pose, VertexConsumer consumer,
 			int light, int overlay, int colour) {
@@ -1010,7 +1149,16 @@ public abstract class ModelPartMixin implements BendablePart {
 		if (npcStudio$bottom - npcStudio$top <= 0) return;
 
 		boolean bulging = npcStudio$build.chest() != 0 || npcStudio$build.belly() != 0;
-		int columns = npcStudio$round > 0 || bulging ? COLUMNS : 1;
+		// A part the field is drawing varies down its whole length — a waist, a knee,
+		// a joint being held back — so it is always cut along. Across, it stays whole
+		// unless there are corners to round or a chest to draw: nothing else here
+		// varies from side to side, and columns nobody asked for are the expensive
+		// kind of thorough.
+		boolean placed = npcStudio$place != null;
+		float softness = placed ? npcStudio$place.shape().softness() : 0f;
+		int columns = softness > 0 ? COLUMNS * 2
+			: npcStudio$round > 0 || bulging ? COLUMNS
+			: 1;
 		// Anything that varies down the part needs the part cut down its length: a
 		// bend, a taper from shoulders to hips, or a bulge that has a height.
 		//
@@ -1020,7 +1168,7 @@ public abstract class ModelPartMixin implements BendablePart {
 		// fall on a band boundary, so that no single quad has corners on both
 		// halves and is stretched across the crease. BANDS is even, so the middle
 		// of the part is a boundary.
-		boolean alongLength = npcStudio$bend != 0 || npcStudio$build.tapers() || bulging;
+		boolean alongLength = npcStudio$bend != 0 || npcStudio$build.tapers() || bulging || placed;
 		int bands = alongLength ? BANDS : 1;
 
 		for (ModelPart.Cube cube : cubes) {
@@ -1083,6 +1231,9 @@ public abstract class ModelPartMixin implements BendablePart {
 		local.set(polygon.normal());
 		npcStudio$roundNormal(local, middle);
 		npcStudio$turn(local, npcStudio$angleAt(height), false);
+		// Lit by the turn it is actually drawn with. A band held back at the hip is
+		// facing where the pelvis faces, not where the leg is swinging.
+		npcStudio$hold(local, npcStudio$jointShare(height));
 		pose.transformNormal(local, normal);
 
 		for (int i = 1; i + 1 < slice.length; i++) {
@@ -1149,6 +1300,10 @@ public abstract class ModelPartMixin implements BendablePart {
 		// wherever the bend had already carried the point, so a bent arm would
 		// swell in the wrong place.
 		npcStudio$thicken(at);
+		// And the top of the limb put back where the pelvis left it, before anything
+		// measures against the part's own box: the tuck below is measured that way,
+		// and the fold after it wants a limb already the shape it will be drawn in.
+		npcStudio$holdJoint(at);
 		// A hair inside its own surface, which is what stops a limb and the body it
 		// touches arguing over the same depth. Towards the part's own middle rather
 		// than along this face's normal: a corner belongs to three faces, and giving

@@ -26,19 +26,19 @@ package com.mopicmp.npcstudio.entity;
  * @param pixels the picture, or empty when this is a name
  * @param eyes   which pixels of the face are eyes and brows
  */
-public record Outfit(String label, String name, byte[] pixels, EyeMap eyes) {
+public record Outfit(String label, String name, byte[] pixels, FaceMask eyes) {
 
 	public static Outfit named(String label, String playerName) {
-		return new Outfit(label, playerName, new byte[0], EyeMap.NONE);
+		return new Outfit(label, playerName, new byte[0], FaceMask.NONE);
 	}
 
 	public static Outfit picture(String label, byte[] png) {
-		return new Outfit(label, "", png, EyeMap.NONE);
+		return new Outfit(label, "", png, FaceMask.NONE);
 	}
 
 	/** The same look with its face read, or marked out by hand. */
-	public Outfit looking(EyeMap read) {
-		return new Outfit(label, name, pixels, read == null ? EyeMap.NONE : read);
+	public Outfit looking(FaceMask read) {
+		return new Outfit(label, name, pixels, read == null ? FaceMask.NONE : read);
 	}
 
 	public boolean isPicture() {

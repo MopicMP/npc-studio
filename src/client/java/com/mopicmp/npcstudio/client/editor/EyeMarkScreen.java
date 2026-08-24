@@ -113,6 +113,16 @@ public class EyeMarkScreen extends Screen {
 	private static final int RINGS_FROM = 10;
 
 	private final Screen parent;
+
+	/**
+	 * What to do instead of going back, when there is nowhere on the display to go.
+	 *
+	 * Set by whoever is showing this inside itself rather than on the display. It
+	 * is the same question the parent answers, asked by something that is not a
+	 * screen you can be handed back to.
+	 */
+	private Runnable back;
+
 	private final FacePicture picture;
 	private final Identifier skin;
 	private final FaceMask suggested;
@@ -397,7 +407,7 @@ public class EyeMarkScreen extends Screen {
 				// Authored, because a person has now looked at it. That is what stops
 				// a later, cleverer reading from overwriting their answer.
 				done.accept(new FaceMask(size, masks, true));
-				minecraft.setScreenAndShow(parent);
+				leave();
 			}));
 	}
 
@@ -453,7 +463,7 @@ public class EyeMarkScreen extends Screen {
 
 	@Override
 	public void onClose() {
-		minecraft.setScreenAndShow(parent);
+		leave();
 	}
 
 	// ------------------------------------------------------------------- the input
@@ -1095,4 +1105,28 @@ public class EyeMarkScreen extends Screen {
 	public boolean isPauseScreen() {
 		return false;
 	}
+
+	/**
+	 * Goes back where it came from — unless there is nowhere to go back to.
+	 *
+	 * A null parent means this is living inside the workspace as a panel, and a
+	 * panel has no "back": the thing behind it is the rest of the workspace, and
+	 * handing the display to null would close all of it. So leaving becomes
+	 * staying, which is what a panel does when you have finished with it — unless
+	 * whoever put this up said what to do instead.
+	 */
+	private void leave() {
+		if (back != null) {
+			back.run();
+			return;
+		}
+		if (parent != null) minecraft.setScreenAndShow(parent);
+	}
+
+	/** Says where "done" goes when this is living inside another screen. */
+	public EyeMarkScreen backTo(Runnable where) {
+		this.back = where;
+		return this;
+	}
+
 }

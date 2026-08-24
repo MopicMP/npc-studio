@@ -44,7 +44,7 @@ class BodyShapeTest {
 		assertEquals(sent.legs(), got.legs(), STEP);
 		assertEquals(sent.chest(), got.chest(), STEP);
 		assertEquals(sent.head(), got.head(), STEP);
-		assertEquals(sent.roundness(), got.roundness(), 1f / 255f);
+		assertEquals(sent.softness(), got.softness(), 1f / 255f);
 		assertEquals(sent.stoop(), got.stoop(), 2f * BodyShape.MAX_STOOP / 255f,
 			"the bend of the back travels in its own number and still comes back");
 	}
@@ -67,7 +67,7 @@ class BodyShapeTest {
 
 		assertEquals(BodyShape.MIN_SCALE, got.shoulders());
 		assertEquals(BodyShape.MAX_SCALE, got.hips());
-		assertEquals(1f, got.roundness());
+		assertEquals(1f, got.softness());
 		assertEquals(BodyShape.MAX_STOOP, got.stoop());
 	}
 
@@ -119,7 +119,7 @@ class BodyShapeTest {
 		assertEquals(BodyShape.MAX_SCALE, silly.shoulders());
 		assertEquals(BodyShape.MIN_SCALE, silly.hips());
 		assertEquals(1f, silly.belly(), "not a number means no opinion, not zero width");
-		assertEquals(1f, silly.roundness());
+		assertEquals(1f, silly.softness());
 		assertEquals(-BodyShape.MAX_STOOP, silly.stoop());
 	}
 
@@ -148,5 +148,37 @@ class BodyShapeTest {
 
 		assertEquals(1f, read.belly());
 		assertEquals(1.4f, read.shoulders(), "and the rest of the line still applies");
+	}
+
+	@Test
+	@DisplayName("a character saved before height existed comes back ordinary, not a dwarf")
+	void oldPostureIsNotAMinimum() {
+		// What was written when this long held nothing but the stoop: the low byte
+		// says the back is bent, and the two bytes above it had not been invented.
+		long asWritten = BodyShape.DEFAULT.packedPosture() & 0xFFL;
+		long stooped = new BodyShape(1, 1, 1, 1, 1, 1, 1, 0, 0.3f).packedPosture() & 0xFFL;
+
+		BodyShape read = BodyShape.unpack(
+			BodyShape.DEFAULT.packed(), BodyShape.readPosture(asWritten));
+		BodyShape bent = BodyShape.unpack(
+			BodyShape.DEFAULT.packed(), BodyShape.readPosture(stooped));
+
+		// Read literally these would both be MIN_HEIGHT, which is what was happening:
+		// every character placed before the change was two thirds of its own height,
+		// and everything measured from the body — the eyes among them — moved with it.
+		assertEquals(1f, read.height(), 0.01f);
+		assertEquals(1f, bent.height(), 0.01f, "and the stoop it did have survives");
+		assertEquals(0.3f, bent.stoop(), 0.02f);
+	}
+
+	@Test
+	@DisplayName("a posture written since is left exactly alone")
+	void newPostureIsUntouched() {
+		BodyShape tall = new BodyShape(1, 1, 1, 1, 1, 1, 1, 0, 0, 1.4f, 0.5f);
+		long written = tall.packedPosture();
+
+		assertEquals(written, BodyShape.readPosture(written));
+		assertEquals(1.4f, BodyShape.unpack(tall.packed(),
+			BodyShape.readPosture(written)).height(), 0.01f);
 	}
 }

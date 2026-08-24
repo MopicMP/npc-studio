@@ -10,6 +10,10 @@ import com.mopicmp.npcstudio.client.entity.AnimationCatalogue;
 import com.mopicmp.npcstudio.client.entity.ClientNpcEntity;
 import com.mopicmp.npcstudio.entity.NpcEntity;
 import com.mopicmp.npcstudio.entity.NpcStudioEntities;
+import com.mopicmp.npcstudio.client.workspace.Icon;
+import com.mopicmp.npcstudio.client.workspace.IconTextButton;
+import com.mopicmp.npcstudio.client.workspace.IconTextButton.Spec;
+import com.mopicmp.npcstudio.client.workspace.WorkspaceScreen;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
@@ -109,6 +113,17 @@ public class AnimationPickerScreen extends Screen {
 	 * the twelfth of another.
 	 */
 	private String selected = "";
+
+	/**
+	 * What is highlighted right now.
+	 *
+	 * Public so the panel around this can play it on the real character while it
+	 * is being looked at. That is what replaced the figure that used to stand
+	 * beside the grid: the preview moved out of the panel and into the scene.
+	 */
+	public String selected() {
+		return selected;
+	}
 
 	/** Where the chosen animation sits in what is currently listed, or -1. */
 	private int highlighted;
@@ -231,29 +246,77 @@ public class AnimationPickerScreen extends Screen {
 		// button labelled only "use this" cannot be wrong out loud: if what it is
 		// holding is not what was clicked, the only way to find out is to press it
 		// and go and look. This one shows its hand first.
-		addRenderableWidget(IconButton.labelled(MARGIN, bottom, 148, 20,
-			() -> "use this: " + shortName(selected), 0xFF66BB6A,
-			Component.literal("применить выбранную анимацию"), this::confirm));
-		addRenderableWidget(new FlatButton(MARGIN + 156, bottom, 90, 20,
-			Component.literal("cancel"), 0xFF8A99A6, () -> minecraft.setScreenAndShow(parent)));
-		// Here rather than in a settings menu: choosing an animation is the one
-		// moment somebody might wonder who made it.
-		addRenderableWidget(new FlatButton(MARGIN + 252, bottom, 90, 20,
-			Component.literal("credits"), 0xFF8A99A6,
-			() -> minecraft.setScreenAndShow(new CreditsScreen(this))));
+		// The button used to spell out what it was holding — "use this: shrug" —
+		// which was worth a hundred and forty pixels on a screen that had them.
+		// In a panel it is the difference between three buttons and one, so the
+		// name moved into the tooltip and the icon stayed.
+		IconTextButton.row(MARGIN, bottom, width - MARGIN * 2, 20, java.util.List.of(
+			new Spec(Icon.CHECK, Component.translatable("npc_studio.animation.use"),
+				0xFF66BB6A, this::confirm),
+			// Un-choose rather than go back: in a panel there is nowhere back to,
+			// and clearing the highlight is what somebody pressing this wants —
+			// it also stops the gesture being tried on the real character.
+			new Spec(Icon.CANCEL, Component.translatable("npc_studio.animation.cancel"),
+				0xFF8A99A6, () -> {
+					selected = "";
+					highlighted = -1;
+					leave();
+				}),
+			// Here rather than in a settings menu: choosing an animation is the one
+			// moment somebody might wonder who made it.
+			new Spec(Icon.CREDITS, Component.translatable("npc_studio.animation.credits"),
+				0xFF8A99A6, () -> {
+					// In the workspace it is a panel of its own, floating over the
+					// rest. It used to be guarded into doing nothing, which is the
+					// same as a broken button to anybody pressing it.
+					if (WorkspaceScreen.embedded()) WorkspaceScreen.reveal("credits");
+					else minecraft.setScreenAndShow(new CreditsScreen(this));
+				}),
+			new Spec(Icon.FILE, Component.translatable("npc_studio.animation.import"),
+				ACCENT, this::importEmote),
+			// The thumbnail size, which went missing rather than being removed: it
+			// sat at a fixed four hundred and forty eight pixels along a row that
+			// is three hundred wide in a panel.
+			new Spec(Icon.PANELS, Component.translatable("npc_studio.animation.size"),
+				0xFF8A99A6, () -> {
+					sizeStep = (sizeStep + 1) % SIZES.length;
+					scroll = 0;
+					remember();
+				})), this::addRenderableWidget);
 
-		// The preview's controls tuck into its bottom corner at the size of a
-		// fingernail. They belong to the picture rather than to the decision, and
-		// three full-width buttons spelling out "pause" was more furniture than
-		// the picture they surrounded.
-		//
-		// None of them rebuild anything. Each draws its own state every frame, so
-		// pressing one no longer clears the widget list that the press is being
-		// dispatched through — which is why they did nothing at all before.
+		// The controls below belong to the figure beside the grid: they start it
+		// again, slow it down, pause it and decide what it wears. Without the
+		// figure they are switches attached to nothing, and they were floating
+		// over the grid in the corner where the figure used to be.
+		if (showsFigure()) {
+			layOutPlayback();
+		}
+
+		// The character's own settings, as a face rather than a word: it is the
+		// only control here that leaves for somewhere else, and it belongs in the
+		// corner rather than in the row of things that change this picture.
+		addRenderableWidget(IconButton.of(width - MARGIN - 20, MARGIN - 4, 20,
+			IconButton.Shape.FACE, TEXT, Component.literal("this NPC's settings"),
+			() -> NpcSettingsButton.open(this)));
+
+	}
+
+
+	/**
+	 * The controls that belong to the figure, tucked into its bottom corner.
+	 *
+	 * None of them rebuild anything. Each draws its own state every frame, so
+	 * pressing one no longer clears the widget list that the press is being
+	 * dispatched through — which is why they did nothing at all before.
+	 *
+	 * Only laid out when there is a figure. In a panel there is not: the scene
+	 * shows the character, so these were switches attached to nothing, sitting on
+	 * top of the grid in the corner the figure used to occupy.
+	 */
+	private void layOutPlayback() {
 		int size = 18;
 		int right = width - MARGIN - size;
 		int row = height - FOOTER - size - 6;
-		NpcStudioConfig config = NpcStudioConfig.get();
 
 		addRenderableWidget(IconButton.of(right, row, size,
 			IconButton.Shape.RESTART, ACCENT, Component.literal("start again"), () -> age = 0));
@@ -284,26 +347,6 @@ public class AnimationPickerScreen extends Screen {
 				NpcStudioConfig live = NpcStudioConfig.get();
 				live.hideDistantParts = !live.hideDistantParts;
 				live.save();
-			}));
-
-		// The character's own settings, as a face rather than a word: it is the
-		// only control here that leaves for somewhere else, and it belongs in the
-		// corner rather than in the row of things that change this picture.
-		addRenderableWidget(IconButton.of(width - MARGIN - 20, MARGIN - 4, 20,
-			IconButton.Shape.FACE, TEXT, Component.literal("this NPC's settings"),
-			() -> NpcSettingsButton.open(this)));
-
-		addRenderableWidget(new FlatButton(MARGIN + 336, bottom, 104, 20,
-			Component.literal("import…"), ACCENT, this::importEmote));
-
-		// In the footer beside the other buttons, not floating over the grid. It
-		// used to sit inside the grid area, where a small thumbnail size grew the
-		// grid out under it and left it unclickable.
-		addRenderableWidget(IconButton.of(MARGIN + 448, bottom, 20,
-			IconButton.Shape.GRID, 0xFF8A99A6, Component.literal("size of the thumbnails"), () -> {
-				sizeStep = (sizeStep + 1) % SIZES.length;
-				scroll = 0;
-				remember();
 			}));
 	}
 
@@ -545,7 +588,7 @@ public class AnimationPickerScreen extends Screen {
 
 	private void confirm() {
 		onPick.accept(selected);
-		minecraft.setScreenAndShow(parent);
+		leave();
 	}
 
 	// ------------------------------------------------------------ the grid
@@ -570,8 +613,30 @@ public class AnimationPickerScreen extends Screen {
 	 * So the grid keeps what it uses and the preview takes the rest. The divider
 	 * still moves where it is dragged, it just comes to rest on a column edge.
 	 */
+	/**
+	 * Whether the figure beside the grid is worth its half of the panel.
+	 *
+	 * It was, on a screen of its own: picking a gesture by name is guesswork and
+	 * the figure was the answer to that. In the workspace the same character is
+	 * standing in the viewport at whatever size and angle suits, so the figure
+	 * became a second, smaller, worse copy of something already on screen — and
+	 * it was taking half the panel to be it.
+	 */
+	private boolean showsFigure() {
+		return !WorkspaceScreen.embedded();
+	}
+
 	private int previewLeft() {
-		int wanted = Math.clamp(width * split / 100, width / 2, width - 200);
+		if (!showsFigure()) return width - MARGIN;
+		// The two bounds used to be "at least half" and "leave the preview two
+		// hundred", which are only in that order on a wide display. In a panel two
+		// hundred wide the floor came out above the ceiling and Math.clamp threw,
+		// taking the game with it — the first thing the move into panels broke, and
+		// the lesson is that a screen's arithmetic quietly assumed a whole display.
+		int reserve = Math.min(200, Math.max(60, width / 3));
+		int most = Math.max(MARGIN * 2, width - reserve);
+		int least = Math.min(width / 2, most);
+		int wanted = Math.clamp(width * split / 100, least, most);
 		int room = wanted - MARGIN * 2;
 		int columns = Math.max(1, (room + GAP) / step());
 		return MARGIN * 2 + columns * step() - GAP;
@@ -751,7 +816,7 @@ public class AnimationPickerScreen extends Screen {
 
 	@Override
 	public void onClose() {
-		minecraft.setScreenAndShow(parent);
+		leave();
 	}
 
 	// --------------------------------------------------------- the drawing
@@ -847,6 +912,7 @@ public class AnimationPickerScreen extends Screen {
 	 * way to judge a gesture whose speed depends on the hardware.
 	 */
 	private void drawPreview(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+		if (!showsFigure()) return;
 		int left = previewLeft();
 		int right = width - MARGIN;
 		int top = HEADER;
@@ -1006,4 +1072,17 @@ public class AnimationPickerScreen extends Screen {
 	public boolean isPauseScreen() {
 		return false;
 	}
+
+	/**
+	 * Goes back where it came from — unless there is nowhere to go back to.
+	 *
+	 * A null parent means this is living inside the workspace as a panel, and a
+	 * panel has no "back": the thing behind it is the rest of the workspace, and
+	 * handing the display to null would close all of it. So leaving becomes
+	 * staying, which is what a panel does when you have finished with it.
+	 */
+	private void leave() {
+		if (parent != null) minecraft.setScreenAndShow(parent);
+	}
+
 }

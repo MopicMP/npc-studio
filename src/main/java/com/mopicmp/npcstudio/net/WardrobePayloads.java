@@ -226,6 +226,42 @@ public final class WardrobePayloads {
 	 */
 	public static final int MASK_LIMIT = 64 * 1024;
 
+	/**
+	 * Where a costume's eyes are, going back the other way.
+	 *
+	 * <h2>Why this had to exist</h2>
+	 *
+	 * Because marking a face was a one-way trip. The mask went to the server, was
+	 * written into the world's wardrobe and was read back out of it on the next
+	 * load — and none of that ever reached a client again. So the editor opened on
+	 * the only thing the client had, which is the reading's own guess, and a person
+	 * who had marked an eye carefully saw the mod cheerfully mark it again its own
+	 * way. Nothing was lost; nothing was shown either, which looks identical from
+	 * the outside and is what was reported.
+	 *
+	 * Sent in batches with a ceiling on them rather than bolted onto the library
+	 * list. A hundred marked costumes is a few tens of kilobytes and would fit; a
+	 * wardrobe nobody has imagined yet would not, and a payload one byte over the
+	 * line does not fail politely — it drops the player out of the world.
+	 */
+	public record Mark(String costumeId, String mask, boolean byHand) { }
+
+	public record Marks(List<Mark> marks) implements CustomPacketPayload {
+		public static final Type<Marks> TYPE = new Type<>(NpcStudio.id("wardrobe_marks"));
+
+		private static final StreamCodec<io.netty.buffer.ByteBuf, Mark> ONE =
+			StreamCodec.composite(
+				ByteBufCodecs.STRING_UTF8, Mark::costumeId,
+				ByteBufCodecs.stringUtf8(MASK_LIMIT), Mark::mask,
+				ByteBufCodecs.BOOL, Mark::byHand,
+				Mark::new);
+
+		public static final StreamCodec<io.netty.buffer.ByteBuf, Marks> CODEC =
+			ONE.apply(ByteBufCodecs.list(4096)).map(Marks::new, Marks::marks);
+
+		@Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+	}
+
 	/** Client dresses a character in something from the library. */
 	public record Wear(int entityId, String costumeId) implements CustomPacketPayload {
 		public static final Type<Wear> TYPE = new Type<>(NpcStudio.id("wardrobe_wear"));

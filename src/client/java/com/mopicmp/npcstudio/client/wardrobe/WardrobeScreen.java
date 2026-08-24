@@ -7,11 +7,12 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 
-import com.mopicmp.npcstudio.client.editor.FlatButton;
 import com.mopicmp.npcstudio.client.editor.IconButton;
 import com.mopicmp.npcstudio.client.editor.PreviewFigure;
 import com.mopicmp.npcstudio.client.skin.SkinImport;
 import com.mopicmp.npcstudio.net.WardrobePayloads;
+import com.mopicmp.npcstudio.client.workspace.Icon;
+import com.mopicmp.npcstudio.client.workspace.IconTextButton;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
@@ -39,15 +40,49 @@ import net.minecraft.resources.Identifier;
  */
 public class WardrobeScreen extends Screen {
 
+	/**
+	 * The measurements, and why there are two of nearly everything.
+	 *
+	 * This was written to fill a display, where sixteen pixels of margin reads as
+	 * room to breathe. The same sixteen inside a panel three hundred wide is a
+	 * tenth of the screen spent on nothing — and with the header, the details
+	 * block and the footer all at their full-screen heights there were two pixels
+	 * left over for the costumes themselves. The grid drew its one forced row
+	 * straight through the editing panel, and that overlap is what "crooked"
+	 * looked like from the outside.
+	 *
+	 * So the fixed numbers are a floor and a ceiling now, and what sits between
+	 * them is worked out from the room there is.
+	 */
 	private static final int MARGIN = 16;
-	private static final int HEADER = 62;
-	private static final int FOOTER = 30;
+	private static final int SNUG = 6;
 	private static final int GAP = 6;
-	private static final int LABEL = 20;
-	private static final int CELL = 72;
 
-	/** How much of the right-hand column the editing panel takes. */
-	private static final int DETAILS = 96;
+	/**
+	 * How much room a name takes under a tile.
+	 *
+	 * Ten, which is one line, and it used to be twenty. The extra ten were for a
+	 * second line that never existed — the name is trimmed to the tile's width —
+	 * so every row of the shelf carried half a line of nothing and a screen held
+	 * one row fewer than it could.
+	 */
+	private static final int LABEL = 10;
+
+	/**
+	 * A tile is taller than it is wide, because a person is.
+	 *
+	 * The costumes were square when they were flat cut-outs and the figure had to
+	 * be shrunk to fit the narrow way. A drawn figure standing at three-quarters
+	 * needs its height, and a card shaped like the thing on it wastes no room —
+	 * five to four is about what a turned figure occupies.
+	 */
+	private static final int CELL = 62;
+	private static final int CELL_SNUG = 48;
+	private static final int TALLER = 5;
+	private static final int WIDER = 4;
+
+	/** The editing panel: a heading, three boxes, and the copy button. */
+	private static final int DETAILS = 80;
 
 	/**
 	 * Shift and control, as the window system reports them.
@@ -139,53 +174,57 @@ public class WardrobeScreen extends Screen {
 				refilter();
 				scroll = 0;
 			});
-			nameBox = box(200, "название");
-			categoryBox = box(100, "категория");
-			groupBox = box(100, "подкатегория");
+			nameBox = hinted(box(200, "название"), "название");
+			categoryBox = hinted(box(100, "категория"), "категория");
+			groupBox = hinted(box(100, "подкатегория"), "подкатегория");
 		}
 
-		int toolbar = MARGIN + 18;
-		addRenderableWidget(IconButton.labelled(MARGIN, toolbar, 190, 18,
+		int toolbar = toolbarTop();
+		// Shared out rather than fixed at a hundred and ninety: at that width the
+		// search box in a panel had eighty pixels and the category name was cut
+		// after two words, which is the wrong way round — the shelf you are on is
+		// one word and what you are looking for is typed a letter at a time.
+		int shelves = Math.min(190, (gridRight() - margin()) * 55 / 100);
+		addRenderableWidget(IconButton.labelled(margin(), toolbar, shelves, 18,
 			() -> "▾ " + (category == null ? "все" : category), ACCENT,
-			Component.literal("категория"), () -> open(Overlay.SHELVES, MARGIN, toolbar + 22)));
-		search.setPosition(MARGIN + 196, toolbar);
-		search.setWidth(Math.max(80, previewLeft() - MARGIN - 200));
+			Component.literal("категория"), () -> open(Overlay.SHELVES, margin(), toolbar + 22)));
+		search.setPosition(margin() + shelves + 6, toolbar);
+		search.setWidth(Math.max(60, gridRight() - margin() - shelves - 6));
 		addRenderableWidget(search);
 
 		layOutDetails();
 
-		int bottom = height - FOOTER + 6;
-		int at = MARGIN;
+		int bottom = footerTop();
 
-		// Wearing is the point, and it is now the only way to do it: clicking a
-		// costume holds it up against the character, and this is what commits.
+		// Laid out by the room there is. Seven controls at fixed offsets came to
+		// something over five hundred pixels, and in a panel the last four of them
+		// were off the end — including the one that removes a costume.
+		java.util.List<IconTextButton.Spec> row = new java.util.ArrayList<>();
 		if (entityId >= 0) {
-			addRenderableWidget(new FlatButton(at, bottom, 116, 20,
-				Component.literal("надеть"), GOOD, this::wear));
-			at += 124;
+			// Wearing is the point, and it is now the only way to do it: clicking a
+			// costume holds it up against the character, and this is what commits.
+			row.add(new IconTextButton.Spec(Icon.CHECK,
+				Component.translatable("npc_studio.wardrobe.wear"), GOOD, this::wear));
 		}
-		addRenderableWidget(new FlatButton(at, bottom, 104, 20,
-			Component.literal("закрыть"), TEXT_DIM, () -> minecraft.setScreenAndShow(parent)));
-		at += 112;
+		row.add(new IconTextButton.Spec(Icon.CANCEL,
+			Component.translatable("npc_studio.wardrobe.close"), TEXT_DIM, () -> leave()));
+		// Adding is the reason somebody opens an empty wardrobe. A library with no
+		// visible way to put anything in it reads as a library that cannot be filled.
+		row.add(new IconTextButton.Spec(Icon.ADD,
+			Component.translatable("npc_studio.wardrobe.add"), GOOD, this::importCostume));
+		row.add(new IconTextButton.Spec(Icon.EYES,
+			Component.translatable("npc_studio.wardrobe.eyes"), ACCENT, this::markEyes));
+		row.add(new IconTextButton.Spec(Icon.DRAFTS,
+			Component.translatable("npc_studio.wardrobe.versions"), ACCENT,
+			() -> open(Overlay.VERSIONS, margin(), bottom - 4)));
+		row.add(new IconTextButton.Spec(Icon.REMOVE,
+			Component.translatable("npc_studio.wardrobe.remove"), WARN, this::remove));
 
-		// Adding is the reason somebody opens an empty wardrobe, so it gets words.
-		// It was an icon with a tooltip, which was a mistake and a plain one: the
-		// lesson from the NPC settings was that *small* operations on a picture
-		// should be icons, not that everything should be. A library with no visible
-		// way to put anything in it reads as a library that cannot be filled.
-		addRenderableWidget(new FlatButton(at, bottom, 140, 20,
-			Component.literal("+ добавить костюм"), GOOD, this::importCostume));
-		at += 148;
-		addRenderableWidget(new FlatButton(at, bottom, 76, 20,
-			Component.literal("глаза"), ACCENT, this::markEyes));
-		at += 84;
-		int versions = at;
-		addRenderableWidget(IconButton.of(versions, bottom, 20, IconButton.Shape.RESTART, ACCENT,
-			Component.literal("вернуть прежнюю версию списка"),
-			() -> open(Overlay.VERSIONS, versions, bottom - 4)));
-		addRenderableWidget(IconButton.labelled(at + 24, bottom, 28, 20, () -> "×",
-			WARN, Component.literal("убрать выбранные из списка — картинки останутся"),
-			this::remove));
+		IconTextButton.row(margin(), bottom, width - margin() * 2, 20, row, this::addRenderableWidget);
+
+		// A face being marked out survives the panel being resized: it is laid out
+		// again rather than thrown away, exactly as this screen is.
+		if (detour != null) detour.init(width, height);
 	}
 
 	/**
@@ -223,15 +262,61 @@ public class WardrobeScreen extends Screen {
 		var opening = known != null ? known
 			: com.mopicmp.npcstudio.entity.FaceMask.of(
 				com.mopicmp.npcstudio.skin.FaceLook.read(picture.eighths()));
+
+		if (!showsFigure()) {
+			// Inside the workspace this button did nothing at all — it checked
+			// whether it was embedded and returned, because opening a screen there
+			// means replacing the whole workspace with it. Which is true, and is a
+			// reason not to call setScreen; it was never a reason for the marking to
+			// be unreachable. So the editor is put up inside this screen instead: the
+			// wardrobe hands over everything it is given until the face is finished,
+			// and the panel around it is none the wiser.
+			// Anything half typed goes now: the boxes are about to stop being drawn,
+			// and a box nobody can see is a box nobody will think to leave.
+			keep();
+			wasEditing = false;
+			setFocused(null);
+
+			var editor = new com.mopicmp.npcstudio.client.editor.EyeMarkScreen(
+				null, picture, Costumes.texture(fingerprint), opening,
+				marked -> Costumes.markEyes(id, marked));
+			editor.backTo(() -> detour = null);
+			editor.init(width, height);
+			detour = editor;
+			return;
+		}
 		minecraft.setScreenAndShow(new com.mopicmp.npcstudio.client.editor.EyeMarkScreen(
 			this, picture, Costumes.texture(fingerprint), opening,
 			marked -> Costumes.markEyes(id, marked)));
 	}
 
+	/**
+	 * A screen being shown in this one's place, or null.
+	 *
+	 * Only ever the eye editor so far. Held rather than pushed onto the display
+	 * because this screen may itself be a panel, and a panel's way back is not the
+	 * display's.
+	 */
+	private Screen detour;
+
 	private EditBox box(int width, String hint) {
 		EditBox made = new EditBox(font, 0, 0, width, 18, Component.literal(hint));
 		made.setSuggestion(hint);
 		made.setMaxLength(48);
+		return made;
+	}
+
+	/**
+	 * Makes the grey hint go away when there is something written over it.
+	 *
+	 * A suggestion is drawn after whatever the box holds rather than behind it, so
+	 * a hint set once and never cleared appears as part of the text the moment
+	 * anybody types — "корабльподкатегория" in the box they are trying to read.
+	 * The search box always knew this; the three under the picture were set once
+	 * at build time and never told again.
+	 */
+	private EditBox hinted(EditBox made, String hint) {
+		made.setResponder(text -> made.setSuggestion(text.isEmpty() ? hint : ""));
 		return made;
 	}
 
@@ -245,10 +330,10 @@ public class WardrobeScreen extends Screen {
 	 * happen to be stored.
 	 */
 	private void layOutDetails() {
-		int left = previewLeft() + 8;
-		int wide = width - MARGIN - previewLeft() - 16;
+		int left = detailsLeft();
+		int wide = detailsWide();
 		int half = (wide - 4) / 2;
-		int top = height - FOOTER - DETAILS + 14;
+		int top = detailsTop() + 14;
 
 		nameBox.setPosition(left, top);
 		nameBox.setWidth(wide);
@@ -262,12 +347,83 @@ public class WardrobeScreen extends Screen {
 		groupBox.setWidth(wide - half - 4);
 		addRenderableWidget(groupBox);
 
-		addRenderableWidget(new FlatButton(left, top + 44, wide - 64, 20,
-			Component.literal("применить"), ACCENT, this::apply));
-		addRenderableWidget(IconButton.labelled(left + wide - 60, top + 44, 60, 20,
+		// "Применить" used to sit here. What it applied now applies itself the
+		// moment the caret leaves the box, so the button was a step between having
+		// typed something and having it be true — and a step that can be forgotten
+		// is a step that will be. Copying stays a button because it is not a saved
+		// edit at all: it makes a second entry, which is a thing you ask for.
+		addRenderableWidget(IconButton.labelled(left + wide - 60, top + 44, 60, 18,
 			() -> "копия", GOOD,
 			Component.literal("положить те же костюмы ещё и сюда — места это не займёт"),
 			this::copyHere));
+	}
+
+	/**
+	 * Whether the caret is in one of the three boxes under the picture.
+	 *
+	 * The search box deliberately does not count: it changes nothing and saving it
+	 * would mean nothing.
+	 */
+	private boolean editingDetails() {
+		return nameBox.isFocused() || categoryBox.isFocused() || groupBox.isFocused();
+	}
+
+	/** Whether each box had the caret last frame, so that losing it can be seen. */
+	private boolean wasEditing;
+
+	/**
+	 * What was last written down, so that nothing is written down twice.
+	 *
+	 * Compared against rather than "has this box been touched", because the
+	 * library answers back: a rename comes home as a new list a moment later, and
+	 * a box refilled from that list must not read as a fresh edit of the same
+	 * name.
+	 */
+	private String savedName = "";
+	private String savedCategory = "";
+	private String savedGroup = "";
+
+	/**
+	 * Writes the boxes back, if they say anything new.
+	 *
+	 * Two orders rather than one, because the server keeps renaming and refiling
+	 * apart and there is no sense inventing a third verb meaning "both". A rename
+	 * only goes when a single costume is picked, so a careless click cannot give a
+	 * hundred costumes one name; refiling goes to all of them, which is the entire
+	 * point of picking a hundred.
+	 */
+	private void keep() {
+		if (picked.isEmpty()) return;
+
+		WardrobePayloads.Costume one = only();
+		String name = nameBox.getValue().trim();
+		if (one != null && !name.isEmpty() && !name.equals(savedName)) {
+			Costumes.edit(WardrobePayloads.Edit.Verb.RENAME, List.of(one.id()),
+				name, "", "", new byte[0]);
+			savedName = name;
+			notice = "переименовано";
+		}
+
+		String head = categoryBox.getValue().trim();
+		String tail = groupBox.getValue().trim();
+		if (!head.equals(savedCategory) || !tail.equals(savedGroup)) {
+			Costumes.edit(WardrobePayloads.Edit.Verb.REFILE, List.copyOf(picked), "",
+				head, tail, new byte[0]);
+			savedCategory = head;
+			savedGroup = tail;
+			// A category is a label somebody wrote, so writing a new one here is how
+			// a category gets made. Worth saying, because there is no "new category"
+			// button to look for and its absence should read as simplicity.
+			notice = shelfName().isEmpty() ? "убрано из категорий"
+				: "теперь в «" + shelfName() + "»";
+		}
+	}
+
+	/** Saves when the caret leaves the boxes, which is when the person is finished. */
+	private void keepIfLeft() {
+		boolean now = editingDetails();
+		if (wasEditing && !now) keep();
+		wasEditing = now;
 	}
 
 	private void open(Overlay which, int x, int y) {
@@ -319,6 +475,13 @@ public class WardrobeScreen extends Screen {
 	 * With several picked the name is left alone and greyed: fifty costumes
 	 * called the same thing is not something anybody meant to ask for, while
 	 * moving fifty to one shelf is precisely the point of picking fifty.
+	 *
+	 * With several picked the shelf boxes are emptied rather than left showing
+	 * whichever costume was looked at last. That mattered little when a button had
+	 * to be pressed; now that leaving a box files what is in it, a stale value
+	 * sitting there is a hundred costumes about to be moved somewhere nobody
+	 * asked for. Empty means "say where these go", and saying nothing moves
+	 * nothing.
 	 */
 	private void syncDetails() {
 		String now = String.join(",", picked);
@@ -328,31 +491,137 @@ public class WardrobeScreen extends Screen {
 		WardrobePayloads.Costume one = only();
 		nameBox.setValue(one == null ? "" : one.label());
 		nameBox.setEditable(one != null);
-		if (one != null) {
-			categoryBox.setValue(one.category());
-			groupBox.setValue(one.group());
-		}
+		categoryBox.setValue(one == null ? "" : one.category());
+		groupBox.setValue(one == null ? "" : one.group());
+
+		savedName = nameBox.getValue();
+		savedCategory = categoryBox.getValue();
+		savedGroup = groupBox.getValue();
+
 		nameBox.setSuggestion(one == null && !picked.isEmpty()
 			? "выбрано: " + picked.size() : nameBox.getValue().isEmpty() ? "название" : "");
 	}
 
+	/** The same bargain as the animation library: the scene shows the character. */
+	private boolean showsFigure() {
+		return !com.mopicmp.npcstudio.client.workspace.WorkspaceScreen.embedded();
+	}
+
+	// --------------------------------------------------------- the measurements
+
+	private int margin() {
+		return showsFigure() ? MARGIN : SNUG;
+	}
+
+	private int toolbarTop() {
+		return margin() + 18;
+	}
+
+	/** Where the costumes start: under the title and the toolbar. */
+	private int header() {
+		return toolbarTop() + 24;
+	}
+
+	private int footer() {
+		return showsFigure() ? 30 : 26;
+	}
+
+	private int footerTop() {
+		return height - footer() + (showsFigure() ? 6 : 4);
+	}
+
+	private int cell() {
+		return showsFigure() ? CELL : CELL_SNUG;
+	}
+
+	/** How tall a tile's picture is. The name sits under it. */
+	private int cellTall() {
+		return cell() * TALLER / WIDER;
+	}
+
+	/** One row of the shelf, picture and name together. */
+	private int step() {
+		return cellTall() + LABEL + GAP;
+	}
+
 	private int previewLeft() {
+		if (!showsFigure()) return width - margin();
 		return Math.max(width * 2 / 3, width - 300);
 	}
 
-	private int columns() {
-		return Math.max(1, (previewLeft() - MARGIN * 2 + GAP) / (CELL + GAP));
+	/**
+	 * Where the details block sits, which is not the same place in both layouts.
+	 *
+	 * Under the figure when there is a figure, across the bottom when there is
+	 * not — and this used to be worked out twice, once by the widgets and once by
+	 * whatever drew the panel behind them. The two answers agreed only in the
+	 * full-screen case: in a panel the widgets were laid across the bottom while
+	 * their background was drawn in a strip one margin wide at the right-hand
+	 * edge, taking the heading off the screen with it.
+	 */
+	private int detailsLeft() {
+		return showsFigure() ? previewLeft() + 8 : margin();
 	}
 
+	private int detailsWide() {
+		return showsFigure() ? width - margin() - previewLeft() - 16 : width - margin() * 2;
+	}
+
+	private int detailsTop() {
+		return height - footer() - DETAILS;
+	}
+
+	/** The right-hand edge of the grid: short of the figure, or of the window. */
+	private int gridRight() {
+		return showsFigure() ? previewLeft() - 8 : width - margin();
+	}
+
+	/**
+	 * The bottom of the grid.
+	 *
+	 * With a figure the details block is off to the right and the grid runs the
+	 * whole way down beside it. Without one the block is underneath, and the grid
+	 * has to stop above it rather than through it.
+	 */
+	private int gridBottom() {
+		return showsFigure() ? height - footer() - 4 : detailsTop() - 4;
+	}
+
+	private int columns() {
+		return Math.max(1, (gridRight() - margin() + GAP) / (cell() + GAP));
+	}
+
+	/**
+	 * How many rows are drawn, counting the one that only half fits.
+	 *
+	 * <h2>The empty band under the shelf</h2>
+	 *
+	 * This used to count whole rows only, and whatever was left over — up to one
+	 * row less a pixel, which on a tall panel is most of a costume — was a band of
+	 * nothing between the last row and the editing block. It read as a mistake in
+	 * the layout, and it was one: a grid that scrolls has no business stopping
+	 * short of its own edge, because the thing under the cut is exactly what
+	 * scrolling is for reaching.
+	 *
+	 * So the row that half fits is drawn and clipped. The shelf now runs to the
+	 * bottom of the space it has, which is also the honest picture: there is more
+	 * below, and it looks like there is more below.
+	 */
 	private int rows() {
-		return Math.max(1, (height - HEADER - FOOTER + GAP) / (CELL + LABEL + GAP));
+		int room = gridBottom() - header() + GAP;
+		return Math.max(1, (room + step() - 1) / step());
+	}
+
+	/** How many rows fit whole, which is what a page of scrolling is worth. */
+	private int wholeRows() {
+		return Math.max(1, (gridBottom() - header() + GAP) / step());
 	}
 
 	private int tileAt(double mouseX, double mouseY) {
-		int column = (int) ((mouseX - MARGIN) / (CELL + GAP));
-		int row = (int) ((mouseY - HEADER) / (CELL + LABEL + GAP));
-		if (mouseX < MARGIN || column < 0 || column >= columns()) return -1;
-		if (mouseY < HEADER || row < 0 || row >= rows()) return -1;
+		int column = (int) ((mouseX - margin()) / (cell() + GAP));
+		int row = (int) ((mouseY - header()) / step());
+		if (mouseX < margin() || column < 0 || column >= columns()) return -1;
+		if (mouseY < header() || mouseY >= gridBottom() || row < 0 || row >= rows()) return -1;
 		int index = (scroll + row) * columns() + column;
 		return index < shown.size() ? index : -1;
 	}
@@ -422,35 +691,6 @@ public class WardrobeScreen extends Screen {
 		}
 		if (waited < 1500) return "надеваю…";
 		return "сервер не ответил — смотри сообщение над панелью предметов";
-	}
-
-	/**
-	 * Writes the boxes back to whatever is picked.
-	 *
-	 * Two orders sent rather than one, because the server keeps renaming and
-	 * refiling apart and there is no sense inventing a third verb that means
-	 * "both". A rename only goes when a single costume is picked, so a careless
-	 * click cannot give a hundred costumes one name.
-	 */
-	private void apply() {
-		if (picked.isEmpty()) {
-			notice = "сначала выбери костюм";
-			return;
-		}
-		WardrobePayloads.Costume one = only();
-		String name = nameBox.getValue().trim();
-		if (one != null && !name.isEmpty() && !name.equals(one.label())) {
-			Costumes.edit(WardrobePayloads.Edit.Verb.RENAME, List.of(one.id()),
-				name, "", "", new byte[0]);
-		}
-		Costumes.edit(WardrobePayloads.Edit.Verb.REFILE, List.copyOf(picked), "",
-			categoryBox.getValue().trim(), groupBox.getValue().trim(), new byte[0]);
-
-		// A category is a label somebody wrote, so writing a new one here is how a
-		// category gets made. Worth saying, because there is no "new category"
-		// button to look for and its absence should read as simplicity.
-		notice = shelfName().isEmpty() ? "убрано из категорий" : "теперь в «" + shelfName() + "»";
-		filledFrom = "";
 	}
 
 	private String shelfName() {
@@ -547,6 +787,7 @@ public class WardrobeScreen extends Screen {
 
 	@Override
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+		if (detour != null) return detour.mouseClicked(event, doubleClick);
 		// Overlays first and always. The lesson from the dialogue drop-down that
 		// opened the animation picker: a list drawn over a button is still drawn
 		// over it as far as the person clicking is concerned.
@@ -560,6 +801,11 @@ public class WardrobeScreen extends Screen {
 
 		int tile = tileAt(event.x(), event.y());
 		if (tile >= 0) {
+			// Whatever was being typed belongs to what is picked now, not to what is
+			// about to be. Saved before the selection moves, or a half-typed shelf
+			// would land on the next costume clicked.
+			keep();
+			wasEditing = false;
 			String id = shown.get(tile).id();
 			// Holding shift adds to what is picked; a plain click starts again. The
 			// same two gestures every list of files has used for thirty years.
@@ -569,7 +815,7 @@ public class WardrobeScreen extends Screen {
 			tryOn();
 			return true;
 		}
-		if (event.x() >= previewLeft() && event.y() < height - FOOTER - DETAILS) {
+		if (showsFigure() && event.x() >= previewLeft() && event.y() < detailsTop()) {
 			dragging = true;
 			dragFrom = event.x();
 			dragFromY = event.y();
@@ -580,12 +826,35 @@ public class WardrobeScreen extends Screen {
 
 	@Override
 	public boolean mouseReleased(MouseButtonEvent event) {
+		if (detour != null) return detour.mouseReleased(event);
 		dragging = false;
 		return super.mouseReleased(event);
 	}
 
 	@Override
+	public void mouseMoved(double mouseX, double mouseY) {
+		if (detour != null) {
+			detour.mouseMoved(mouseX, mouseY);
+			return;
+		}
+		super.mouseMoved(mouseX, mouseY);
+	}
+
+	@Override
+	public boolean charTyped(net.minecraft.client.input.CharacterEvent event) {
+		if (detour != null) return detour.charTyped(event);
+		return super.charTyped(event);
+	}
+
+	@Override
+	public boolean keyReleased(KeyEvent event) {
+		if (detour != null) return detour.keyReleased(event);
+		return super.keyReleased(event);
+	}
+
+	@Override
 	public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+		if (detour != null) return detour.mouseDragged(event, dragX, dragY);
 		if (dragging) {
 			spin += (float) (event.x() - dragFrom) * 1.4f;
 			pitch = net.minecraft.util.Mth.clamp(
@@ -599,15 +868,18 @@ public class WardrobeScreen extends Screen {
 
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double dx, double dy) {
+		if (detour != null) return detour.mouseScrolled(mouseX, mouseY, dx, dy);
 		// The wheel means whatever it is pointing at: the shelf scrolls, the figure
 		// comes closer. Two meanings for one gesture is fine when they cannot be
 		// confused, and a grid and a portrait cannot.
-		if (mouseX >= previewLeft() && mouseY < height - FOOTER - DETAILS) {
+		if (showsFigure() && mouseX >= previewLeft() && mouseY < detailsTop()) {
 			zoom = net.minecraft.util.Mth.clamp(zoom * (dy > 0 ? 1.15f : 1f / 1.15f), 0.4f, 6f);
 			return true;
 		}
 		int total = (shown.size() + columns() - 1) / columns();
-		scroll = Math.clamp(scroll - (int) Math.signum(dy), 0, Math.max(0, total - rows()));
+		// Against the rows that fit whole, not the one that is half showing —
+		// otherwise the last costume can only ever be reached in halves.
+		scroll = Math.clamp(scroll - (int) Math.signum(dy), 0, Math.max(0, total - wholeRows()));
 		return true;
 	}
 
@@ -623,9 +895,28 @@ public class WardrobeScreen extends Screen {
 	 */
 	@Override
 	public boolean keyPressed(KeyEvent event) {
-		boolean typing = search.isFocused() || nameBox.isFocused()
-			|| categoryBox.isFocused() || groupBox.isFocused();
-		if (typing) return super.keyPressed(event);
+		if (detour != null) {
+			// Escape leaves the face rather than the workspace. Without this it goes
+			// to whatever is holding this screen, and in a panel that is everything.
+			if (event.key() == 256) {
+				detour = null;
+				return true;
+			}
+			return detour.keyPressed(event);
+		}
+
+		boolean typing = search.isFocused() || editingDetails();
+		if (typing) {
+			// Enter means "that's it" — the same thing as clicking away, said with
+			// the hand that is already on the keyboard.
+			if (event.key() == 257 || event.key() == 335) {
+				keep();
+				wasEditing = false;
+				setFocused(null);
+				return true;
+			}
+			return super.keyPressed(event);
+		}
 
 		boolean control = (event.modifiers() & GLFW_CONTROL) != 0;
 		switch (event.key()) {
@@ -695,11 +986,17 @@ public class WardrobeScreen extends Screen {
 
 	@Override
 	public void onClose() {
-		minecraft.setScreenAndShow(parent);
+		leave();
 	}
 
 	@Override
 	public void removed() {
+		// Whatever was typed and not yet left goes now. Closing a window is the one
+		// way of finishing with a box that never produces a moment where the caret
+		// leaves it, and losing an edit at exactly that moment is what makes people
+		// distrust a screen that saves by itself.
+		keep();
+
 		// However the screen goes, the character stops wearing what it was only
 		// being shown in. A costume left on would follow whatever holds this entity
 		// id next, and ids are handed out per world.
@@ -710,14 +1007,21 @@ public class WardrobeScreen extends Screen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+		if (detour != null) {
+			detour.extractRenderState(graphics, mouseX, mouseY, delta);
+			return;
+		}
+
+		freshen();
+		keepIfLeft();
 		syncDetails();
 
 		graphics.fill(0, 0, width, height, CANVAS);
-		graphics.text(font, title, MARGIN, MARGIN, TEXT);
+		graphics.text(font, title, margin(), margin(), TEXT);
 
 		String count = shown.size() + " из " + Costumes.all().size();
 		graphics.text(font, Component.literal(count),
-			previewLeft() - font.width(count), MARGIN, TEXT_DIM);
+			gridRight() - font.width(count), margin(), TEXT_DIM);
 
 		drawTiles(graphics, mouseX, mouseY);
 		drawPreview(graphics, mouseX, mouseY);
@@ -725,11 +1029,33 @@ public class WardrobeScreen extends Screen {
 
 		String said = notice.isEmpty() ? progress() : notice;
 		if (!said.isEmpty()) {
-			graphics.text(font, Component.literal(said), MARGIN, height - 12,
+			graphics.text(font, Component.literal(said), margin(), height - 12,
 				said.equals("надето") ? GOOD : TEXT_DIM);
 		}
 		super.extractRenderState(graphics, mouseX, mouseY, delta);
 		drawOverlay(graphics, mouseX, mouseY);
+	}
+
+	/** Which version of the library the grid was built from. */
+	private int builtFrom = -1;
+
+	/**
+	 * Notices that the library has changed underneath, and rebuilds the grid.
+	 *
+	 * This is why a skin uploaded a moment ago was not there until the screen had
+	 * been closed and opened again. The server does send the new list — it sends
+	 * it the instant the last piece of the picture lands — and it arrived, and was
+	 * accepted, and sat in a field nobody looked at. Filtering happened once, when
+	 * the screen opened.
+	 *
+	 * The boxes are refilled with it too, unless somebody is typing in them: a
+	 * list arriving while a name is half written must not take the other half away.
+	 */
+	private void freshen() {
+		if (Costumes.generation() == builtFrom) return;
+		builtFrom = Costumes.generation();
+		refilter();
+		if (!editingDetails()) filledFrom = "";
 	}
 
 	private void drawTiles(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
@@ -738,57 +1064,96 @@ public class WardrobeScreen extends Screen {
 			// time has nothing to click and nothing to look at, and a bare "no
 			// costumes" leaves them to work out the rest on their own.
 			graphics.text(font, Component.literal(Costumes.all().isEmpty()
-				? "в этом мире пока нет костюмов" : "ничего не подходит"), MARGIN, HEADER, TEXT_DIM);
+				? "в этом мире пока нет костюмов" : "ничего не подходит"), margin(), header(), TEXT_DIM);
 			if (Costumes.all().isEmpty()) {
 				graphics.text(font, Component.literal("«+ добавить костюм» внизу — возьмёт PNG с компьютера"),
-					MARGIN, HEADER + 14, TEXT_DIM);
+					margin(), header() + 14, TEXT_DIM);
 			}
 			return;
 		}
 
 		int hovered = tileAt(mouseX, mouseY);
 		int columns = columns();
+		int cell = cell();
+		int tall = cellTall();
+		// The last row is allowed to be cut off by the edge of the shelf rather
+		// than left out of it, so nothing is drawn over the editing block below.
+		graphics.enableScissor(margin(), header(), gridRight(), gridBottom());
+		// Labelled, and that is not stylistic. Running out of costumes used to
+		// return straight out of here, which walked away leaving the scissor on —
+		// and a scissor left on clips everything drawn afterwards, in every panel.
+		shelf:
 		for (int row = 0; row < rows(); row++) {
 			for (int column = 0; column < columns; column++) {
 				int index = (scroll + row) * columns + column;
-				if (index >= shown.size()) return;
+				if (index >= shown.size()) break shelf;
 
 				WardrobePayloads.Costume costume = shown.get(index);
-				int x = MARGIN + column * (CELL + GAP);
-				int y = HEADER + row * (CELL + LABEL + GAP);
+				int x = margin() + column * (cell + GAP);
+				int y = header() + row * step();
 				boolean on = picked.contains(costume.id());
 
-				graphics.fill(x, y, x + CELL, y + CELL,
+				graphics.fill(x, y, x + cell, y + tall,
 					on ? TILE_ON : index == hovered ? TILE_HOVER : TILE);
 				if (on) {
-					graphics.fill(x, y, x + CELL, y + 2, ACCENT);
-					graphics.fill(x, y + CELL - 2, x + CELL, y + CELL, ACCENT);
+					graphics.fill(x, y, x + cell, y + 2, ACCENT);
+					graphics.fill(x, y + tall - 2, x + cell, y + tall, ACCENT);
 				}
 
-				Identifier skin = Costumes.texture(costume.fingerprint());
-				if (skin != null) {
-					int figure = CELL - 8;
-					PaperDoll.draw(graphics, skin,
-						x + (CELL - PaperDoll.widthFor(figure)) / 2, y + 4, figure,
-						Costumes.tall(costume.fingerprint()));
-				}
+				// Drawn inside the tile rather than filling it, so that a turned
+				// shoulder does not touch the next costume along.
+				drawCostume(graphics, costume.fingerprint(),
+					x + 3, y + 3, x + cell - 3, y + tall - 3);
 
-				String label = trim(costume.label(), CELL - 4);
+				String label = trim(costume.label(), cell - 4);
 				graphics.text(font, Component.literal(label),
-					x + CELL / 2 - font.width(label) / 2, y + CELL + 2, on ? ACCENT : TEXT_DIM);
+					x + cell / 2 - font.width(label) / 2, y + tall + 1, on ? ACCENT : TEXT_DIM);
 
 				// The size, and whether a blink will work on it — both read from the
 				// file's header before anything was downloaded. Nobody else can tell
 				// you the second one at all.
 				String badge = costume.width() > 64 ? String.valueOf(costume.width()) : "";
 				if (!badge.isEmpty()) {
-					graphics.text(font, Component.literal(badge), x + 4, y + 4, TEXT_DIM);
+					graphics.text(font, Component.literal(badge), x + 3, y + 3, TEXT_DIM);
 				}
 				if (costume.eyes()) {
-					graphics.fill(x + CELL - 8, y + 4, x + CELL - 4, y + 8, GOOD);
+					graphics.fill(x + cell - 7, y + 3, x + cell - 3, y + 7, GOOD);
 				}
 			}
 		}
+		graphics.disableScissor();
+	}
+
+	/**
+	 * One costume, as a figure — or flat, when it cannot be a figure.
+	 *
+	 * <h2>The skins that have to stay flat</h2>
+	 *
+	 * A skin from before 1.8 is half as tall: it has no left arm and no left leg of
+	 * its own, and none of the outer layers below the head. The player model has
+	 * boxes for all of those and would read them from rows the picture does not
+	 * have, which comes out as a figure wearing somebody's cheek on its shin. That
+	 * is worse than a cut-out, so those keep the cut-out — which was written
+	 * knowing about the old layout and draws them correctly.
+	 *
+	 * Converting them on the way in is the better answer and a bigger one: it means
+	 * rewriting somebody's file, and the wardrobe's whole bargain is that the
+	 * picture on disk is the picture they gave it.
+	 */
+	private void drawCostume(GuiGraphicsExtractor graphics, String fingerprint,
+			int left, int top, int right, int bottom) {
+		Identifier skin = Costumes.texture(fingerprint);
+		if (skin == null) return;
+
+		if (Costumes.tall(fingerprint) < 64) {
+			int tall = bottom - top;
+			tall -= tall % PaperDoll.TALL;
+			if (tall <= 0) return;
+			PaperDoll.draw(graphics, skin,
+				(left + right) / 2 - PaperDoll.widthFor(tall) / 2, top, tall, 32);
+			return;
+		}
+		SkinFigure.draw(graphics, skin, false, left, top, right, bottom);
 	}
 
 	private String trim(String label, int room) {
@@ -806,10 +1171,11 @@ public class WardrobeScreen extends Screen {
 	 * spent on an apology.
 	 */
 	private void drawPreview(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+		if (!showsFigure()) return;
 		int left = previewLeft();
-		int right = width - MARGIN;
-		int top = HEADER;
-		int bottom = height - FOOTER - DETAILS - 8;
+		int right = width - margin();
+		int top = header();
+		int bottom = detailsTop() - 8;
 		graphics.fill(left, top, right, bottom, PANEL);
 		graphics.fill(left, top, right, top + 1, EDGE);
 
@@ -836,32 +1202,39 @@ public class WardrobeScreen extends Screen {
 		}
 		if (costume == null) return;
 
-		Identifier skin = Costumes.texture(costume.fingerprint());
-		if (skin == null) return;
-		int figure = Math.min(bottom - top - 24, (right - left) * 2);
-		figure -= figure % PaperDoll.TALL;
-		PaperDoll.draw(graphics, skin, (left + right) / 2 - PaperDoll.widthFor(figure) / 2,
-			top + 12, figure, Costumes.tall(costume.fingerprint()));
+		if (Costumes.texture(costume.fingerprint()) == null) return;
+		// The same figure as on the shelf, drawn large. It used to be the flat
+		// cut-out here too, which made the biggest picture on the screen the least
+		// informative one.
+		int figure = Math.min(bottom - top - 28, (right - left) * 2);
+		int half = SkinFigure.widthFor(figure) / 2;
+		int middle = (left + right) / 2;
+		drawCostume(graphics, costume.fingerprint(),
+			middle - half, top + 12, middle + half, top + 12 + figure);
 		String label = trim(costume.label(), right - left - 8);
 		graphics.text(font, Component.literal(label),
 			(left + right) / 2 - font.width(label) / 2, bottom - 12, TEXT_DIM);
 	}
 
 	private void drawDetails(GuiGraphicsExtractor graphics) {
-		int left = previewLeft();
-		int top = height - FOOTER - DETAILS;
-		graphics.fill(left, top, width - MARGIN, height - FOOTER - 4, PANEL);
-		graphics.fill(left, top, width - MARGIN, top + 1, EDGE);
+		int left = detailsLeft() - 8;
+		int right = detailsLeft() + detailsWide() + 8;
+		int top = detailsTop();
+		graphics.fill(left, top, right, height - footer() - 4, PANEL);
+		graphics.fill(left, top, right, top + 1, EDGE);
 
 		String heading = picked.isEmpty() ? "ничего не выбрано"
 			: picked.size() == 1 ? "костюм" : "костюмов: " + picked.size();
 		graphics.text(font, Component.literal(heading), left + 8, top + 4,
 			picked.isEmpty() ? TEXT_DIM : ACCENT);
-		if (!copied.isEmpty()) {
-			String buffer = "в буфере: " + copied.size();
-			graphics.text(font, Component.literal(buffer),
-				width - MARGIN - 8 - font.width(buffer), top + 4, GOOD);
-		}
+
+		// Said once, quietly, and only where the typing happens: with the button
+		// gone there is nothing on the screen to tell somebody their name went
+		// anywhere, and "did that save" is a question a person should never have to
+		// hold on to.
+		String aside = copied.isEmpty() ? "сохраняется само" : "в буфере: " + copied.size();
+		graphics.text(font, Component.literal(aside),
+			right - 8 - font.width(aside), top + 4, copied.isEmpty() ? TEXT_DIM : GOOD);
 	}
 
 	private void drawOverlay(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
@@ -934,4 +1307,17 @@ public class WardrobeScreen extends Screen {
 	public boolean isPauseScreen() {
 		return false;
 	}
+
+	/**
+	 * Goes back where it came from — unless there is nowhere to go back to.
+	 *
+	 * A null parent means this is living inside the workspace as a panel, and a
+	 * panel has no "back": the thing behind it is the rest of the workspace, and
+	 * handing the display to null would close all of it. So leaving becomes
+	 * staying, which is what a panel does when you have finished with it.
+	 */
+	private void leave() {
+		if (parent != null) minecraft.setScreenAndShow(parent);
+	}
+
 }

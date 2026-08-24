@@ -55,12 +55,12 @@ public class CreditsScreen extends Screen {
 	@Override
 	protected void init() {
 		addRenderableWidget(new FlatButton(width / 2 - 52, height - 34, 104, 20,
-			Component.literal("back"), ACCENT, () -> minecraft.setScreenAndShow(parent)));
+			Component.literal("back"), ACCENT, () -> leave()));
 	}
 
 	@Override
 	public void onClose() {
-		minecraft.setScreenAndShow(parent);
+		leave();
 	}
 
 	@Override
@@ -86,4 +86,9 @@ public class CreditsScreen extends Screen {
 	public boolean isPauseScreen() {
 		return false;
 	}
+	/** Nowhere to go back to means staying put; see the other editors. */
+	private void leave() {
+		if (parent != null) minecraft.setScreenAndShow(parent);
+	}
+
 }

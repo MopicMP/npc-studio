@@ -4,11 +4,22 @@
 	"compatibilityLevel": "JAVA_25",
 	"client": [
 		"AvatarRenderStateMixin",
+		"EntityAccessor",
 		"CameraMixin",
+		"EntityRenderDispatcherMixin",
 		"HeldItemMixin",
 		"ModelPartMixin",
 		"PlayerModelMixin",
-		"MinecraftMixin"
+		"MinecraftMixin",
+		"SkyStateMixin",
+		"LevelWeatherMixin",
+		"FogTintMixin",
+		"RainTintMixin",
+		"SoundEngineAccess",
+		"SoundDeviceAccess",
+		"SoundHushMixin",
+		"FontManagerAccess",
+		"MinecraftFontsAccess"
 	],
 	"injectors": {
 		"defaultRequire": 1

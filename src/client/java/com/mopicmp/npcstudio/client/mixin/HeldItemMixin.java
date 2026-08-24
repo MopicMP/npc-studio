@@ -41,6 +41,7 @@ public abstract class HeldItemMixin {
 		at = @At("TAIL"))
 	private void npcStudio$placeItem(AvatarRenderState state, HumanoidArm arm,
 			PoseStack pose, CallbackInfo info) {
+		npcStudio$followTheFold(arm, pose);
 		// Off unless asked for, and that is an admission rather than caution. Where
 		// exactly these numbers are measured from is not something the pack settles:
 		// the game keeps moving after this point — a quarter turn, a half turn and a
@@ -69,6 +70,48 @@ public abstract class HeldItemMixin {
 				.rotateY(at.or(bone, Emote.Channel.YAW, 0))
 				.rotateX(at.or(bone, Emote.Channel.PITCH, 0)));
 		});
+	}
+
+	/**
+	 * Swings the item with the forearm when the elbow is bent.
+	 *
+	 * <h2>Why nothing else knew about it</h2>
+	 *
+	 * Because a fold is not a transform. Everything else a scene does to a limb is
+	 * written into the model part — a turn goes into {@code xRot}, a shift into
+	 * {@code x} — and the game places a held item by walking that very part, so an
+	 * item follows a turned or shifted arm without anybody arranging it.
+	 *
+	 * A fold is drawn instead. The limb is sliced and each vertex below the elbow is
+	 * carried round it, so the arm bends on the screen while the part it belongs to
+	 * still says it is straight. Which means the hand the game places an item on is
+	 * the hand of the <em>unbent</em> arm: the sword hung in the air where the wrist
+	 * would have been, and the wrist was somewhere else entirely.
+	 *
+	 * <h2>The correction is the fold's own</h2>
+	 *
+	 * Not an approximation of it. {@code Folding.carry} turns the lower half about
+	 * the middle of the limb — {@code y' = middle + along·cos − z·sin}, which is a
+	 * rotation about X — and the elbow is the midpoint of the box the part was
+	 * measured to be. So the item is taken to the elbow, turned by the same angle
+	 * about the same axis, and brought back. If the fold's arithmetic changes, this
+	 * is wrong in exactly the same way and not in a different one.
+	 *
+	 * The crease shift is deliberately not applied: it tapers to nothing before the
+	 * end of the limb, so at the wrist there is none of it to apply.
+	 */
+	private void npcStudio$followTheFold(HumanoidArm arm, PoseStack pose) {
+		PlayerModel model = (PlayerModel) (Object) this;
+		Object limb = arm == HumanoidArm.RIGHT ? model.rightArm : model.leftArm;
+		if (!(limb instanceof com.mopicmp.npcstudio.client.emote.BendablePart bendable)) return;
+
+		float bend = bendable.npcStudio$bend();
+		if (bend == 0) return;
+
+		float elbow = (bendable.npcStudio$bendTop() + bendable.npcStudio$bendBottom()) / 2f;
+		pose.translate(0, elbow * PIXEL, 0);
+		pose.mulPose(new Quaternionf().rotateX(bend));
+		pose.translate(0, -elbow * PIXEL, 0);
 	}
 
 	private static float clamp(float pixels) {

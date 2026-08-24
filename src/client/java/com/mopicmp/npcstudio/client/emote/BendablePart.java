@@ -104,6 +104,21 @@ public interface BendablePart {
 	 */
 	void npcStudio$setBuild(com.mopicmp.npcstudio.client.entity.PartBuild build);
 
+	/**
+	 * Which part of a body this is, for one frame, or null for none of it.
+	 *
+	 * Set instead of a build wherever the body field has taken over — the torso and
+	 * the legs so far. A part given a place stops being told how much wider to make
+	 * itself and starts asking where its surface is, which is the only way its edge
+	 * and its neighbour's can be the same edge.
+	 *
+	 * Written every frame, including the frames where the answer is null. A part
+	 * that clears itself only when it draws never clears at all when it is hidden,
+	 * and the model is shared: a jacket switched off would hand the last character's
+	 * figure to the next one wearing it.
+	 */
+	void npcStudio$setPlace(com.mopicmp.npcstudio.client.entity.BodyPlace place);
+
 	/** Whether this part has anything to say about its own shape this frame. */
 	boolean npcStudio$built();
 }

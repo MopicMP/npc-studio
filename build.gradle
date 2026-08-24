@@ -21,6 +21,30 @@ loom {
 			sourceSet sourceSets.client
 		}
 	}
+
+	// How much the game may have, said out loud rather than left to the JVM.
+	//
+	// Left alone, the JVM takes a quarter of the machine — on a six-gigabyte
+	// laptop that is a heap of 1506 MB, which is not a number anybody chose and
+	// not a number anybody can find. Written down here and set in
+	// gradle.properties, so it is one line to change and it is somewhere a person
+	// would look for it.
+	//
+	// A word of warning that belongs next to the setting rather than in a chat
+	// log: raising this does not fix "the game ran out of memory while compiling
+	// shaders". That crash was a *native* allocation failing with 127 MB of
+	// physical RAM and 7 MB of page file left on the whole machine, while this
+	// heap was using 495 MB of the 1506 it was already allowed. Shader
+	// compilation happens in the graphics driver, outside the heap entirely, and
+	// on a laptop with shared graphics it is competing with the same six
+	// gigabytes. Giving the heap more takes it from exactly the place that ran
+	// out. See the daemon note in gradle.properties for the memory that can
+	// actually be handed back.
+	runs {
+		client {
+			vmArgs "-Xms${project.client_heap_min}", "-Xmx${project.client_heap_max}"
+		}
+	}
 }
 
 dependencies {
@@ -217,4 +241,12 @@ tasks.register('exportFaceMarks', JavaExec) {
 	group = 'verification'
 	classpath = sourceSets.test.runtimeClasspath
 	mainClass = 'com.mopicmp.npcstudio.skin.FaceMarksExport'
+}
+
+// Draws the face the way the game will, so that "it looks right" can be checked
+// by looking rather than by reasoning about it.
+tasks.register('lookAtEyes', JavaExec) {
+	group = 'verification'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.mopicmp.npcstudio.client.skin.EyeLookExport'
 }

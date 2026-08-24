@@ -26,8 +26,22 @@ import net.minecraft.world.item.Items;
  */
 public final class NpcEditing {
 
-	/** As far as an NPC can be and still be the one you are obviously pointing at. */
-	private static final double REACH_SQUARED = 64.0;
+	/**
+	 * How far away an NPC may be and still be edited.
+	 *
+	 * Eight blocks once, which is arm's length, and that was written when the only
+	 * way to edit a character was to walk up to it and press a button. The workspace
+	 * changed the question: it has a camera that flies, a list of everyone in the
+	 * scene and panels that follow whoever is chosen — and then the server refused,
+	 * so choosing somebody across the deck meant walking over to them first.
+	 *
+	 * A hundred and twenty-eight, which is the far end of a scene rather than the
+	 * far end of a world. Not unlimited, because the id comes from a client; but the
+	 * thing it is protecting against is a creative-mode player who can already
+	 * teleport, so the bound is about keeping the rule honest rather than about
+	 * stopping anybody.
+	 */
+	public static final double REACH_SQUARED = 128.0 * 128.0;
 
 	private NpcEditing() { }
 
@@ -49,6 +63,31 @@ public final class NpcEditing {
 			return null;
 		}
 		return npc;
+	}
+
+	/**
+	 * Puts a character somewhere, facing somewhere.
+	 *
+	 * The head is turned with the body rather than left where it was. A character
+	 * whose body has been turned round while its head stays put is not looking
+	 * over its shoulder — it is broken, because the head will snap back the moment
+	 * anything else touches it.
+	 *
+	 * Nothing is clamped and nothing is validated beyond the reach the rest of the
+	 * editing uses. The numbers come from a creative-mode player who can already
+	 * teleport whatever they like wherever they like.
+	 */
+	public static void place(ServerPlayer player, NpcPayloads.Place order) {
+		NpcEntity npc = reachable(player, order.entityId());
+		if (npc == null) return;
+		if (!Double.isFinite(order.x()) || !Double.isFinite(order.y())
+			|| !Double.isFinite(order.z()) || !Float.isFinite(order.yaw())) {
+			return;
+		}
+		npc.snapTo(order.x(), order.y(), order.z(), order.yaw(), npc.getXRot());
+		npc.setYBodyRot(order.yaw());
+		npc.setYHeadRot(order.yaw());
+		npc.yRotO = order.yaw();
 	}
 
 	/**
@@ -183,4 +222,117 @@ public final class NpcEditing {
 		npc.setScale(edit.scale());
 		player.sendOverlayMessage(Component.literal("NPC updated."));
 	}
+
+	/**
+	 * Puts a model where the caller stands, a step in front of them.
+	 *
+	 * In front rather than underfoot, because an object placed inside somebody is
+	 * an object they are standing in the middle of and cannot see. A step away is
+	 * where you would put a thing down.
+	 */
+	public static void placeModel(net.minecraft.server.level.ServerPlayer player, String name) {
+		// The same gate the rest of this class uses: editing is a creative-mode
+		// thing, and the server is the one that says so.
+		if (!player.isCreative()) {
+			player.sendOverlayMessage(Component.literal("Placing models is a creative-mode thing."));
+			return;
+		}
+
+		// Where the player is, exactly. A step in front was meant to keep an object
+		// out of the middle of somebody, and it costs more than it saves: a thing
+		// that appears where you are is a thing you know the coordinates of, and a
+		// thing a step away in a direction you were looking at the time is a thing
+		// to go and find. The editor's camera is not in the body anyway.
+		net.minecraft.world.phys.Vec3 ahead = player.position();
+		com.mopicmp.npcstudio.entity.ModelObject object =
+			com.mopicmp.npcstudio.entity.ModelObject.TYPE.create(
+				player.level(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+		if (object == null) return;
+
+		// Square to the world, not to whoever put it down. Facing the player was
+		// meant to be helpful and is not: nobody stands on an axis, so a new box
+		// arrived at whatever angle the person happened to be looking — about
+		// forty-five degrees, most of the time — and a model is drawn in its own
+		// axes. Turning it is a thing that exists and can be asked for.
+		object.snapTo(ahead.x, ahead.y, ahead.z, 0, 0);
+		object.setModel(name);
+		// Measured now if the model is already here, and by the object itself on its
+		// first tick if it arrives later. Either order ends in the same place.
+		object.shapeFrom(com.mopicmp.npcstudio.model.ServerModels.get(name));
+		player.level().addFreshEntity(object);
+
+		// Said out loud, with the place. An object put down somewhere you were not
+		// looking is an object lost, and "it did nothing" is what that feels like.
+		player.sendOverlayMessage(Component.literal("%s → %.0f %.0f %.0f"
+			.formatted(name, ahead.x, ahead.y, ahead.z)));
+	}
+
+	/**
+	 * Takes a placed object back out of the world.
+	 *
+	 * The document on disk is untouched, and that is the whole shape of it: what is
+	 * deleted is one copy standing in a world, not the model somebody spent an
+	 * evening on. Putting it down again is the same action as putting it down the
+	 * first time.
+	 */
+	/**
+	 * Takes a model somebody drew, and re-measures everything standing that wears it.
+	 *
+	 * The whole of what the server needs in order to stop being told what things
+	 * are shaped like. Everything downstream — collision, the size of the box the
+	 * game looks for entities in, what another player sees — falls out of the
+	 * document rather than out of a second opinion about it.
+	 */
+	public static void takeModel(net.minecraft.server.level.ServerPlayer player,
+			NpcPayloads.ModelDocument sent) {
+		if (!player.isCreative()) return;
+
+		com.mopicmp.npcstudio.model.Model model =
+			com.mopicmp.npcstudio.model.ServerModels.take(sent.name(), sent.json());
+		if (model == null) return;
+
+		for (net.minecraft.server.level.ServerLevel level : player.level().getServer().getAllLevels()) {
+			for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
+				if (entity instanceof com.mopicmp.npcstudio.entity.ModelObject object
+					&& object.model().equals(sent.name())) {
+					object.shapeFrom(model);
+				}
+			}
+		}
+
+		// On to everybody, so a model somebody else drew is a thing you can see
+		// rather than an empty patch of air they keep talking about.
+		for (net.minecraft.server.level.ServerPlayer other : player.level().getServer().getPlayerList()
+				.getPlayers()) {
+			net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(other, sent);
+		}
+	}
+
+	/** Whether one placed object is something to walk into. */
+	public static void solidModel(net.minecraft.server.level.ServerPlayer player,
+			NpcPayloads.SolidModel wanted) {
+		if (!player.isCreative()) return;
+		net.minecraft.world.entity.Entity found = player.level().getEntity(wanted.entityId());
+		if (found instanceof com.mopicmp.npcstudio.entity.ModelObject object) {
+			object.setSolid(wanted.solid());
+		}
+	}
+
+	public static void removeModel(net.minecraft.server.level.ServerPlayer player, int entityId) {
+		if (!player.isCreative()) {
+			player.sendOverlayMessage(Component.literal("Removing models is a creative-mode thing."));
+			return;
+		}
+
+		net.minecraft.world.entity.Entity found = player.level().getEntity(entityId);
+		// Only ours, and only by this route. The id comes from a client, so it could
+		// name anything in the world; a packet that says "delete a model" must not be
+		// a packet that deletes somebody's horse.
+		if (!(found instanceof com.mopicmp.npcstudio.entity.ModelObject object)) return;
+
+		String name = object.model();
+		object.discard();
+		player.sendOverlayMessage(Component.literal(name + " — removed"));
+	}
+
 }

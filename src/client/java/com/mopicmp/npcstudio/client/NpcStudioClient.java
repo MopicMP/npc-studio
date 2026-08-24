@@ -85,6 +85,21 @@ public class NpcStudioClient implements ClientModInitializer {
 			return renderer;
 		});
 
+		com.mopicmp.npcstudio.client.workspace.WorkspaceKey.register();
+
+		// A placed model draws itself from the client's own store of documents; the
+		// entity only says which one. See ModelObject for why the geometry does not
+		// travel.
+		// Nothing is drawn for the camera; its marker is an overlay, like the
+		// handles. See CameraRenderer for why the empty renderer has to exist.
+		EntityRendererRegistry.register(com.mopicmp.npcstudio.entity.SceneCamera.TYPE,
+			com.mopicmp.npcstudio.client.entity.CameraRenderer::new);
+		EntityRendererRegistry.register(com.mopicmp.npcstudio.entity.ModelObject.TYPE,
+			com.mopicmp.npcstudio.client.model.ModelObjectRenderer::new);
+
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
+			com.mopicmp.npcstudio.client.model.ModelStore.forget());
+
 		ClientPlayNetworking.registerGlobalReceiver(ShowLinePayload.TYPE,
 			(payload, context) -> context.client().execute(() -> {
 				DialogueClientState.show(payload);
@@ -101,16 +116,72 @@ public class NpcStudioClient implements ClientModInitializer {
 				if (DialogueScreen.isOpen() || CutsceneScreen.isOpen()) context.client().setScreenAndShow(null);
 			}));
 
-		ClientPlayNetworking.registerGlobalReceiver(EditorPayloads.Editing.TYPE,
+		// A model the world knows about, arriving. Held rather than written: this
+		// client's models folder is the author's workspace, and filling it with
+		// everything anybody else has ever drawn would be taking it over. Held is
+		// enough — it is what the renderer reads from.
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.NpcPayloads.ModelDocument.TYPE,
+			(payload, context) -> context.client().execute(() -> {
+				try {
+					com.mopicmp.npcstudio.client.model.ModelStore.hold(payload.name(),
+						com.mopicmp.npcstudio.model.ModelIO.readBlockbench(
+							com.google.gson.JsonParser.parseString(payload.json())
+								.getAsJsonObject()));
+				} catch (RuntimeException unreadable) {
+					com.mopicmp.npcstudio.NpcStudio.LOGGER.warn(
+						"A model arrived that will not read: {}", unreadable.toString());
+				}
+			}));
+
+		// A scene the world knows about. Held rather than written, as models are:
+		// the world's copy is the record and this one is a draft of it.
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.ScenePayloads.Document.TYPE,
 			(payload, context) -> context.client().execute(() ->
-				context.client().setScreenAndShow(new GraphEditorScreen(
-					EditorState.from(payload.json(), payload.names())))));
+				com.mopicmp.npcstudio.client.scene.Scenes.accept(payload.name(), payload.json())));
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.ScenePayloads.Gone.TYPE,
+			(payload, context) -> context.client().execute(() ->
+				com.mopicmp.npcstudio.client.scene.Scenes.gone(payload.name())));
+
+		// The scene's own clock, and the half-second that turns a drag into one
+		// save instead of forty.
+		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			com.mopicmp.npcstudio.client.scene.Scenes.tick();
+			com.mopicmp.npcstudio.client.scene.Playing.tick();
+			com.mopicmp.npcstudio.client.scene.SceneCameras.tick();
+			// Noticed here rather than at the door: the workspace can be left by
+			// closing the game's own screen, by a crash to the title, or by the
+			// world going away, and only a tick sees all three.
+			com.mopicmp.npcstudio.client.scene.Hush.tick();
+		});
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+			// Whatever was waiting is already lost — the connection is going — but
+			// the draft must not follow us into the next world, where the ids in it
+			// name different characters or nobody at all.
+			com.mopicmp.npcstudio.client.scene.Playing.forget();
+			com.mopicmp.npcstudio.client.scene.Scenes.forget();
+		});
+
+		ClientPlayNetworking.registerGlobalReceiver(EditorPayloads.Editing.TYPE,
+			(payload, context) -> context.client().execute(() -> {
+				EditorState state = EditorState.from(payload.json(), payload.names());
+				if (com.mopicmp.npcstudio.client.workspace.WorkspaceScreen.embedded()) {
+					com.mopicmp.npcstudio.client.workspace.panel.GraphPanel.accept(state);
+					return;
+				}
+				context.client().setScreenAndShow(new GraphEditorScreen(state));
+			}));
 		ClientPlayNetworking.registerGlobalReceiver(com.mopicmp.npcstudio.net.WardrobePayloads.Library.TYPE,
 			(payload, context) -> context.client().execute(() ->
 				com.mopicmp.npcstudio.client.wardrobe.Costumes.accept(payload.costumes())));
 		ClientPlayNetworking.registerGlobalReceiver(com.mopicmp.npcstudio.net.WardrobePayloads.Versions.TYPE,
 			(payload, context) -> context.client().execute(() ->
 				com.mopicmp.npcstudio.client.wardrobe.Costumes.acceptVersions(payload.names())));
+		ClientPlayNetworking.registerGlobalReceiver(com.mopicmp.npcstudio.net.WardrobePayloads.Marks.TYPE,
+			(payload, context) -> context.client().execute(() ->
+				com.mopicmp.npcstudio.client.wardrobe.Costumes.acceptMarks(payload.marks())));
 		ClientPlayNetworking.registerGlobalReceiver(com.mopicmp.npcstudio.net.WardrobePayloads.Picture.TYPE,
 			(payload, context) -> context.client().execute(() ->
 				com.mopicmp.npcstudio.client.wardrobe.Costumes.acceptPicture(
@@ -119,8 +190,19 @@ public class NpcStudioClient implements ClientModInitializer {
 			(payload, context) -> context.client().execute(() ->
 				com.mopicmp.npcstudio.client.skin.CustomSkins.accept(payload.entityId(), payload.pixels())));
 		ClientPlayNetworking.registerGlobalReceiver(com.mopicmp.npcstudio.net.NpcPayloads.Details.TYPE,
-			(payload, context) -> context.client().execute(() ->
-				com.mopicmp.npcstudio.client.editor.NpcScreen.show(context.client(), payload)));
+			(payload, context) -> context.client().execute(() -> {
+				// The workspace is the one door now. Asking a character for its
+				// details is asking to work on it, so this both opens the workspace
+				// and says which character it is about — the two used to be one
+				// screen and there is no reason for them to become two steps.
+				com.mopicmp.npcstudio.client.workspace.Workspace.select(payload.entityId());
+				if (!com.mopicmp.npcstudio.client.workspace.WorkspaceScreen.embedded()) {
+					com.mopicmp.npcstudio.client.workspace.WorkspaceScreen.show(context.client());
+				}
+				com.mopicmp.npcstudio.client.workspace.WorkspaceScreen.deliver(
+					com.mopicmp.npcstudio.client.workspace.panel.CharacterPanel.class,
+					panel -> panel.accept(payload));
+			}));
 		ClientPlayNetworking.registerGlobalReceiver(EditorPayloads.Listing.TYPE,
 			(payload, context) -> context.client().execute(() -> {
 				// Always remembered, because two screens want the same answer for
@@ -130,9 +212,14 @@ public class NpcStudioClient implements ClientModInitializer {
 				com.mopicmp.npcstudio.client.editor.DialogueNames.remember(payload.names());
 				// A screen that asked only for the names keeps itself; anything else
 				// meant "show me the list".
-				if (com.mopicmp.npcstudio.client.editor.NpcScreen.current() == null) {
-					context.client().setScreenAndShow(new DialogueListScreen(payload.names()));
+				// In the workspace the list belongs to the dialogue panel, which is
+				// where the graph is going to appear anyway. Outside it, asking for
+				// the list still means asking to see it on a screen of its own.
+				if (com.mopicmp.npcstudio.client.workspace.WorkspaceScreen.embedded()) {
+					com.mopicmp.npcstudio.client.workspace.panel.GraphPanel.choose();
+					return;
 				}
+				context.client().setScreenAndShow(new DialogueListScreen(payload.names()));
 			}));
 		ClientPlayNetworking.registerGlobalReceiver(EditorPayloads.Saved.TYPE,
 			(payload, context) -> context.client().execute(() -> {
@@ -167,8 +254,38 @@ public class NpcStudioClient implements ClientModInitializer {
 		// The turn towards the speaker is stepped on every client tick.
 		ClientTickEvents.END_CLIENT_TICK.register(DialogueCamera::tick);
 
+		// Placed objects are told what shape they are, on a slow beat and on every
+		// client — not only while the editor is open. A client works out where the
+		// player may walk before the server confirms it, so one that thinks an object
+		// is a single box while the server knows it is three disagrees on every step
+		// taken near it, and disagreeing about collision is what rubber-banding is.
+		ClientTickEvents.END_CLIENT_TICK.register(new ClientTickEvents.EndTick() {
+			private int beat;
+
+			@Override
+			public void onEndTick(net.minecraft.client.Minecraft client) {
+				if (client.level == null) return;
+				// Every tick while the editor is open, because the outline is drawn from
+				// these and an outline that catches up a second after the box it belongs
+				// to has been dragged reads as an outline that does not follow at all.
+				// A slow beat otherwise: nothing is changing shape then.
+				boolean editing = com.mopicmp.npcstudio.client.model.ModellingScreen.showing();
+				if (!editing && ++beat < 20) return;
+				beat = 0;
+				com.mopicmp.npcstudio.client.model.Modelling.refreshColliders();
+			}
+		});
+
 		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
 			NpcStudio.id("dialogue"), DialogueHud::render);
+
+		// Last of everything, and that is the whole requirement: a scene fading out
+		// has to take the hotbar and the crosshair with it, or what fades is the
+		// world with the interface still floating over it. See {@code Titles} for why
+		// this is here rather than in a panel — a panel draws nothing while filming,
+		// which is precisely when a fade matters most.
+		HudElementRegistry.addLast(NpcStudio.id("titles"),
+			com.mopicmp.npcstudio.client.scene.Titles::render);
 
 		// Chat and a conversation want the same corner of the screen, and chat
 		// wins by being taller. While an NPC is speaking the messages step aside —

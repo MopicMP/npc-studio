@@ -52,5 +52,20 @@ public class PlayerModelMixin {
 		// over — the character would stand broad-shouldered and snap back to
 		// ordinary the moment it waved.
 		com.mopicmp.npcstudio.client.entity.BodyBuilder.apply(model, holder.npcStudio$shape());
+
+		// Later still: a scene is the authored answer and everything above it is
+		// what happens when nobody has authored one. It touches only the numbers it
+		// has a track for, so a scene that keys a nod leaves the walk walking.
+		com.mopicmp.npcstudio.client.scene.Posing.apply(model, holder.npcStudio$staged());
+
+		// And, last of all, where everything ended up. The handles in the workspace
+		// need a point to put a ring around, and this is the one moment in the frame
+		// where that point is known rather than guessed at: the model has just
+		// finished deciding it. Only for a character a scene is playing, which is
+		// the only set that can have handles on it.
+		var staged = holder.npcStudio$staged();
+		if (staged != null) {
+			com.mopicmp.npcstudio.client.scene.Posing.remember(staged.role(), model);
+		}
 	}
 }

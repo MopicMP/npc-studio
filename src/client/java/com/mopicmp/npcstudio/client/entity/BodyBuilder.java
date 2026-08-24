@@ -75,17 +75,21 @@ public final class BodyBuilder {
 		// as wide as the shoulders and its bottom as wide as the hips — which is
 		// what hips are. Making the legs move apart was a symptom of hips dressed
 		// up as the cause; the legs follow the pelvis, below.
-		float roundness = build.roundness();
-		set(model.body, model.jacket, new PartBuild(
-			build.shoulders(), build.hips(), 1,
+		float roundness = build.softness();
+		// The torso keeps a build for its chest and its stomach — those are still a
+		// push forwards and have not been rewritten — but its width now comes from
+		// the field, so the two ends it used to be told are gone from here.
+		set(model.body, model.jacket, new PartBuild(1, 1, 1,
 			(build.chest() - 1f) * PartBuild.PUSH,
 			(build.belly() - 1f) * PartBuild.PUSH,
-			roundness));
+			0f));
 
-		set(model.rightArm, model.rightSleeve, limb(build.arms(), roundness));
-		set(model.leftArm, model.leftSleeve, limb(build.arms(), roundness));
-		set(model.rightLeg, model.rightPants, limb(build.legs(), roundness));
-		set(model.leftLeg, model.leftPants, limb(build.legs(), roundness));
+		// Neither the arms nor the legs are told anything about their own size any
+		// more. They are told where they are, and they ask.
+		set(model.rightArm, model.rightSleeve, PartBuild.NONE);
+		set(model.leftArm, model.leftSleeve, PartBuild.NONE);
+		set(model.rightLeg, model.rightPants, PartBuild.NONE);
+		set(model.leftLeg, model.leftPants, PartBuild.NONE);
 
 		// The head is its own setting rather than something the body drags along
 		// with it, and it is one by default. A face is drawn on that cube, and
@@ -101,6 +105,13 @@ public final class BodyBuilder {
 			attach(model, build);
 			stoop(model, build.stoop());
 		}
+
+		// Places last of all, and that ordering is not tidiness. A place carries the
+		// limb's turn so that the joint can give part of it back, so it has to be read
+		// after everything that turns a limb has had its say — the emote, and then the
+		// splay above. Read before, it missed the splay: the arms swung out and the
+		// shoulders, not knowing, swung with them and opened a wedge at the armpit.
+		place(build, model);
 	}
 
 	/**
@@ -231,6 +242,70 @@ public final class BodyBuilder {
 		return new PartBuild(thickness, thickness, thickness, 0, 0, roundness);
 	}
 
+	/**
+	 * Tells the torso and the legs which part of a body they are.
+	 *
+	 * Every frame and to every one of them, including the frames where the answer is
+	 * "nothing" — an ordinary character clears the four of them and is handed back to
+	 * vanilla to draw. Clearing only when there is something to clear is the bug that
+	 * has already come up three times here: a part that is not drawn never clears
+	 * itself, and the model belongs to everybody.
+	 *
+	 * A limb's own turn is read once and given to the limb and its layer together.
+	 * A trouser leg has no rotation of its own — it inherits through the pose stack —
+	 * so letting each part read its own would hold the leg's top band still and let
+	 * the trouser's swing over it.
+	 */
+	private static void place(BodyShape shape, PlayerModel model) {
+		boolean shaped = !shape.isDefault();
+		placeOne(model.body, shaped ? torsoPlace(shape, false) : null);
+		placeOne(model.jacket, shaped ? torsoPlace(shape, true) : null);
+
+		limbPlace(shape, model.rightLeg, model.rightPants, BodyPlace.Kind.LEG, -1f);
+		limbPlace(shape, model.leftLeg, model.leftPants, BodyPlace.Kind.LEG, 1f);
+		limbPlace(shape, model.rightArm, model.rightSleeve, BodyPlace.Kind.ARM, -1f);
+		limbPlace(shape, model.leftArm, model.leftSleeve, BodyPlace.Kind.ARM, 1f);
+	}
+
+	private static BodyPlace torsoPlace(BodyShape shape, boolean layer) {
+		return new BodyPlace(shape, BodyPlace.Kind.TORSO, 1f, 0f, 0f, 0f, layer, 0f, 0f, 0f);
+	}
+
+	/**
+	 * Tells a limb and the layer over it where they are, in the same words.
+	 *
+	 * Both are given the limb's own half-width and the limb's own turn. A sleeve
+	 * measures a quarter-pixel wider than the arm and has no rotation of its own, so
+	 * a layer left to work either out for itself would draw a slightly fatter arm
+	 * and swing a shoulder the arm had been holding still.
+	 */
+	private static void limbPlace(BodyShape shape, ModelPart limb, ModelPart layer,
+			BodyPlace.Kind kind, float side) {
+		if (shape.isDefault()) {
+			placeOne(limb, null);
+			placeOne(layer, null);
+			return;
+		}
+		// Where the limb hangs, not where the pose has left it: the field is described
+		// against the model at rest, and the pose is what the joint is about to hand
+		// back. A leg mid-stride has moved; its resting height has not.
+		float pivotY = limb.getInitialPose().y();
+		float pivotX = side * Math.abs(limb.getInitialPose().x());
+		// In pixels, from the limb's own corners: an extent is measured in blocks,
+		// which is a sixteenth of what the field speaks.
+		float base = ((BendablePart) (Object) limb).npcStudio$extent().halfX() * 16f;
+
+		placeOne(limb, new BodyPlace(shape, kind, side, pivotY, pivotX, base, false,
+			limb.xRot, limb.yRot, limb.zRot));
+		placeOne(layer, new BodyPlace(shape, kind, side, pivotY, pivotX, base, true,
+			limb.xRot, limb.yRot, limb.zRot));
+	}
+
+	private static void placeOne(ModelPart part, BodyPlace place) {
+		if (part == null) return;
+		((BendablePart) (Object) part).npcStudio$setPlace(place);
+	}
+
 	private static void set(ModelPart part, ModelPart layer, PartBuild build) {
 		shape(part, build);
 		if (layer == null) return;
@@ -328,22 +403,42 @@ public final class BodyBuilder {
 		// sleeve floating beside a bare arm. The vertex thickening above is the
 		// opposite case and is set on both, because that is not a transform and is
 		// not inherited.
-		float shoulder = BODY_HALF * (shape.shoulders() - 1f)
-			+ LIMB_HALF * (shape.arms() - 1f);
-		model.rightArm.x -= shoulder;
-		model.leftArm.x += shoulder;
-
-		// The legs follow the pelvis rather than being the pelvis. Hips widen the
-		// bottom of the torso — that is done in the build above — and the legs move
-		// out from under it by however far their own resting position has been
-		// carried, so they stay under the body instead of beside it.
+		// The arms are no longer moved either. Their inner face is the torso's side at
+		// the shoulder line, which the field says outright, so there is nothing left
+		// for a shift to correct. What is left is the one thing a shift cannot do:
+		// turn.
 		//
-		// This was the wrong way round before: the slider moved the legs apart and
-		// left the torso alone, which is a character doing the splits rather than
-		// one with hips.
-		float hip = Math.abs(model.rightLeg.getInitialPose().x()) * (shape.hips() - 1f)
-			+ LIMB_HALF * (shape.legs() - 1f);
-		model.rightLeg.x -= hip;
-		model.leftLeg.x += hip;
+		// Out of the way of the hips. An arm hangs from a shoulder ten pixels
+		// above the hip line with its inner face at four; a pelvis wider than that
+		// reaches in behind it. Sliding the arm across would clear the hip and take
+		// the shoulder off the top of the torso, and the shoulder is the one point
+		// that must not move — so the arm turns about it, which is what a person
+		// does. Added to the pose rather than assigned, like everything here, so an
+		// emote keeps its arms.
+		// A longer leg grows downwards, because a limb hangs from its pivot and the
+		// pivot is the hip. The entity does not move, so the whole model comes up by
+		// what the legs went down by — otherwise a tall character stands in the ground
+		// up to its ankles. Obvious in a picture, invisible in the arithmetic that
+		// produced it, which is how it was found.
+		float lift = com.mopicmp.npcstudio.entity.BodyChain.lift(shape, 12f);
+		if (lift != 0) {
+			for (ModelPart carried : new ModelPart[] { model.head, model.body,
+					model.rightArm, model.leftArm, model.rightLeg, model.leftLeg }) {
+				carried.y -= lift;
+			}
+		}
+
+		float splay = com.mopicmp.npcstudio.entity.BodyField.armSplay(shape);
+		if (splay != 0) {
+			model.rightArm.zRot += splay;
+			model.leftArm.zRot -= splay;
+		}
+
+		// The legs are not moved at all any more, and that is the point of the whole
+		// rewrite. Moving a limb can line one edge up with another; it can never make
+		// two surfaces the same surface. The field puts every point of a thigh where
+		// the pelvis says it goes, so there is nothing left to correct — and the
+		// correction that used to be here was, at bottom, an apology for the pelvis
+		// and the thigh being worked out separately.
 	}
 }

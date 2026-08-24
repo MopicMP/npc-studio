@@ -73,17 +73,48 @@ public class BodyShapeScreen extends Screen {
 		this.shape = this.asFound;
 	}
 
+	/**
+	 * Whether the figure is drawn beside the sliders.
+	 *
+	 * On a screen of its own it was most of the point — a belly is two pixels and
+	 * nobody judges two pixels from a number. In the workspace the character is in
+	 * the viewport, being drawn properly, and this figure was a dark rectangle
+	 * taking two thirds of the panel to show nothing.
+	 */
+	private boolean showsFigure() {
+		return !com.mopicmp.npcstudio.client.workspace.WorkspaceScreen.embedded();
+	}
+
+	private int panelWidth() {
+		return showsFigure() ? PANEL : Math.max(120, width - MARGIN * 2);
+	}
+
+	private int panelLeft() {
+		return showsFigure() ? width - PANEL - MARGIN : MARGIN;
+	}
+
+	/**
+	 * How tall the controls come out, so a panel can decide whether to scroll.
+	 *
+	 * Counted the same way {@code init} lays them out rather than measured
+	 * afterwards, because the panel has to know before anything is built.
+	 */
+	public int contentHeight() {
+		int presets = (BodyShape.PRESETS.size() + 2) / 3;
+		return MARGIN + 16 + presets * 20 + 30 + ROW * 11 + 16 + 20 + 24 + 24 + 20 + MARGIN;
+	}
+
 	@Override
 	protected void init() {
 		ShapeEditing.begin(entityId, shape);
 
-		int x = width - PANEL - MARGIN;
+		int x = panelLeft();
 		int y = MARGIN + 16;
 
 		// Presets first, because most visits end here. Wrapped rather than in one
 		// row: there are seven of them and the panel is not wide.
 		int at = x;
-		int wide = (PANEL - 8) / 3;
+		int wide = (panelWidth() - 8) / 3;
 		for (int i = 0; i < BodyShape.PRESETS.size(); i++) {
 			BodyShape.Preset preset = BodyShape.PRESETS.get(i);
 			if (i > 0 && i % 3 == 0) {
@@ -96,95 +127,84 @@ public class BodyShapeScreen extends Screen {
 		}
 		y += 30;
 
-		slider(x, y, "плечи", () -> shape.shoulders(), v -> take(withShoulders(v)));
+		slider(x, y, "плечи", () -> shape.shoulders(), v -> take(with(SHOULDERS, v)));
 		y += ROW;
-		slider(x, y, "грудь", () -> shape.chest(), v -> take(withChest(v)));
+		slider(x, y, "грудь", () -> shape.chest(), v -> take(with(CHEST, v)));
 		y += ROW;
-		slider(x, y, "живот", () -> shape.belly(), v -> take(withBelly(v)));
+		slider(x, y, "живот", () -> shape.belly(), v -> take(with(BELLY, v)));
 		y += ROW;
-		slider(x, y, "бёдра", () -> shape.hips(), v -> take(withHips(v)));
+		slider(x, y, "бёдра", () -> shape.hips(), v -> take(with(HIPS, v)));
 		y += ROW;
-		slider(x, y, "руки", () -> shape.arms(), v -> take(withArms(v)));
+		slider(x, y, "руки", () -> shape.arms(), v -> take(with(ARMS, v)));
 		y += ROW;
-		slider(x, y, "ноги", () -> shape.legs(), v -> take(withLegs(v)));
+		slider(x, y, "ноги", () -> shape.legs(), v -> take(with(LEGS, v)));
 		y += ROW;
-		slider(x, y, "голова", () -> shape.head(), v -> take(withHead(v)));
+		slider(x, y, "голова", () -> shape.head(), v -> take(with(HEAD, v)));
 		y += ROW + 6;
 
-		// The two that are not scales, kept apart from the seven that are.
-		addRenderableWidget(new FlatSlider(x, y, PANEL, 18, "округлость",
-			0, 1, 0.02, GOOD, () -> shape.roundness(), v -> take(withRoundness(v.floatValue()))));
+		// The three that are not scales, kept apart from the seven that are. Relief
+		// sits with them rather than with the girths: it does not make a character
+		// bigger anywhere, it decides whether the limbs have knees and ankles at all.
+		addRenderableWidget(new FlatSlider(x, y, panelWidth(), 18, "рост",
+			BodyShape.MIN_HEIGHT, BodyShape.MAX_HEIGHT, 0.01, GOOD,
+			() -> shape.height(), v -> take(with(HEIGHT, v.floatValue()))));
 		y += ROW;
-		addRenderableWidget(new FlatSlider(x, y, PANEL, 18, "осанка",
+		addRenderableWidget(new FlatSlider(x, y, panelWidth(), 18, "перехват",
+			0, BodyShape.MAX_TAPER, 0.05, GOOD,
+			() -> shape.taper(), v -> take(with(TAPER, v.floatValue()))));
+		y += ROW;
+		addRenderableWidget(new FlatSlider(x, y, panelWidth(), 18, "мягкость",
+			0, 1, 0.02, GOOD, () -> shape.softness(), v -> take(with(SOFTNESS, v.floatValue()))));
+		y += ROW;
+		addRenderableWidget(new FlatSlider(x, y, panelWidth(), 18, "осанка",
 			-BodyShape.MAX_STOOP, BodyShape.MAX_STOOP, 0.01, GOOD,
-			() -> shape.stoop(), v -> take(withStoop(v.floatValue()))));
+			() -> shape.stoop(), v -> take(with(STOOP, v.floatValue()))));
 		y += ROW + 10;
 
-		addRenderableWidget(new FlatButton(x, y, PANEL, 20,
+		addRenderableWidget(new FlatButton(x, y, panelWidth(), 20,
 			Component.literal("готово"), GOOD, this::keep));
 		y += 24;
-		addRenderableWidget(new FlatButton(x, y, PANEL / 2 - 2, 20,
+		addRenderableWidget(new FlatButton(x, y, panelWidth() / 2 - 2, 20,
 			Component.literal("как у костюма"), ACCENT, this::fromCostume));
-		addRenderableWidget(new FlatButton(x + PANEL / 2 + 2, y, PANEL / 2 - 2, 20,
+		addRenderableWidget(new FlatButton(x + panelWidth() / 2 + 2, y, panelWidth() / 2 - 2, 20,
 			Component.literal("в костюм"), ACCENT, this::toCostume));
 		y += 24;
-		addRenderableWidget(new FlatButton(x, y, PANEL, 20,
+		addRenderableWidget(new FlatButton(x, y, panelWidth(), 20,
 			Component.literal("отмена"), TEXT_DIM, this::onClose));
 	}
 
 	private void slider(int x, int y, String label, DoubleSupplier value, Consumer<Float> set) {
-		addRenderableWidget(new FlatSlider(x, y, PANEL, 18, label,
+		addRenderableWidget(new FlatSlider(x, y, panelWidth(), 18, label,
 			BodyShape.MIN_SCALE, BodyShape.MAX_SCALE, 0.01, ACCENT,
 			value, picked -> set.accept(picked.floatValue())));
 	}
 
-	// The record has nine components and no wither, so these are the withers. Nine
-	// one-line methods rather than a builder, because a builder for a value this
-	// small is more machinery than the thing it builds.
-	private BodyShape withShoulders(float v) {
-		return new BodyShape(v, shape.hips(), shape.belly(), shape.arms(), shape.legs(),
-			shape.chest(), shape.head(), shape.roundness(), shape.stoop());
+	/**
+	 * The record has no wither, so this is the wither: every value, one changed.
+	 *
+	 * One method rather than ten one-liners. Ten of them was already dull and became
+	 * dangerous the moment a tenth value arrived — every one of them had to be
+	 * remembered, and the one that was forgotten would not fail to compile. It would
+	 * quietly reset somebody's relief the next time they touched a different slider.
+	 */
+	private BodyShape with(int which, float v) {
+		return new BodyShape(
+			which == SHOULDERS ? v : shape.shoulders(),
+			which == HIPS ? v : shape.hips(),
+			which == BELLY ? v : shape.belly(),
+			which == ARMS ? v : shape.arms(),
+			which == LEGS ? v : shape.legs(),
+			which == CHEST ? v : shape.chest(),
+			which == HEAD ? v : shape.head(),
+			which == SOFTNESS ? v : shape.softness(),
+			which == STOOP ? v : shape.stoop(),
+			which == HEIGHT ? v : shape.height(),
+			which == TAPER ? v : shape.taper());
 	}
 
-	private BodyShape withHips(float v) {
-		return new BodyShape(shape.shoulders(), v, shape.belly(), shape.arms(), shape.legs(),
-			shape.chest(), shape.head(), shape.roundness(), shape.stoop());
-	}
-
-	private BodyShape withBelly(float v) {
-		return new BodyShape(shape.shoulders(), shape.hips(), v, shape.arms(), shape.legs(),
-			shape.chest(), shape.head(), shape.roundness(), shape.stoop());
-	}
-
-	private BodyShape withArms(float v) {
-		return new BodyShape(shape.shoulders(), shape.hips(), shape.belly(), v, shape.legs(),
-			shape.chest(), shape.head(), shape.roundness(), shape.stoop());
-	}
-
-	private BodyShape withLegs(float v) {
-		return new BodyShape(shape.shoulders(), shape.hips(), shape.belly(), shape.arms(), v,
-			shape.chest(), shape.head(), shape.roundness(), shape.stoop());
-	}
-
-	private BodyShape withChest(float v) {
-		return new BodyShape(shape.shoulders(), shape.hips(), shape.belly(), shape.arms(),
-			shape.legs(), v, shape.head(), shape.roundness(), shape.stoop());
-	}
-
-	private BodyShape withHead(float v) {
-		return new BodyShape(shape.shoulders(), shape.hips(), shape.belly(), shape.arms(),
-			shape.legs(), shape.chest(), v, shape.roundness(), shape.stoop());
-	}
-
-	private BodyShape withRoundness(float v) {
-		return new BodyShape(shape.shoulders(), shape.hips(), shape.belly(), shape.arms(),
-			shape.legs(), shape.chest(), shape.head(), v, shape.stoop());
-	}
-
-	private BodyShape withStoop(float v) {
-		return new BodyShape(shape.shoulders(), shape.hips(), shape.belly(), shape.arms(),
-			shape.legs(), shape.chest(), shape.head(), shape.roundness(), v);
-	}
+	private static final int SHOULDERS = 0, HIPS = 1, BELLY = 2, ARMS = 3, LEGS = 4;
+	private static final int CHEST = 5, HEAD = 6, SOFTNESS = 7, STOOP = 8;
+	private static final int HEIGHT = 9, TAPER = 10;
 
 	// ---------------------------------------------------------- the actions
 
@@ -202,7 +222,7 @@ public class BodyShapeScreen extends Screen {
 	private void keep() {
 		kept = true;
 		send(NpcPayloads.Shape.Verb.SET);
-		minecraft.setScreenAndShow(parent);
+		leave();
 	}
 
 	/**
@@ -225,7 +245,7 @@ public class BodyShapeScreen extends Screen {
 		// Let go locally as well, or the working copy would keep showing the build
 		// that was just thrown away.
 		ShapeEditing.end();
-		minecraft.setScreenAndShow(parent);
+		leave();
 	}
 
 	@Override
@@ -235,7 +255,7 @@ public class BodyShapeScreen extends Screen {
 		// this screen was showing.
 		if (!kept) shape = asFound;
 		ShapeEditing.end();
-		minecraft.setScreenAndShow(parent);
+		leave();
 	}
 
 	@Override
@@ -251,7 +271,7 @@ public class BodyShapeScreen extends Screen {
 	@Override
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		if (super.mouseClicked(event, doubleClick)) return true;
-		if (event.x() < width - PANEL - MARGIN * 2) {
+		if (showsFigure() && event.x() < panelLeft() - MARGIN) {
 			dragging = true;
 			dragFrom = event.x();
 			dragFromY = event.y();
@@ -294,11 +314,11 @@ public class BodyShapeScreen extends Screen {
 		graphics.fill(0, 0, width, height, CANVAS);
 		graphics.text(font, title, MARGIN, MARGIN, TEXT);
 
-		int panelLeft = width - PANEL - MARGIN * 2;
+		int panelLeft = panelLeft() - MARGIN;
 		graphics.fill(panelLeft, 0, width, height, PANEL_FILL);
 		graphics.fill(panelLeft, 0, panelLeft + 1, height, EDGE);
 
-		drawFigure(graphics, panelLeft);
+		if (showsFigure()) drawFigure(graphics, panelLeft);
 
 		if (!notice.isEmpty()) {
 			graphics.text(font, Component.literal(notice), MARGIN, height - 12, GOOD);
@@ -333,4 +353,17 @@ public class BodyShapeScreen extends Screen {
 	public boolean isPauseScreen() {
 		return false;
 	}
+
+	/**
+	 * Goes back where it came from — unless there is nowhere to go back to.
+	 *
+	 * A null parent means this is living inside the workspace as a panel, and a
+	 * panel has no "back": the thing behind it is the rest of the workspace, and
+	 * handing the display to null would close all of it. So leaving becomes
+	 * staying, which is what a panel does when you have finished with it.
+	 */
+	private void leave() {
+		if (parent != null) minecraft.setScreenAndShow(parent);
+	}
+
 }

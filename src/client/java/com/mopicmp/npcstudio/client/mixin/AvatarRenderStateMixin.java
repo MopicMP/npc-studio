@@ -52,6 +52,18 @@ public class AvatarRenderStateMixin implements GestureHolder {
 		npcStudio$eyes = eyes;
 	}
 
+	@Unique private com.mopicmp.npcstudio.client.scene.Playing.Sample npcStudio$staged;
+
+	@Override
+	public com.mopicmp.npcstudio.client.scene.Playing.Sample npcStudio$staged() {
+		return npcStudio$staged;
+	}
+
+	@Override
+	public void npcStudio$setStaged(com.mopicmp.npcstudio.client.scene.Playing.Sample staged) {
+		npcStudio$staged = staged;
+	}
+
 	@Override
 	public float npcStudio$gestureStrength() {
 		return npcStudio$strength;

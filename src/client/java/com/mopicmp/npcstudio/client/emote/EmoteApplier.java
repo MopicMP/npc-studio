@@ -87,7 +87,7 @@ public final class EmoteApplier {
 	 * The outer layer has to be told separately even though it hangs off the
 	 * limb: it is a box of its own, and a box only knows how to cut itself.
 	 */
-	private static void bend(ModelPart part, ModelPart layer, float radians) {
+	public static void bend(ModelPart part, ModelPart layer, float radians) {
 		// Cast through Object because the class is final and knows nothing of this
 		// interface at compile time — the mixin is what puts the two together, and
 		// it does so after the compiler has stopped looking.

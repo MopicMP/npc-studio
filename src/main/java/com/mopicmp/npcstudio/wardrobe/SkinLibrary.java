@@ -224,8 +224,12 @@ public final class SkinLibrary {
 		for (int i = 0; i < entries.size(); i++) {
 			Entry entry = entries.get(i);
 			if (!ids.contains(entry.id())) continue;
+			// The face comes along, like the build. Leaving it off here is what made
+			// a marking somebody had made by hand vanish the moment they filed the
+			// costume on another shelf — and it did not vanish visibly, it came back
+			// as the reading's own guess after the next reload.
 			entries.set(i, new Entry(entry.id(), entry.label(), category, group,
-				entry.fingerprint(), entry.shape()));
+				entry.fingerprint(), entry.shape(), entry.face()));
 			changed = true;
 		}
 		if (changed) write();
@@ -250,7 +254,7 @@ public final class SkinLibrary {
 		if (wanted.isEmpty()) return;
 		for (Entry entry : wanted) {
 			entries.add(new Entry(nextId(), entry.label(), category, group,
-				entry.fingerprint(), entry.shape()));
+				entry.fingerprint(), entry.shape(), entry.face()));
 		}
 		write();
 	}
@@ -260,7 +264,7 @@ public final class SkinLibrary {
 			if (!entries.get(i).id().equals(id)) continue;
 			Entry entry = entries.get(i);
 			entries.set(i, new Entry(entry.id(), label, entry.category(), entry.group(),
-				entry.fingerprint(), entry.shape()));
+				entry.fingerprint(), entry.shape(), entry.face()));
 			write();
 			return;
 		}
@@ -281,7 +285,8 @@ public final class SkinLibrary {
 				&& (group.isEmpty() || entry.group().equals(group));
 			if (!hit) continue;
 			entries.set(i, new Entry(entry.id(), entry.label(),
-				group.isEmpty() ? "" : category, "", entry.fingerprint(), entry.shape()));
+				group.isEmpty() ? "" : category, "", entry.fingerprint(),
+				entry.shape(), entry.face()));
 			changed = true;
 		}
 		if (changed) write();

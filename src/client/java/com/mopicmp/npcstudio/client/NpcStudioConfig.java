@@ -189,6 +189,15 @@ public final class NpcStudioConfig {
 	 */
 	public boolean useItemChannels;
 
+	/**
+	 * How the workspace panels were left.
+	 *
+	 * Kept because arranging them is work, and work that is thrown away every
+	 * time the game closes is work nobody does twice. Null means nobody has moved
+	 * anything yet and the shipped arrangement stands.
+	 */
+	public com.mopicmp.npcstudio.client.workspace.DockLayout.SavedDock workspace;
+
 	private static NpcStudioConfig loaded;
 
 	public static NpcStudioConfig get() {

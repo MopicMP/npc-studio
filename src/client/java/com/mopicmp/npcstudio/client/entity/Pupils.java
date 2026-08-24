@@ -39,12 +39,46 @@ public final class Pupils {
 	private static final float WIDEST = 1f;
 	private static final float NARROWEST = -0.5f;
 
-	/** How wide the pupil goes in the pitch dark, and how narrow in full sun. */
-	private static final float IN_DARK = 0.75f;
+	/**
+	 * How wide the pupil goes in the pitch dark, and how narrow in full sun.
+	 *
+	 * <h2>Why these came down, twice</h2>
+	 *
+	 * The dark was three quarters, on a scale where one means the iris has
+	 * swallowed the whole eye. Add the third that somebody standing near is worth
+	 * and the flutter on top and every character in every unlit room sat at the
+	 * ceiling — not wide-eyed, which happens, but permanently all pupil, which
+	 * reads as a doll rather than a person.
+	 *
+	 * Lowering it was not enough, and it is worth writing down why, because the
+	 * number was never the whole fault. The drawing took this as a distance in
+	 * model pixels rather than as the share of the eye it claims to be, and on an
+	 * eye drawn with any care a third of a pixel already reaches the far side of
+	 * the socket. So the ceiling was much lower than the scale said, and every
+	 * value above roughly a tenth looked identical. That is fixed where it lived,
+	 * in the drawing; these are set for the scale as it now actually behaves.
+	 *
+	 * Which leaves them, checked by drawing the face and looking at it: a fifth of
+	 * the white given up in the pitch dark, a third with somebody at arm's length,
+	 * and none of it at noon — where instead the iris gives up a share of itself.
+	 *
+	 * A fifth sounds timid and is not, because what the marking calls the iris is
+	 * the whole coloured part of the eye and on the reported face that is already
+	 * half of it. Half the white on top of that is three quarters of the eye gone
+	 * dark, which is the picture that was being complained about.
+	 */
+	private static final float IN_DARK = 0.22f;
 	private static final float IN_SUN = -0.4f;
 
-	/** How much somebody standing close to the character is worth. */
-	private static final float NOTICED = 0.3f;
+	/**
+	 * How much somebody standing close to the character is worth.
+	 *
+	 * A third of what it was. It is a second-order thing — a flicker of noticing
+	 * on top of however dark-adapted the eye already is — and at three tenths it
+	 * was as loud as the light itself, which put the two together at the ceiling in
+	 * any room without a torch in it.
+	 */
+	private static final float NOTICED = 0.08f;
 
 	/** How near counts as close, in blocks, and how far still counts at all. */
 	private static final float CLOSE = 3f;

@@ -33,6 +33,18 @@ public final class NpcStudioNet {
 
 		PayloadTypeRegistry.clientboundPlay().register(NpcPayloads.Details.TYPE, NpcPayloads.Details.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(NpcPayloads.Open.TYPE, NpcPayloads.Open.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(
+			NpcPayloads.PlaceModel.TYPE, NpcPayloads.PlaceModel.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(
+			NpcPayloads.RemoveModel.TYPE, NpcPayloads.RemoveModel.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(
+			NpcPayloads.ModelDocument.TYPE, NpcPayloads.ModelDocument.CODEC);
+		// The same payload travels both ways: a client sends the model it drew, and
+		// the server hands it on to everybody else unchanged.
+		PayloadTypeRegistry.clientboundPlay().register(
+			NpcPayloads.ModelDocument.TYPE, NpcPayloads.ModelDocument.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(
+			NpcPayloads.SolidModel.TYPE, NpcPayloads.SolidModel.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(NpcPayloads.Apply.TYPE, NpcPayloads.Apply.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(NpcPayloads.SkinUpload.TYPE, NpcPayloads.SkinUpload.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(NpcPayloads.SkinPlease.TYPE, NpcPayloads.SkinPlease.CODEC);
@@ -40,6 +52,7 @@ public final class NpcStudioNet {
 		PayloadTypeRegistry.clientboundPlay().register(NpcPayloads.SkinFor.TYPE, NpcPayloads.SkinFor.CODEC);
 
 		PayloadTypeRegistry.serverboundPlay().register(WardrobePayloads.Please.TYPE, WardrobePayloads.Please.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(NpcPayloads.Place.TYPE, NpcPayloads.Place.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(WardrobePayloads.PicturePlease.TYPE, WardrobePayloads.PicturePlease.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(WardrobePayloads.Edit.TYPE, WardrobePayloads.Edit.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(WardrobePayloads.Wear.TYPE, WardrobePayloads.Wear.CODEC);
@@ -50,6 +63,22 @@ public final class NpcStudioNet {
 		PayloadTypeRegistry.clientboundPlay().register(WardrobePayloads.Library.TYPE, WardrobePayloads.Library.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(WardrobePayloads.Picture.TYPE, WardrobePayloads.Picture.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(WardrobePayloads.Versions.TYPE, WardrobePayloads.Versions.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(WardrobePayloads.Marks.TYPE, WardrobePayloads.Marks.CODEC);
+
+		PayloadTypeRegistry.serverboundPlay().register(
+			ScenePayloads.Please.TYPE, ScenePayloads.Please.CODEC);
+		// Out in one piece and back in several. The two directions have different
+		// ceilings — the wire allows a server far more room than a client — and a
+		// scene with a minute of recording in it is past what a client may send at
+		// once, so every scene goes up in pieces and comes down whole.
+		PayloadTypeRegistry.serverboundPlay().register(
+			ScenePayloads.Part.TYPE, ScenePayloads.Part.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(
+			ScenePayloads.Document.TYPE, ScenePayloads.Document.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(
+			ScenePayloads.Gone.TYPE, ScenePayloads.Gone.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(
+			ScenePayloads.Gone.TYPE, ScenePayloads.Gone.CODEC);
 
 		// The engine already refuses an option the player was not offered, so a
 		// client that lies gets an error rather than a branch it should not reach.
@@ -78,6 +107,14 @@ public final class NpcStudioNet {
 
 		ServerPlayNetworking.registerGlobalReceiver(NpcPayloads.Open.TYPE, (payload, context) ->
 			NpcEditing.open(context.player(), payload.entityId()));
+		ServerPlayNetworking.registerGlobalReceiver(NpcPayloads.PlaceModel.TYPE, (payload, context) ->
+			NpcEditing.placeModel(context.player(), payload.name()));
+		ServerPlayNetworking.registerGlobalReceiver(NpcPayloads.RemoveModel.TYPE, (payload, context) ->
+			NpcEditing.removeModel(context.player(), payload.entityId()));
+		ServerPlayNetworking.registerGlobalReceiver(NpcPayloads.ModelDocument.TYPE,
+			(payload, context) -> NpcEditing.takeModel(context.player(), payload));
+		ServerPlayNetworking.registerGlobalReceiver(NpcPayloads.SolidModel.TYPE,
+			(payload, context) -> NpcEditing.solidModel(context.player(), payload));
 		ServerPlayNetworking.registerGlobalReceiver(NpcPayloads.Apply.TYPE, (payload, context) ->
 			NpcEditing.apply(context.player(), payload));
 		ServerPlayNetworking.registerGlobalReceiver(NpcPayloads.SkinUpload.TYPE, (payload, context) ->
@@ -86,6 +123,8 @@ public final class NpcStudioNet {
 			NpcEditing.sendSkin(context.player(), payload.entityId()));
 		ServerPlayNetworking.registerGlobalReceiver(NpcPayloads.Shape.TYPE, (payload, context) ->
 			NpcEditing.reshape(context.player(), payload));
+		ServerPlayNetworking.registerGlobalReceiver(NpcPayloads.Place.TYPE, (payload, context) ->
+			NpcEditing.place(context.player(), payload));
 
 		ServerPlayNetworking.registerGlobalReceiver(WardrobePayloads.Please.TYPE, (payload, context) ->
 			com.mopicmp.npcstudio.wardrobe.Wardrobes.send(context.player()));
@@ -99,5 +138,12 @@ public final class NpcStudioNet {
 			com.mopicmp.npcstudio.wardrobe.Wardrobes.wear(context.player(), payload.entityId(), payload.costumeId()));
 		ServerPlayNetworking.registerGlobalReceiver(WardrobePayloads.MarkEyes.TYPE, (payload, context) ->
 			com.mopicmp.npcstudio.wardrobe.Wardrobes.markEyes(context.player(), payload));
+
+		ServerPlayNetworking.registerGlobalReceiver(ScenePayloads.Please.TYPE, (payload, context) ->
+			SceneEditing.sendAll(context.player()));
+		ServerPlayNetworking.registerGlobalReceiver(ScenePayloads.Part.TYPE, (payload, context) ->
+			SceneEditing.part(context.player(), payload));
+		ServerPlayNetworking.registerGlobalReceiver(ScenePayloads.Gone.TYPE, (payload, context) ->
+			SceneEditing.remove(context.player(), payload.name()));
 	}
 }

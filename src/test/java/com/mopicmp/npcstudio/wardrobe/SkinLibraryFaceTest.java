@@ -114,6 +114,43 @@ class SkinLibraryFaceTest {
 			"and on the layer it was marked on");
 	}
 
+	/**
+	 * Everything else a costume can have done to it leaves its face alone.
+	 *
+	 * Renaming, refiling, copying and emptying a category all rebuild the record,
+	 * and all four of them rebuilt it without the face. Nothing about that was
+	 * visible at the time — the character carried on blinking with the copy it had
+	 * been dressed in — so what it looked like from the outside was the mod having
+	 * forgotten the marking some time between one visit and the next, and made up
+	 * its own.
+	 */
+	@Test
+	@DisplayName("renaming, refiling and copying a costume keep the face it was marked with")
+	void theFaceSurvivesEverythingElse() throws Exception {
+		SkinLibrary library = new SkinLibrary(root);
+		String id = library.add("before", "shelf", "group", new byte[0]).id();
+		var marked = com.mopicmp.npcstudio.entity.FaceMask.of(MARKED);
+		library.relook(id, marked);
+
+		library.rename(id, "after");
+		assertEquals(marked, library.find(id).orElseThrow().face(), "renaming lost the face");
+
+		library.refile(java.util.List.of(id), "another", "elsewhere");
+		assertEquals(marked, library.find(id).orElseThrow().face(), "refiling lost the face");
+
+		library.copy(java.util.List.of(id), "third", "");
+		var copy = library.entries().stream()
+			.filter(entry -> entry.category().equals("third")).findFirst().orElseThrow();
+		assertEquals(marked, copy.face(), "the copy came out with no face");
+
+		library.dropCategory("another", "elsewhere");
+		assertEquals(marked, library.find(id).orElseThrow().face(),
+			"emptying a category lost the face");
+
+		// And all of it is still true once the file has been round-tripped.
+		assertEquals(marked, new SkinLibrary(root).find(id).orElseThrow().face());
+	}
+
 	/** A costume nobody has looked at stays as short in the file as it was. */
 	@Test
 	@DisplayName("a costume nobody marked writes no face at all")

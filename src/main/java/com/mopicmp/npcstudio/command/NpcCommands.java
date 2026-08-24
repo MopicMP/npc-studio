@@ -10,6 +10,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mopicmp.npcstudio.dialogue.runtime.DialogueEditing;
 import com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry;
 import com.mopicmp.npcstudio.dialogue.runtime.DialogueRuntime;
+import com.mopicmp.npcstudio.entity.ModelObject;
 import com.mopicmp.npcstudio.entity.NpcEntity;
 import com.mopicmp.npcstudio.entity.NpcStudioEntities;
 
@@ -53,11 +54,48 @@ public final class NpcCommands {
 				.then(Commands.argument("id", StringArgumentType.greedyString())
 					.suggests((context, builder) -> SharedSuggestionProvider.suggest(DialogueRegistry.names(), builder))
 					.executes(context -> edit(context, StringArgumentType.getString(context, "id")))))
+			.then(Commands.literal("model")
+				.then(Commands.argument("name", StringArgumentType.word())
+					.executes(context -> place(context,
+						StringArgumentType.getString(context, "name")))))
 			.then(Commands.literal("settings")
 				.executes(NpcCommands::settings))
 			.then(Commands.literal("answer")
 				.then(Commands.argument("option", IntegerArgumentType.integer(0))
 					.executes(context -> answer(context, IntegerArgumentType.getInteger(context, "option"))))));
+	}
+
+	/**
+	 * Puts a model where the caller stands.
+	 *
+	 * A command rather than a button in the modelling window, and that is a
+	 * deliberate first step rather than an oversight: only the server may add an
+	 * entity to a world, so a button would need a packet, and a packet needs
+	 * deciding who may send it and what happens when the name is one this server
+	 * has never heard of. The command answers all three by being a command —
+	 * permissions are already checked above, and the name is whatever was typed.
+	 *
+	 * The name is not checked against anything here. The server has no models: a
+	 * model is a document on the client that drew it, so what the server stores is
+	 * a name and what a client without that model sees is nothing. Refusing names
+	 * the server cannot verify would mean refusing all of them.
+	 */
+	private static int place(CommandContext<CommandSourceStack> context, String name) {
+		CommandSourceStack source = context.getSource();
+		ServerLevel level = source.getLevel();
+		Vec3 at = source.getPosition();
+
+		ModelObject object = ModelObject.TYPE.create(level, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+		if (object == null) {
+			source.sendFailure(Component.literal("Could not make the object."));
+			return 0;
+		}
+		object.snapTo(at.x, at.y, at.z, source.getRotation().y, 0);
+		object.setModel(name);
+		level.addFreshEntity(object);
+
+		source.sendSuccess(() -> Component.literal("Placed " + name + "."), true);
+		return 1;
 	}
 
 	/**

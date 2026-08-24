@@ -11,6 +11,10 @@ import com.mopicmp.npcstudio.dialogue.DialogueValidator;
 import com.mopicmp.npcstudio.dialogue.Node;
 import com.mopicmp.npcstudio.dialogue.Presentation;
 import com.mopicmp.npcstudio.net.EditorPayloads;
+import com.mopicmp.npcstudio.client.workspace.Icon;
+import com.mopicmp.npcstudio.client.workspace.IconTextButton;
+import com.mopicmp.npcstudio.client.workspace.IconTextButton.Spec;
+import com.mopicmp.npcstudio.client.workspace.WorkspaceScreen;
 
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -63,12 +67,28 @@ public class GraphEditorScreen extends Screen {
 		return open;
 	}
 
-	private final EditorState state;
+	/**
+	 * Not final any more, because a panel cannot be replaced by a new one of
+	 * itself the way a screen could. Restoring a draft swaps this instead.
+	 */
+	private EditorState state;
 	private final Map<String, Integer> x = new HashMap<>();
 	private final Map<String, Integer> y = new HashMap<>();
 
 	private int panX;
 	private int panY;
+
+	/**
+	 * How close the graph is drawn, one being life size.
+	 *
+	 * A conversation of thirty nodes does not fit a strip along the bottom of a
+	 * workspace at life size, and panning around one box at a time to see the
+	 * shape of it defeats the point of drawing it as a shape.
+	 */
+	private float zoom = 1f;
+
+	/** How far the node's own panel has been scrolled, when it is taller than the room. */
+	private int panelScroll;
 	private String dragging;
 	private boolean panning;
 
@@ -106,38 +126,58 @@ public class GraphEditorScreen extends Screen {
 		if (x.isEmpty()) layout();
 
 		int bar = height - 26;
-		int at = 8;
-		at = tool(at, bar, 58, "+ line", 0xFF4FC3F7, () -> add("line"));
-		at = tool(at, bar, 62, "+ choice", 0xFFBA68C8, () -> add("choice"));
-		at = tool(at, bar, 52, "+ end", 0xFF78909C, () -> add("end"));
-		at = tool(at, bar, 82, "+ action", 0xFFFF8A65, () -> add("animation"));
-		at = tool(at + 8, bar, 76, "re-arrange", 0xFFFFCA28, () -> { x.clear(); layout(); });
-		tool(at, bar, 62, "dialogues", 0xFF8A99A6,
-			() -> ClientPlayNetworking.send(new EditorPayloads.Browse()));
 
-		// Kept clear of the panel: the panel now runs the full height, and a save
-		// button underneath it would be a button you cannot press.
-		addRenderableWidget(new FlatButton(width - 72 - panelWidth(), bar, 64, 20,
-			Component.literal("save"), 0xFF66BB6A, this::save));
-		tool(at + 66, bar, 66, "settings", 0xFF8A99A6,
-			() -> minecraft.setScreenAndShow(new SettingsScreen(this)));
-		// The nearest character's own settings. Editing what somebody says and
-		// editing how they look are different jobs, but they are the same session,
-		// and closing the editor to go and crouch at an NPC is a detour through the
-		// world to reach a screen the game could simply show.
-		tool(at + 136, bar, 50, "npc", 0xFF8A99A6, () -> NpcSettingsButton.open(this));
-		tool(at + 190, bar, 56, "drafts", 0xFFFFCA28,
-			() -> minecraft.setScreenAndShow(new DraftsScreen(this, state.id(), this::restore)));
+		// One row, laid out by what there is room for rather than by what the
+		// labels happen to measure. It used to be eight fixed widths adding up to
+		// six hundred pixels, and in a panel the last three were past the edge —
+		// which is not only untidy, it is unreachable.
+		int across = width - 16 - panelWidth();
+		IconTextButton.row(8, bar, across, 20, java.util.List.of(
+			new Spec(Icon.ADD, Component.translatable("npc_studio.graph.line"),
+				0xFF4FC3F7, () -> add("line")),
+			new Spec(Icon.DIALOGUE, Component.translatable("npc_studio.graph.choice"),
+				0xFFBA68C8, () -> add("choice")),
+			new Spec(Icon.CHECK, Component.translatable("npc_studio.graph.end"),
+				0xFF78909C, () -> add("end")),
+			new Spec(Icon.PLAY, Component.translatable("npc_studio.graph.action"),
+				0xFFFF8A65, () -> add("animation")),
+			new Spec(Icon.RESET, Component.translatable("npc_studio.graph.rearrange"),
+				0xFFFFCA28, () -> { x.clear(); layout(); }),
+			new Spec(Icon.BROWSE, Component.translatable("npc_studio.graph.dialogues"),
+				0xFF8A99A6, () -> ClientPlayNetworking.send(new EditorPayloads.Browse())),
+			new Spec(Icon.SETTINGS, Component.translatable("npc_studio.graph.settings"),
+				0xFF8A99A6, () -> {
+					if (!WorkspaceScreen.embedded()) {
+						minecraft.setScreenAndShow(new SettingsScreen(this));
+					}
+				}),
+			// The nearest character's own settings. Editing what somebody says and
+			// editing how they look are different jobs but the same session.
+			new Spec(Icon.CHARACTER, Component.translatable("npc_studio.graph.npc"),
+				0xFF8A99A6, () -> NpcSettingsButton.open(this)),
+			new Spec(Icon.DRAFTS, Component.translatable("npc_studio.graph.drafts"),
+				0xFFFFCA28, () -> {
+					if (!WorkspaceScreen.embedded()) {
+						minecraft.setScreenAndShow(new DraftsScreen(this, state.id(), this::restore));
+					}
+				}),
+			new Spec(Icon.SAVE, Component.translatable("npc_studio.graph.save"),
+				0xFF66BB6A, this::save)), this::addRenderableWidget);
 
 		if (panel != null) {
-			panel.build(font, width - NodePanel.WIDTH, 0, height, this::addRenderableWidget);
+			// Built from above the top edge by however far it is scrolled, and
+			// anything landing outside the panel is not added at all. Simpler than
+			// clipping: a widget that was never added cannot be drawn over the
+			// canvas and cannot be clicked through it either.
+			panelScroll = Math.max(0, Math.min(panelScroll,
+				Math.max(0, panel.contentHeight() - height + 30)));
+			panel.build(font, width - NodePanel.WIDTH, -panelScroll, height + panelScroll,
+				widget -> {
+					if (widget.getY() < 0 || widget.getY() + widget.getHeight() > height) return;
+					addRenderableWidget(widget);
+				});
 		}
 		if (inline != null) addRenderableWidget(inline);
-	}
-
-	private int tool(int at, int bar, int width, String label, int accent, Runnable action) {
-		addRenderableWidget(new FlatButton(at, bar, width, 20, Component.literal(label), accent, action));
-		return at + width + 4;
 	}
 
 	private int panelWidth() {
@@ -282,11 +322,17 @@ public class GraphEditorScreen extends Screen {
 	public void pickAnimation(String current, java.util.function.Consumer<String> onPick) {
 		// The preview wears the skin of an NPC that actually uses this dialogue, so
 		// the gesture is judged on the character it will belong to.
+		java.util.function.Consumer<String> answer = picked -> {
+			onPick.accept(picked);
+			rebuild();
+		};
+		if (WorkspaceScreen.embedded()) {
+			com.mopicmp.npcstudio.client.workspace.Workspace.askAnimation(
+				new com.mopicmp.npcstudio.client.workspace.Workspace.Pick(current, answer));
+			return;
+		}
 		minecraft.setScreenAndShow(new AnimationPickerScreen(this, current,
-			() -> AnimationPickerScreen.lookFor(state.id()), picked -> {
-				onPick.accept(picked);
-				rebuild();
-			}));
+			() -> AnimationPickerScreen.lookFor(state.id()), answer));
 	}
 
 	public void deleteSelected() {
@@ -329,7 +375,31 @@ public class GraphEditorScreen extends Screen {
 	 */
 	private void restore(String json) {
 		EditorState restored = EditorState.from(json, state.otherNames());
+		if (WorkspaceScreen.embedded()) {
+			// A panel cannot replace itself with a second copy of itself. The
+			// restored dialogue takes over the one already here instead.
+			adopt(restored);
+			return;
+		}
 		minecraft.setScreenAndShow(new GraphEditorScreen(restored));
+	}
+
+	/**
+	 * Takes on another dialogue without becoming another screen.
+	 *
+	 * Everything worked out from the graph goes with it: the laid-out positions
+	 * belong to the graph that was here, and keeping them would leave the new
+	 * one's boxes standing where the old one's used to be.
+	 */
+	private void adopt(EditorState fresh) {
+		state = fresh;
+		panel = null;
+		inline = null;
+		x.clear();
+		y.clear();
+		panX = 0;
+		panY = 0;
+		rebuildWidgets();
 	}
 
 	public void saveResult(boolean ok, String message) {
@@ -388,8 +458,8 @@ public class GraphEditorScreen extends Screen {
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		if (super.mouseClicked(event, doubleClick)) return true;
 
-		int mx = (int) event.x() - panX;
-		int my = (int) event.y() - panY;
+		int mx = (int) (event.x() / zoom) - panX;
+		int my = (int) (event.y() / zoom) - panY;
 
 		for (int i = state.nodes().size() - 1; i >= 0; i--) {
 			Node node = state.nodes().get(i);
@@ -430,7 +500,9 @@ public class GraphEditorScreen extends Screen {
 				select(i);
 			} else {
 				int row = (my - by - TITLE_HEIGHT) / PORT_ROW;
-				if (row < rows.size()) openInline(node, row, bx + panX, by + panY);
+				if (row < rows.size()) {
+					openInline(node, row, (int) ((bx + panX) * zoom), (int) ((by + panY) * zoom));
+				}
 				else select(i);
 			}
 			return true;
@@ -445,13 +517,13 @@ public class GraphEditorScreen extends Screen {
 	@Override
 	public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
 		if (dragging != null) {
-			x.merge(dragging, (int) dx, Integer::sum);
-			y.merge(dragging, (int) dy, Integer::sum);
+			x.merge(dragging, (int) (dx / zoom), Integer::sum);
+			y.merge(dragging, (int) (dy / zoom), Integer::sum);
 			return true;
 		}
 		if (panning) {
-			panX += (int) dx;
-			panY += (int) dy;
+			panX += (int) (dx / zoom);
+			panY += (int) (dy / zoom);
 			return true;
 		}
 		return super.mouseDragged(event, dx, dy);
@@ -462,6 +534,45 @@ public class GraphEditorScreen extends Screen {
 		dragging = null;
 		panning = false;
 		return super.mouseReleased(event);
+	}
+
+	@Override
+	public boolean mouseScrolled(double mouseX, double mouseY, double amountX, double amountY) {
+		if (panel != null && mouseX >= width - NodePanel.WIDTH) {
+			panelScroll -= (int) (amountY * 16);
+			rebuildWidgets();
+			return true;
+		}
+
+		// Zoomed about the cursor, so whatever is under it stays under it. Zooming
+		// about the corner means chasing the thing being looked at across the
+		// canvas with the other hand.
+		float was = zoom;
+		zoom = net.minecraft.util.Mth.clamp(zoom * (float) Math.exp(amountY * 0.16), 0.3f, 2.5f);
+		if (zoom == was) return true;
+		panX += (int) (mouseX / zoom - mouseX / was);
+		panY += (int) (mouseY / zoom - mouseY / was);
+		return true;
+	}
+
+	private static final int KEY_DELETE = 261;
+
+	@Override
+	public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+		// Delete removes the selected node, which is the one gesture everybody
+		// tries first and the one thing the panel's own button was the only way to
+		// do. Not while a box is being typed in: there the key belongs to the text.
+		if (event.key() == KEY_DELETE && panel != null && inline == null && !typing()) {
+			deleteSelected();
+			rebuildWidgets();
+			return true;
+		}
+		return super.keyPressed(event);
+	}
+
+	/** Whether the keyboard belongs to a field rather than to the graph. */
+	private boolean typing() {
+		return getFocused() instanceof EditBox box && box.isFocused();
 	}
 
 	private void connect(String fromId, int exit, String toId) {
@@ -505,6 +616,8 @@ public class GraphEditorScreen extends Screen {
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
 		graphics.fill(0, 0, width, height, CANVAS);
+		graphics.pose().pushMatrix();
+		graphics.pose().scale(zoom, zoom);
 		grid(graphics);
 
 		for (Node from : state.nodes()) {
@@ -524,21 +637,26 @@ public class GraphEditorScreen extends Screen {
 			wire(graphics,
 				panX + x.getOrDefault(linkFrom, 0) + BOX_WIDTH,
 				panY + y.getOrDefault(linkFrom, 0) + TITLE_HEIGHT + linkExit * PORT_ROW + PORT_ROW / 2,
-				mouseX, mouseY, WIRE_LIVE);
+				(int) (mouseX / zoom), (int) (mouseY / zoom), WIRE_LIVE);
 		}
 
 		for (Node node : state.nodes()) box(graphics, node);
+		graphics.pose().popMatrix();
 
 		legend(graphics);
-		if (panel != null) panel.draw(graphics, font, width - NodePanel.WIDTH, 0, height);
+		if (panel != null) {
+			panel.draw(graphics, font, width - NodePanel.WIDTH, -panelScroll, height + panelScroll);
+		}
 
 		super.extractRenderState(graphics, mouseX, mouseY, delta);
 	}
 
 	private void grid(GuiGraphicsExtractor graphics) {
 		int step = 24;
-		for (int gx = panX % step; gx < width; gx += step) graphics.fill(gx, 0, gx + 1, height, GRID);
-		for (int gy = panY % step; gy < height; gy += step) graphics.fill(0, gy, width, gy + 1, GRID);
+		int across = (int) (width / zoom) + step;
+		int down = (int) (height / zoom) + step;
+		for (int gx = panX % step; gx < across; gx += step) graphics.fill(gx, 0, gx + 1, down, GRID);
+		for (int gy = panY % step; gy < down; gy += step) graphics.fill(0, gy, across, gy + 1, GRID);
 	}
 
 	private void box(GuiGraphicsExtractor graphics, Node node) {

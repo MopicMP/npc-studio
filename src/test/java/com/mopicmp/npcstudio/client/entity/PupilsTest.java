@@ -28,8 +28,16 @@ class PupilsTest {
 
 		assertTrue(dark > dim, "pitch dark should be wider than half lit: " + dark + " vs " + dim);
 		assertTrue(dim > bright, "half lit should be wider than full sun: " + dim + " vs " + bright);
-		assertTrue(dark > 0.5f, "in the dark the pupil should be plainly wide, not " + dark);
+		assertTrue(dark > 0.2f, "in the dark the pupil should be plainly wider, not " + dark);
 		assertTrue(bright < 0f, "in full sun it should be narrower than drawn, not " + bright);
+
+		// And this is the half that was missing, which is why the dark number was
+		// wrong for a year: it asked only for "wide" and got "as wide as it goes".
+		// A pupil already at the ceiling has nothing left to do when somebody walks
+		// up to it or when the character is startled, and a face whose eyes are all
+		// pupil in every unlit room reads as a doll rather than as a person.
+		assertTrue(dark + Pupils.attention(0f) < 0.9f,
+			"the dark must leave room above it for being noticed and being startled, not " + dark);
 	}
 
 	/** It changes gradually with the light rather than in steps. */
@@ -67,8 +75,26 @@ class PupilsTest {
 	@Test
 	@DisplayName("eyes widen at somebody who has come close")
 	void attentionWidensThem() {
-		assertTrue(Pupils.attention(1f) > 0.2f, "at arm's length the eyes should widen");
+		// That it widens, not by how much. The size of it was pinned here at better
+		// than a fifth, which is most of a wide-eyed face on its own — and pinning
+		// it is what let "the eyes are enormous at night" be a passing test: added
+		// to a dark-adapted eye it took the pair of them to the ceiling and held
+		// them there, which is what the next assertion is now for.
+		assertTrue(Pupils.attention(1f) > 0f, "at arm's length the eyes should widen");
 		assertEquals(0f, Pupils.attention(20f), 1e-5, "and not at somebody across a clearing");
+
+		// The complaint this pair of numbers actually has to answer: a character in
+		// an unlit room with somebody standing over it is dark-adapted, and is not
+		// all pupil. Everything at once — no light, arm's length, the flutter at
+		// whatever phase it happens to be — has to leave the white showing.
+		for (int id = 1; id <= 30; id++) {
+			for (int tick = 0; tick < 200; tick++) {
+				float wide = Pupils.wide(id, tick, 0, 1f);
+				assertTrue(wide < 0.4f,
+					"in the dark at arm's length the pupil reached " + wide
+						+ ", which leaves almost none of the eye");
+			}
+		}
 
 		float last = Pupils.attention(0f);
 		for (int step = 0; step <= 100; step++) {

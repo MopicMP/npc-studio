@@ -59,10 +59,19 @@ package com.mopicmp.npcstudio.client.skin;
  * one of them is already as far that way as its own white allows, and it stays
  * where it is while the other comes to meet it. Both then sit on the same side
  * of their own socket, which is what "both looking right" means.
+ *
+ * <h2>This says what the eye does; it no longer says where the quads go</h2>
+ *
+ * The rectangles below describe the movement over the eye as a whole — how far
+ * it slid, how far the pupil reached, which rows it kept. What actually gets
+ * drawn is that movement applied to the shape somebody marked, run by run, in
+ * {@link EyePaint}: an unmarked cell inside the eye's bounding box is skin, and
+ * skin does not move because an eye did.
  */
 public record Glance(
+		float shift,
 		float showFrom, float showTo, float showAt,
-		float fillFrom, float fillTo, int white,
+		float fillFrom, float fillTo, float white,
 		Strip erase, Strip pupil) {
 
 	/**
@@ -73,7 +82,7 @@ public record Glance(
 	 * in it. Stretching a single texel over two rows is what once turned the strip
 	 * behind a glancing eye into a flat block.
 	 */
-	public record Strip(float from, float to, float top, float bottom, int column) {
+	public record Strip(float from, float to, float top, float bottom, float column) {
 
 		/** Whether there is anything of it to draw. */
 		public boolean any() {
@@ -128,8 +137,15 @@ public record Glance(
 		float to = rightSide ? face.eyeInner() : MIRROR - face.eyeOuter();
 		float irisFrom = rightSide ? face.irisOuter() : MIRROR - face.irisInner();
 		float irisTo = rightSide ? face.irisInner() : MIRROR - face.irisOuter();
-		int whiteAt = rightSide ? face.whiteAt() : (int) MIRROR - 1 - face.whiteAt();
-		int irisAt = rightSide ? face.irisOuter() : (int) MIRROR - 1 - (face.irisInner() - 1);
+		// Mirrored by a texel, not by a whole unit. A unit and a texel are the same
+		// thing only on a plain sixty-four-wide skin; on a large one this put the
+		// borrowed column three texels away from the one it meant, which is most of
+		// why a glance on such a skin drew a piece of cheek where the white belongs.
+		float texel = face.texel();
+		float whiteAt = rightSide ? face.whiteAt() : MIRROR - texel - face.whiteAt();
+		// The iris is a strip from its outer edge to its inner one, so mirroring it
+		// is mirroring both edges: what was the inner edge becomes the near one.
+		float irisAt = rightSide ? face.irisOuter() : MIRROR - face.irisInner();
 
 		// A character's right is model −x, so looking right is u decreasing. Both
 		// eyes move the same way in the world; how far each may go is its own
@@ -174,18 +190,40 @@ public record Glance(
 		float pupilDown = irisDown;
 		if (resizes) {
 			if (reach >= 0) {
-				pupilFrom = Math.max(from, irisLow - reach);
-				pupilTo = Math.min(to, irisHigh + reach);
+				// A share of the room there is, not a number of pixels.
+				//
+				// <b>This is what made every character in an unlit room all pupil.</b>
+				// The number means "how much wider than drawn", nought to one, with
+				// one meaning the iris has filled its own eye — and it was then used
+				// as a distance in model pixels. On the eye it was written for those
+				// happen to agree, an iris one pixel wide in an eye two pixels wide
+				// having exactly one pixel of room. On any eye drawn with more care
+				// than that they do not, and a third of a pixel was enough to reach
+				// the far side of the socket and be clipped there. So darkness,
+				// somebody standing near and a wandering hundredth all piled onto a
+				// value that had been at its ceiling since the first of them.
+				//
+				// As a share it means the same thing on every face: a half is half
+				// the white gone, and only a one takes all of it.
+				pupilFrom = Math.max(from, irisLow - reach * (irisLow - from));
+				pupilTo = Math.min(to, irisHigh + reach * (to - irisHigh));
 				// Upwards there is usually nowhere to go, the iris being as tall as
 				// its own eye, and the socket says so rather than a guess.
-				pupilUp = Math.max(face.eyeTop() - HEAD, irisUp - reach);
-				pupilDown = Math.min(face.eyeBottom() - HEAD, irisDown + reach);
+				float eyeUp = face.eyeTop() - HEAD;
+				float eyeDown = face.eyeBottom() - HEAD;
+				pupilUp = Math.max(eyeUp, irisUp - reach * (irisUp - eyeUp));
+				pupilDown = Math.min(eyeDown, irisDown + reach * (eyeDown - irisDown));
 			} else {
 				// Closing pulls in from every side at once, and never past halfway:
 				// a pupil closed to nothing is not a bright day, it is a character
 				// with its eyes taken out.
-				float sideways = Math.min(-reach, (irisHigh - irisLow) * EACH_SIDE);
-				float upright = Math.min(-reach, (irisDown - irisUp) * EACH_SIDE);
+				//
+				// A share of the iris here too, and for the same reason: taken as a
+				// distance, closing an eye drawn four cells wide took the same
+				// absolute bite as closing one drawn one cell wide, which is a
+				// different amount of pupil on the two faces.
+				float sideways = -reach * (irisHigh - irisLow) * EACH_SIDE;
+				float upright = -reach * (irisDown - irisUp) * EACH_SIDE;
 				pupilFrom = irisLow + sideways;
 				pupilTo = irisHigh - sideways;
 				pupilUp = irisUp + upright;
@@ -209,7 +247,7 @@ public record Glance(
 			? new Strip(pupilFrom - MIDDLE, pupilTo - MIDDLE, pupilUp, pupilDown, irisAt)
 			: NONE;
 
-		return new Glance(showFrom - MIDDLE, showTo - MIDDLE, showFrom - shift,
+		return new Glance(shift, showFrom - MIDDLE, showTo - MIDDLE, showFrom - shift,
 			fillFrom - MIDDLE, fillTo - MIDDLE, whiteAt, erase, drawn);
 	}
 
