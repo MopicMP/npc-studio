@@ -223,6 +223,23 @@ public final class NpcCommands {
 		}
 		// The alarm as a percentage rather than a fraction: this is read at a glance
 		// while walking backwards, and "62%" is legible where "0.6183" is not.
+		// How much of the world's own racket is currently within earshot — the line
+		// that says whether the sound hooks are firing at all, which is otherwise
+		// indistinguishable from nothing having happened.
+		long now = npc.level().getGameTime();
+		int noises = 0;
+		for (var rumour : com.mopicmp.npcstudio.foe.Din.since(now)) {
+			if (com.mopicmp.npcstudio.foe.Noise.heard(npc.position().distanceTo(rumour.at()),
+					rumour.loudness(), rumour.carries()) > 0) {
+				noises++;
+			}
+		}
+		final int within = noises;
+		if (within > 0) {
+			source.sendSuccess(() -> Component.literal(
+				within + " noise" + (within == 1 ? "" : "s") + " in earshot"), false);
+		}
+
 		String said = "watching — " + watch.mood()
 			+ ", alarm " + Math.round(watch.alarm() * 100) + "%"
 			+ (quarry == null ? ", nothing noticed"

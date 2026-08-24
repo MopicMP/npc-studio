@@ -89,8 +89,21 @@ public final class Noise {
 	 * inaudible in practice.
 	 */
 	public static float heard(double distance, float loudness) {
-		if (loudness <= 0 || distance >= EARSHOT) return 0;
-		double carried = distance <= 1 ? 1 : 1 - Math.sqrt(distance / EARSHOT);
+		return heard(distance, loudness, EARSHOT);
+	}
+
+	/**
+	 * The same, for a noise that carries its own distance.
+	 *
+	 * Footsteps all carry the same way, so the constant serves them. Everything
+	 * else in the world does not: the game itself says an ordinary sound reaches
+	 * sixteen blocks and a loud one reaches proportionally further, which is how
+	 * dynamite crosses a valley and a pressure plate does not cross a room. That
+	 * distance belongs to the noise, so it is carried with it.
+	 */
+	public static float heard(double distance, float loudness, double earshot) {
+		if (loudness <= 0 || earshot <= 0 || distance >= earshot) return 0;
+		double carried = distance <= 1 ? 1 : 1 - Math.sqrt(distance / earshot);
 		float reaching = (float) (loudness * carried);
 		return reaching < FLOOR ? 0 : Math.clamp(reaching, 0f, 1f);
 	}

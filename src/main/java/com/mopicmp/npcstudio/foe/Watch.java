@@ -200,6 +200,27 @@ public final class Watch {
 			best = player;
 		}
 
+		// And then whatever the world itself banged, which has no author. A noise
+		// tells you a place and never a person: something happened over there, and
+		// finding out what means going and looking.
+		Din.Rumour loudest = null;
+		for (Din.Rumour rumour : Din.since(self.level().getGameTime())) {
+			float reaching = Noise.heard(
+				self.position().distanceTo(rumour.at()), rumour.loudness(), rumour.carries());
+			if (reaching > strength) {
+				strength = reaching;
+				loudest = rumour;
+			}
+		}
+		if (loudest != null) {
+			// Deliberately keeps whatever quarry there was rather than clearing it: a
+			// crash from over there does not mean she has stopped caring about the
+			// person she was already watching, it means there is now somewhere to look.
+			bySight = false;
+			lastKnown = loudest.at();
+			return;
+		}
+
 		if (best == null) return;
 		quarry = best;
 		// Remembered here and only here: this is the moment of noticing, and where
@@ -389,6 +410,10 @@ public final class Watch {
 	 */
 	public Vec3 lookingAt() {
 		if (mood == Alarm.Mood.CALM) return null;
+		// A noise with no author is a place and only a place, so that is where she
+		// looks. Nothing to track, nothing to be certain of, and no way to know it was
+		// you rather than a door.
+		if (!bySight && quarry == null) return lastKnown;
 		// While the quarry is being noticed right now — by either sense — its live
 		// position; the moment it is not, wherever it was last noticed. That switch
 		// is the fix for tracking somebody through a wall, see lastKnown.
