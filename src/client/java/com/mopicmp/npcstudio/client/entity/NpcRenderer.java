@@ -94,6 +94,9 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 		var editing = ShapeEditing.of(npc.getId());
 		holder.npcStudio$setShape(editing != null ? editing : npc.bodyShape());
 		holder.npcStudio$setGesture(gesture, age, strength);
+		npc.changingTo(gesture, age);
+		holder.npcStudio$setLeaving(npc.leavingAnimation(), npc.leavingAge(partial),
+			npc.changedBy(partial));
 		// The skin is read before anything is drawn over it. Nothing is assumed:
 		// a face with no eyes on it does not blink, because there is nothing there
 		// to shut and a lid would be a rectangle stamped over somebody's design.

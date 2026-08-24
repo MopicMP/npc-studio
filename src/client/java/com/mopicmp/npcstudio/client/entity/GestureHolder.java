@@ -26,6 +26,29 @@ public interface GestureHolder {
 	void npcStudio$setGesture(String name, float age, float strength);
 
 	/**
+	 * The animation being left behind, while it is still being left behind.
+	 *
+	 * <h2>Why an outgoing animation has to be carried too</h2>
+	 *
+	 * Because a change of animation has no length of its own and needs one. It was
+	 * reported about a character standing and smoking who notices you: the problem
+	 * was not that the change was quick, it was that there was no change at all —
+	 * one frame of one pose, then one frame of another, with nothing in between.
+	 *
+	 * Both animations have to be in hand at once to fade between them, and the model
+	 * is handed a render state and nothing else. So the outgoing one rides along
+	 * here until it has finished going.
+	 */
+	String npcStudio$leaving();
+
+	float npcStudio$leavingAge();
+
+	/** How far into the change, nought at the moment it starts and one at the end. */
+	float npcStudio$changing();
+
+	void npcStudio$setLeaving(String name, float age, float changing);
+
+	/**
 	 * What this character's eyes are doing this frame: where they are, how shut,
 	 * which way turned.
 	 *

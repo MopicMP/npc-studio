@@ -118,6 +118,34 @@ public final class EmoteApplier {
 	 *                 and a bow that ends bowed cannot simply stop.
 	 */
 	public static void apply(PlayerModel model, Emote emote, float age, float strength) {
+		apply(model, emote, age, strength, false);
+	}
+
+	/**
+	 * Puts an emote on, over whatever is already there.
+	 *
+	 * <h2>Why there has to be a second way of doing this</h2>
+	 *
+	 * The ordinary one blends from the model's <em>resting</em> pose, which is right
+	 * for one animation and wrong for two. Lay a second emote on with it and the
+	 * first is not blended with, it is erased: every limb is worked out afresh from
+	 * where a limb rests, as though nothing had been applied at all.
+	 *
+	 * That is why changing animation snapped. It was reported about a character who
+	 * stands smoking and then notices you — and the transition did not look abrupt
+	 * because it was fast, it looked abrupt because there was no transition
+	 * anywhere. One frame of one pose, then one frame of another.
+	 *
+	 * So this way blends from wherever the limbs currently <em>are</em>. Apply the
+	 * outgoing emote at full and then this one at a strength climbing from nought,
+	 * and what comes out is a crossfade between the two. At strength one it is
+	 * exactly the ordinary path, which is what keeps everything that already works
+	 * untouched.
+	 *
+	 * @param over whether to blend from where the limbs are rather than from rest
+	 */
+	public static void apply(PlayerModel model, Emote emote, float age, float strength,
+			boolean over) {
 		Pose pose = emote.poseAt(emote.timeAt(age));
 		float s = Math.clamp(strength, 0f, 1f);
 
@@ -127,11 +155,11 @@ public final class EmoteApplier {
 		}
 
 		torso(model, pose, s);
-		limb(model.head, model.hat, pose, Bone.HEAD, s);
-		limb(model.rightArm, model.rightSleeve, pose, Bone.RIGHT_ARM, s);
-		limb(model.leftArm, model.leftSleeve, pose, Bone.LEFT_ARM, s);
-		limb(model.rightLeg, model.rightPants, pose, Bone.RIGHT_LEG, s);
-		limb(model.leftLeg, model.leftPants, pose, Bone.LEFT_LEG, s);
+		limb(model.head, model.hat, pose, Bone.HEAD, s, over);
+		limb(model.rightArm, model.rightSleeve, pose, Bone.RIGHT_ARM, s, over);
+		limb(model.leftArm, model.leftSleeve, pose, Bone.LEFT_ARM, s, over);
+		limb(model.rightLeg, model.rightPants, pose, Bone.RIGHT_LEG, s, over);
+		limb(model.leftLeg, model.leftPants, pose, Bone.LEFT_LEG, s, over);
 
 		// After the limbs, because it adds to where they were put.
 		legsFollowTheWaist(model, pose, s);
@@ -423,8 +451,23 @@ public final class EmoteApplier {
 	 * give a character that waves while its arm is also swinging.
 	 */
 	private static void limb(ModelPart part, ModelPart layer, Pose pose, Bone bone, float s) {
+		limb(part, layer, pose, bone, s, false);
+	}
+
+	private static void limb(ModelPart part, ModelPart layer, Pose pose, Bone bone, float s,
+			boolean over) {
 		if (!pose.has(bone)) return;
 		PartPose rest = part.getInitialPose();
+		// Where the blend starts from. Rest for a single animation, which is the
+		// ordinary case and unchanged; wherever the limb currently is when this emote
+		// is being laid over another, which is what makes a crossfade a crossfade
+		// rather than a replacement.
+		float fromX = over ? part.x : rest.x();
+		float fromY = over ? part.y : rest.y();
+		float fromZ = over ? part.z : rest.z();
+		float fromPitch = over ? part.xRot : rest.xRot();
+		float fromYaw = over ? part.yRot : rest.yRot();
+		float fromRoll = over ? part.zRot : rest.zRot();
 
 		float x = pose.or(bone, Channel.X, rest.x());
 		float y = pose.or(bone, Channel.Y, rest.y());
@@ -448,19 +491,19 @@ public final class EmoteApplier {
 		part.visible = !adrift;
 		if (adrift) return;
 
-		part.x = place(mix(rest.x(), x, s));
-		part.y = place(mix(rest.y(), y, s));
-		part.z = place(mix(rest.z(), z, s));
+		part.x = place(mix(fromX, x, s));
+		part.y = place(mix(fromY, y, s));
+		part.z = place(mix(fromZ, z, s));
 
-		part.xRot = mix(rest.xRot(), pose.or(bone, Channel.PITCH, rest.xRot()), s);
+		part.xRot = mix(fromPitch, pose.or(bone, Channel.PITCH, rest.xRot()), s);
 
 		// The fold itself is done by the renderer, which cuts the box in two and
 		// turns the far half. This only says by how much — and says it even when
 		// the answer is nothing, because a model is shared between every character
 		// wearing it and a bend left set would follow the next one out.
 		bend(part, layer, pose.or(bone, Channel.BEND, 0) * s);
-		part.yRot = mix(rest.yRot(), pose.or(bone, Channel.YAW, rest.yRot()), s);
-		part.zRot = mix(rest.zRot(), pose.or(bone, Channel.ROLL, rest.zRot()), s);
+		part.yRot = mix(fromYaw, pose.or(bone, Channel.YAW, rest.yRot()), s);
+		part.zRot = mix(fromRoll, pose.or(bone, Channel.ROLL, rest.zRot()), s);
 	}
 
 	/**

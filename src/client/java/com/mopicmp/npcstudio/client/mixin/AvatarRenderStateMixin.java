@@ -75,4 +75,33 @@ public class AvatarRenderStateMixin implements GestureHolder {
 		npcStudio$age = age;
 		npcStudio$strength = strength;
 	}
+
+	@Unique private String npcStudio$leaving = "";
+	@Unique private float npcStudio$leavingAge;
+
+	// One rather than nought, so that a state nobody has told about a change is a
+	// state with the change already over — which is every player, every frame.
+	@Unique private float npcStudio$changing = 1f;
+
+	@Override
+	public String npcStudio$leaving() {
+		return npcStudio$leaving;
+	}
+
+	@Override
+	public float npcStudio$leavingAge() {
+		return npcStudio$leavingAge;
+	}
+
+	@Override
+	public float npcStudio$changing() {
+		return npcStudio$changing;
+	}
+
+	@Override
+	public void npcStudio$setLeaving(String name, float age, float changing) {
+		npcStudio$leaving = name == null ? "" : name;
+		npcStudio$leavingAge = age;
+		npcStudio$changing = changing;
+	}
 }

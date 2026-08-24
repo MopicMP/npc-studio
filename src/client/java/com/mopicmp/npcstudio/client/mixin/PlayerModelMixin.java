@@ -42,9 +42,19 @@ public class PlayerModelMixin {
 			.npcStudio$setEyes(holder.npcStudio$eyes());
 
 		String name = holder.npcStudio$gesture();
+		// The one being left behind goes on first, at full, so that the one coming in
+		// has something to blend away from. Without it there is nothing between two
+		// animations at all — one frame of one pose and one frame of the next — which
+		// is what a change of animation looked like and was reported as.
+		float changing = holder.npcStudio$changing();
+		String leaving = holder.npcStudio$leaving();
+		boolean crossing = changing < 1f && !leaving.isEmpty();
+		if (crossing) {
+			NpcGestures.apply(model, leaving, holder.npcStudio$leavingAge(), 1f);
+		}
 		if (!name.isEmpty()) {
 			NpcGestures.apply(model, name, holder.npcStudio$gestureAge(),
-				holder.npcStudio$gestureStrength());
+				holder.npcStudio$gestureStrength() * (crossing ? changing : 1f), crossing);
 		}
 
 		// Last, and outside the check above. An emote writes absolute positions for

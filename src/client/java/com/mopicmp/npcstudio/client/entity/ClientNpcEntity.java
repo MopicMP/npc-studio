@@ -151,6 +151,64 @@ public class ClientNpcEntity extends NpcEntity implements ClientAvatarEntity {
 		return tickCount - gestureSeenAt + partial;
 	}
 
+	// ------------------------------------------------------- changing animation
+
+	/**
+	 * Over how many ticks one animation becomes another.
+	 *
+	 * A third of a second. Long enough to read as a movement, short enough that a
+	 * character who has just noticed you does not appear to think about it first.
+	 */
+	private static final float CHANGES_OVER = 7f;
+
+	private String leaving = "";
+	private float leavingFrom;
+	private int changedAt = -1;
+	private String showing = "";
+
+	/**
+	 * Notices that the animation has changed, and starts the change.
+	 *
+	 * <h2>Kept here rather than in the renderer</h2>
+	 *
+	 * Because the renderer runs once per frame and this has to happen once per
+	 * change. At sixty frames a second, a fade started in the renderer would be
+	 * restarted sixty times a second and never get anywhere — it would look exactly
+	 * like the snap it was meant to cure, which is the worst kind of bug to have
+	 * written: one whose symptom is identical to the one it replaced.
+	 *
+	 * The entity has the clock and the memory, so the entity notices.
+	 */
+	public void changingTo(String animation, float age) {
+		if (animation.equals(showing)) return;
+		// The one going out keeps its own age, frozen where it got to. An emote is a
+		// timeline and a fading one should stay on the frame it reached rather than
+		// carrying on playing to nobody.
+		leaving = showing;
+		leavingFrom = age;
+		changedAt = tickCount;
+		showing = animation;
+	}
+
+	public String leavingAnimation() {
+		return leaving;
+	}
+
+	public float leavingAge(float partial) {
+		return leavingFrom;
+	}
+
+	/** How far through the change: nought as it begins, one when it is done. */
+	public float changedBy(float partial) {
+		if (changedAt < 0 || leaving.isEmpty()) return 1f;
+		float since = tickCount - changedAt + partial;
+		if (since >= CHANGES_OVER) return 1f;
+		float t = Math.max(0f, since) / CHANGES_OVER;
+		// Eased at both ends, so the change leaves one pose and settles into the
+		// other rather than starting and stopping at corners.
+		return t * t * (3f - 2f * t);
+	}
+
 	public void previewAge(float age) {
 		previewAge = age;
 	}

@@ -89,8 +89,21 @@ public final class NpcGestures {
 	 *                giving the body back
 	 */
 	public static void apply(PlayerModel model, String name, float age, float leaving) {
+		apply(model, name, age, leaving, false);
+	}
+
+	/**
+	 * The same, laid over whatever is already on the model.
+	 *
+	 * @param over whether to blend from where the limbs are rather than from rest,
+	 *             which is what turns two animations into a change between them
+	 *             instead of the second one erasing the first
+	 */
+	public static void apply(PlayerModel model, String name, float age, float leaving,
+			boolean over) {
 		if (!builtIn(name)) {
-			EmoteLibrary.emote(name).ifPresent(emote -> EmoteApplier.apply(model, emote, age, leaving));
+			EmoteLibrary.emote(name)
+				.ifPresent(emote -> EmoteApplier.apply(model, emote, age, leaving, over));
 			return;
 		}
 		if (age < 0 || age > LENGTH) return;

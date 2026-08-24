@@ -457,20 +457,41 @@ public class NpcEntity extends Avatar {
 	 * destination changes and followed until it runs out — the same arrangement as
 	 * looking and the alarm meter, for the same reason.
 	 */
+	/**
+	 * Walking over to see what that was.
+	 *
+	 * <h2>The stutter this was rewritten to cure</h2>
+	 *
+	 * Reported as: she runs, stops for a second, runs again, stops. Two causes, and
+	 * both were mine.
+	 *
+	 * The destination is a <em>guess</em> at where a noise came from, and every
+	 * fresh noise produces a fresh guess a few blocks off the last one. Each of
+	 * those looked like a new place to go, so the route was thrown away and rebuilt
+	 * — and rebuilding starts the walk at the first waypoint again, which is usually
+	 * behind her. Off she went, back the way she came, half a second at a time.
+	 *
+	 * And the moment the alarm dipped or the lead was briefly outranked, there was
+	 * nothing worth investigating and she stopped where she stood. But somebody who
+	 * has set off to look at something does not abandon it because they stopped
+	 * hearing it — that is when they most want to go and see.
+	 *
+	 * So a walk is now <b>committed to</b>: begun once, kept until she arrives, gets
+	 * stuck, calms down, or something genuinely elsewhere turns up.
+	 */
 	private void goAndLook() {
-		Vec3 wanted = watch.worthInvestigating();
 		walk.moved(getX(), getZ());
+		Vec3 wanted = watch.worthInvestigating();
 
-		if (wanted == null) {
-			stopWalking();
-			return;
-		}
-		// A fresh route only when the place has actually moved. Without this the
-		// search would run five times a second for as long as she was curious, which
-		// is the one thing that could make this expensive.
-		if (headingFor == null || headingFor.distanceToSqr(wanted) > 4 || walk.stuck()) {
+		if (wanted != null && wantsToGoElsewhere(wanted)) {
 			headingFor = wanted;
 			walk.follow(routeTo(wanted));
+		}
+		// Calming down is the one thing that ends a walk early. Losing the sound is
+		// not: that is the moment somebody most wants to go and look.
+		if (watch.mood() == com.mopicmp.npcstudio.foe.Alarm.Mood.CALM || walk.stuck()) {
+			stopWalking();
+			return;
 		}
 
 		double[] step = walk.heading(getX(), getY(), getZ());
@@ -481,17 +502,30 @@ public class NpcEntity extends Avatar {
 		stride(step);
 	}
 
-	private void stopWalking() {
-		if (walk.walking() || zza != 0) {
-			walk.stop();
-			headingFor = null;
-			zza = 0;
-			setSpeed(0);
-		}
+	/**
+	 * Whether the place to look at has really moved, or only been guessed at again.
+	 *
+	 * Four blocks, which is wider than the wobble on a guess and narrower than a
+	 * different room. Under it, she carries on to where she was already going —
+	 * which is right in itself: whoever made the noise is around there somewhere,
+	 * and shuffling the destination by a block or two changes nothing about that.
+	 */
+	private boolean wantsToGoElsewhere(Vec3 wanted) {
+		if (headingFor == null || !walk.walking()) return true;
+		return headingFor.distanceToSqr(wanted) > 16;
 	}
 
-	/** How fast a character walks over to look at something. Unhurried; this is a look. */
-	private static final float STROLLING = 0.22f;
+	private void stopWalking() {
+		walk.stop();
+		headingFor = null;
+		zza = 0;
+		// Still eased, because coming to a stop is a movement too and a character who
+		// stops dead is as wrong as one who starts dead.
+		setSpeed(WALKING_PACE * walk.pacing(0));
+	}
+
+	/** How fast a character moves at full pelt; everything else is a fraction of it. */
+	private static final float WALKING_PACE = 0.26f;
 
 	/**
 	 * One step towards the next waypoint.
@@ -507,14 +541,36 @@ public class NpcEntity extends Avatar {
 		yBodyRot = bearing;
 		setYRot(bearing);
 
-		setSpeed(STROLLING);
+		// A stroll to see what a door was, a run at a gunshot. Urgency already means
+		// exactly this, so it says how fast as well as how quickly to turn.
+		var lead = watch.lead();
+		float wanted = lead != null && lead.urgency() >= HURRIES_AT
+			? com.mopicmp.npcstudio.foe.Walk.HURRYING
+			: com.mopicmp.npcstudio.foe.Walk.WANDERING;
+		setSpeed(WALKING_PACE * walk.pacing(wanted));
 		zza = 1;
 		xxa = 0;
 
-		// Up a block, which needs a jump: the step height of a person is not a whole
+		if (isInWater()) {
+			// Swimming is vanilla's, and the way to ask for it is to keep pressing
+			// jump: that is what holds a body at the surface rather than walking it
+			// along the bottom.
+			setJumping(step[1] >= getY());
+			return;
+		}
+		setJumping(false);
+
+		// A ladder is climbed by walking into it, which vanilla already handles once
+		// the body is pointed at it — which stride has just done.
+		if (onClimbable()) return;
+
+		// Up a block, which needs a jump: a person's step height is not a whole
 		// block, and the route deliberately allows climbing one because people climb.
 		if (onGround() && step[1] > getY() + 0.4) jumpFromGround();
 	}
+
+	/** Above this much urgency, she does not walk over — she goes. */
+	private static final float HURRIES_AT = 0.7f;
 
 	/**
 	 * A route through the world, asked of the blocks.
@@ -541,6 +597,18 @@ public class NpcEntity extends Avatar {
 			public boolean solid(int x, int y, int z) {
 				var where = new net.minecraft.core.BlockPos(x, y, z);
 				return !level.getBlockState(where).getCollisionShape(level, where).isEmpty();
+			}
+
+			@Override
+			public boolean holdsUp(int x, int y, int z) {
+				var where = new net.minecraft.core.BlockPos(x, y, z);
+				var state = level.getBlockState(where);
+				// Water to float in and ladders to hang from. Asked of the game's own
+				// tag rather than of a list of blocks, so scaffolding, vines, chains
+				// and whatever any other mod calls a ladder all count without either
+				// of us knowing about the other.
+				return state.is(net.minecraft.tags.BlockTags.CLIMBABLE)
+					|| state.getFluidState().is(net.minecraft.tags.FluidTags.WATER);
 			}
 		};
 

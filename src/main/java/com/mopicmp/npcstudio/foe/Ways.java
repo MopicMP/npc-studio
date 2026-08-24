@@ -51,6 +51,23 @@ public final class Ways {
 
 		/** Whether feet can rest on top of this block. */
 		boolean solid(int x, int y, int z);
+
+		/**
+		 * Whether this block holds somebody up without being underfoot.
+		 *
+		 * Water and ladders, and they are one question rather than two because they
+		 * are the same question: is there something here that means I do not fall.
+		 * Both were missing, and both were reported the same way — she cannot swim,
+		 * and she cannot climb a ladder or scaffolding.
+		 *
+		 * Neither is a special case at the walking end. A route through water is a
+		 * route; a route up a ladder is a column of blocks each one step above the
+		 * last, which the search already knows how to do. All that was wrong is that
+		 * neither counted as somewhere you could be.
+		 */
+		default boolean holdsUp(int x, int y, int z) {
+			return false;
+		}
 	}
 
 	/** How far a walk may be before it is not worth taking, in blocks of path. */
@@ -75,9 +92,12 @@ public final class Ways {
 
 	private record Step(int x, int y, int z, double gone) { }
 
-	/** Whether somebody could stand with their feet in this block. */
+	/** Whether somebody could be here with their feet in this block. */
 	public static boolean standable(Ground ground, int x, int y, int z) {
-		return ground.clear(x, y, z) && ground.clear(x, y + 1, z) && ground.solid(x, y - 1, z);
+		if (!ground.clear(x, y, z) || !ground.clear(x, y + 1, z)) return false;
+		// Something underfoot, or something holding you up where you are: a floor, or
+		// water to float in, or a ladder to hang from.
+		return ground.solid(x, y - 1, z) || ground.holdsUp(x, y, z);
 	}
 
 	/**
@@ -121,11 +141,32 @@ public final class Ways {
 						continue;
 					}
 
+					// Straight up and straight down, which only a ladder or water
+					// allows. Tried before the sideways steps so that a column is
+					// climbed rather than walked round.
+					for (int dy : new int[] { 1, -1 }) {
+						if (dx != -1 || dz != -1) break;
+						int y = here.y() + dy;
+						if (!ground.holdsUp(here.x(), here.y(), here.z())
+							&& !ground.holdsUp(here.x(), y, here.z())) {
+							break;
+						}
+						if (!standable(ground, here.x(), y, here.z())) continue;
+						offer(ground, best, cameFrom, waiting, here,
+							here.x(), y, here.z(), 1 + 0.4, furthest);
+					}
+
 					for (int dy = CLIMBS; dy >= -DROPS; dy--) {
 						int x = here.x() + dx;
 						int y = here.y() + dy;
 						int z = here.z() + dz;
 						if (!standable(ground, x, y, z)) continue;
+						// Falling is only falling out of the air. Somebody in water or on
+						// a ladder steps down one at a time and does not plummet.
+						if (dy < -1 && (ground.holdsUp(here.x(), here.y(), here.z())
+							|| ground.holdsUp(x, y, z))) {
+							continue;
+						}
 						// Climbing needs headroom above where you started, or you are
 						// standing up into a ceiling.
 						if (dy > 0 && !ground.clear(here.x(), here.y() + 2, here.z())) continue;
@@ -133,15 +174,8 @@ public final class Ways {
 						double flat = dx != 0 && dz != 0 ? 1.4142135623730951 : 1;
 						// Climbing and dropping cost a little more than walking, so that
 						// a route along the flat is preferred to one over the furniture.
-						double gone = here.gone() + flat + Math.abs(dy) * 0.4;
-						if (gone > furthest) continue;
-
-						long at = key(x, y, z);
-						Double was = best.get(at);
-						if (was != null && was <= gone) continue;
-						best.put(at, gone);
-						cameFrom.put(at, new long[] { here.x(), here.y(), here.z() });
-						waiting.add(new Step(x, y, z, gone));
+						offer(ground, best, cameFrom, waiting, here, x, y, z,
+							flat + Math.abs(dy) * 0.4, furthest);
 						// The first height that works is the one taken. Falling is
 						// preferred to climbing only because the loop counts down, which
 						// is arbitrary and does not matter: the cost decides, not this.
@@ -151,6 +185,20 @@ public final class Ways {
 			}
 		}
 		return List.of();
+	}
+
+	/** Puts one candidate step into the search, if it is worth having. */
+	private static void offer(Ground ground, Map<Long, Double> best,
+			Map<Long, long[]> cameFrom, PriorityQueue<Step> waiting, Step here,
+			int x, int y, int z, double costs, double furthest) {
+		double gone = here.gone() + costs;
+		if (gone > furthest) return;
+		long at = key(x, y, z);
+		Double was = best.get(at);
+		if (was != null && was <= gone) return;
+		best.put(at, gone);
+		cameFrom.put(at, new long[] { here.x(), here.y(), here.z() });
+		waiting.add(new Step(x, y, z, gone));
 	}
 
 	/** The same with the ordinary limits. */

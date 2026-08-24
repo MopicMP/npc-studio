@@ -102,9 +102,74 @@ public final class Walk {
 				at++;
 				continue;
 			}
+			// Or if it is simply behind us. Being near a waypoint is not the only way
+			// to be done with it — a character shoved past one, or one who cut a
+			// corner wide, would otherwise turn round and walk back to it, and then
+			// forward again. That is half of what "runs, stops, runs, stops" was.
+			if (!last && closer(path.get(at + 1), x, z) < flat) {
+				at++;
+				continue;
+			}
 			return new double[] { toX, mark[1], toZ };
 		}
 		return null;
+	}
+
+	/** How far a waypoint is, flat, from a point. */
+	private static double closer(int[] mark, double x, double z) {
+		double dx = mark[0] + 0.5 - x;
+		double dz = mark[2] + 0.5 - z;
+		return Math.sqrt(dx * dx + dz * dz);
+	}
+
+	// ---------------------------------------------------------------- the pace
+
+	/**
+	 * How fast she is going, nought to one, easing towards how fast she wants to.
+	 *
+	 * <h2>Why a body cannot change speed in one tick</h2>
+	 *
+	 * It was reported as too sharp a change from standing to running, and there are
+	 * two separate things wrong with that and they need separate fixes. This is the
+	 * first: mass. Nothing with legs goes from nought to a run in a twentieth of a
+	 * second, and a character that does reads as a puppet being dragged rather than
+	 * a person deciding to move.
+	 *
+	 * The second is that there was no walk. Standing and running were the only two
+	 * states, so any journey at all was a sprint — see {@link #WANDERING}.
+	 *
+	 * Slowing is quicker than speeding up, because stopping is: you can plant your
+	 * feet a good deal faster than you can get going.
+	 */
+	private float pace;
+
+	/** How much of full pace can be gained or lost in a tick. */
+	private static final float QUICKENS = 0.045f;
+	private static final float SLOWS = 0.09f;
+
+	/** An unhurried walk, which is what going to look at something is. */
+	public static final float WANDERING = 0.45f;
+
+	/** And a run, for when whatever it was cannot wait. */
+	public static final float HURRYING = 1f;
+
+	/**
+	 * Eases the pace towards what is wanted and hands back where it got to.
+	 *
+	 * Called every tick whether walking or not, because coming to a stop is a
+	 * movement too and a character who stops dead is as wrong as one who starts
+	 * dead.
+	 */
+	public float pacing(float wanted) {
+		float towards = Math.clamp(wanted, 0f, 1f);
+		float most = towards > pace ? QUICKENS : SLOWS;
+		pace += Math.clamp(towards - pace, -most, most);
+		if (pace < 0.02f) pace = 0;
+		return pace;
+	}
+
+	public float pace() {
+		return pace;
 	}
 
 	/**
