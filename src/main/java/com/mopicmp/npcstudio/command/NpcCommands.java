@@ -208,6 +208,19 @@ public final class NpcCommands {
 
 		var watch = npc.watch();
 		var quarry = watch.quarry();
+
+		// What the caller themselves sounds like from here, whether or not they are
+		// the one being watched. This is the line that would have saved a round trip:
+		// hearing had never worked at all, and from outside that is indistinguishable
+		// from hearing that does not reach far enough.
+		if (source.getEntity() instanceof net.minecraft.world.entity.player.Player asking) {
+			float loud = watch.loudnessOf(asking);
+			float reaching = watch.hearing(asking);
+			source.sendSuccess(() -> Component.literal(
+				"you: " + Math.round(loud * 100) + "% loud, reaching her at "
+					+ Math.round(reaching * 100) + "%"
+					+ (reaching <= 0 && loud > 0 ? " (inaudible from there)" : "")), false);
+		}
 		// The alarm as a percentage rather than a fraction: this is read at a glance
 		// while walking backwards, and "62%" is legible where "0.6183" is not.
 		String said = "watching — " + watch.mood()

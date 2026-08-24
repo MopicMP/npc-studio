@@ -232,9 +232,7 @@ public final class Watch {
 	 * expensive way of finding that out.
 	 */
 	private float heardFrom(Player player) {
-		double speed = player.getDeltaMovement().horizontalDistance();
-		float loudness = Noise.loudness(speed, player.isShiftKeyDown(),
-			player.isSprinting(), player.isInWater());
+		float loudness = loudnessOf(player);
 		if (loudness <= 0) return 0;
 
 		float wall = throughWalls(player);
@@ -244,6 +242,38 @@ public final class Watch {
 		double round = around(player);
 		if (round < 0) return direct;
 		return Math.max(direct, Noise.heard(round, loudness));
+	}
+
+	/**
+	 * How much noise somebody is making.
+	 *
+	 * <h2>The call that made hearing do nothing whatever</h2>
+	 *
+	 * This asked {@code getDeltaMovement}, which is the obvious method and is empty
+	 * for the one kind of entity that matters. A player on the server does not move
+	 * by having a velocity applied — the client says where it has got to and the
+	 * server puts it there — so the field reads nought however hard somebody is
+	 * sprinting. Every player was permanently, perfectly silent, and had been since
+	 * hearing was written.
+	 *
+	 * It was reported as a wall one block high behind which nothing could be heard
+	 * whatever was done there, and then, rightly, as the hearing distance being
+	 * fixed and very small. Both are the same nought. The wall had nothing to do
+	 * with it: one block does not even interrupt the line between two people's eyes.
+	 *
+	 * {@code getKnownMovement} is the right call and this was checked rather than
+	 * assumed — {@code ServerGamePacketListenerImpl} sets it from the movement
+	 * packet, which is precisely the number wanted here.
+	 */
+	public float loudnessOf(Player player) {
+		double pace = player.getKnownMovement().horizontalDistance();
+		return Noise.loudness(pace, player.isShiftKeyDown(),
+			player.isSprinting(), player.isInWater());
+	}
+
+	/** What is actually reaching these ears from somebody, for a readout to show. */
+	public float hearing(Player player) {
+		return heardFrom(player);
 	}
 
 	/** How far the sound has to travel through open air, or -1 if it cannot. */
