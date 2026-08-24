@@ -231,7 +231,61 @@ public final class Watch {
 
 		// Asked last, because it is the expensive one and most candidates have been
 		// ruled out by an angle or a distance that costs nothing.
-		return self.hasLineOfSight(player) ? Lead.sighting(player, seen) : null;
+		if (!self.hasLineOfSight(player)) return null;
+		return new Lead(player.getEyePosition(), player, true, seen, menaceOf(player, distance));
+	}
+
+	/**
+	 * How alarming this person looks, which is not the same as how visible.
+	 *
+	 * A stranger walking past is not a stranger running at you, and a stranger
+	 * running at you with a knife is not the same as one running <em>away from
+	 * something</em> who happens to be carrying one. See {@link Menace}: what
+	 * separates those is where they are going and whether they are looking at you.
+	 */
+	private float menaceOf(Player player, double distance) {
+		boolean armed = looksLikeAWeapon(player.getMainHandItem());
+		// Closing measured from their own movement towards us rather than by
+		// remembering last tick's distance: it is the same number, needs no state,
+		// and is right on the first look rather than on the second.
+		Vec3 towards = self.position().subtract(player.position());
+		double closing = towards.lengthSqr() < 1e-6 ? 0
+			: player.getKnownMovement().dot(towards.normalize());
+
+		Vec3 eye = player.getEyePosition();
+		double theirBearing = Sight.yawTo(eye.x, eye.z, self.getX(), self.getZ());
+		boolean aiming = Menace.aimedAt(Sight.turnBetween(player.getYHeadRot(), theirBearing));
+
+		float menace = Menace.of(armed, closing, aiming);
+		// Somebody far off is a shape doing something; somebody at arm's length is a
+		// person doing it to you. Distance does not change what they are up to and it
+		// changes a great deal about whether it is your problem yet.
+		float nearness = (float) Math.clamp(1.2 - distance / sight.range(), 0.35, 1);
+		return Math.clamp(menace * nearness, Menace.PASSER_BY * 0.5f, 1f);
+	}
+
+	/**
+	 * Whether what somebody is holding is made for hurting people.
+	 *
+	 * <h2>Asked of the item, not of a list</h2>
+	 *
+	 * The obvious version — {@code instanceof SwordItem} and its cousins — does not
+	 * even compile any more: that class is gone. Weapons in this version are not a
+	 * kind of class, they are items carrying a {@code WEAPON} component, which is a
+	 * considerable improvement for us. A list of classes covers what vanilla had on
+	 * the day it was written; a component covers every weapon of every mod anybody
+	 * installs, because that is how those mods declare theirs too.
+	 *
+	 * Bows and crossbows are asked about separately: they are as alarming as
+	 * anything in somebody's hands and they are not melee weapons, so they carry
+	 * their own components rather than that one.
+	 */
+	private static boolean looksLikeAWeapon(net.minecraft.world.item.ItemStack held) {
+		if (held.isEmpty()) return false;
+		return held.has(net.minecraft.core.component.DataComponents.WEAPON)
+			|| held.has(net.minecraft.core.component.DataComponents.PIERCING_WEAPON)
+			|| held.has(net.minecraft.core.component.DataComponents.KINETIC_WEAPON)
+			|| held.getItem() instanceof net.minecraft.world.item.ProjectileWeaponItem;
 	}
 
 	/**
@@ -278,13 +332,59 @@ public final class Watch {
 	private Lead fromTheWorld(long now) {
 		Lead best = null;
 		for (Din.Rumour rumour : Din.since(now)) {
+			if (!counted.add(rumour)) continue;
 			double away = self.position().distanceTo(rumour.at());
 			float reaching = Noise.heard(away, rumour.loudness(), rumour.carries());
 			if (reaching <= 0) continue;
+
+			// A miller does not jump at his own mill. The fifth piston in the same
+			// place is furniture, and a character who turns to it every time is not
+			// vigilant — she is exploitable: hold down a button and she never looks
+			// anywhere else. An explosion barely fades, which is the whole point.
+			float dulled = Din.familiarity(rumour, now);
 			Vec3 guess = Din.guessAt(rumour, Din.vagueness(reaching, away), self.position());
-			best = better(best, Lead.noise(guess, null, reaching, rumour.urgency()));
+			best = better(best,
+				Lead.noise(levelled(guess), null, reaching * dulled, rumour.urgency() * dulled));
 		}
 		return best;
+	}
+
+	/**
+	 * Which noises have already been counted towards getting used to them.
+	 *
+	 * Because looking happens five times a second and a noise lingers for twenty
+	 * ticks, so without this every bang would be counted five times and everything
+	 * would become furniture almost at once.
+	 */
+	private final java.util.Set<Din.Rumour> counted =
+		java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
+
+	/**
+	 * A place to look towards rather than a place to stare at.
+	 *
+	 * <h2>Why a sound is not looked at where it is</h2>
+	 *
+	 * Reported as: she reacts to an explosion by looking at the floor, and that is
+	 * all. It is not a placement mistake — a stick of dynamite goes off at ground
+	 * level, and a few blocks away that is genuinely thirty degrees below the eye.
+	 * Looked at exactly, she is staring at her own feet.
+	 *
+	 * But nobody does that. You hear a bang and you look <em>towards</em> it, level,
+	 * because what you want to see is what is coming — and what is coming is at head
+	 * height. The height of a sound is worth almost nothing and costs the whole
+	 * gesture.
+	 *
+	 * So a noise is looked at along the ground unless it is genuinely far above or
+	 * below, where craning up or down is what a person would actually do.
+	 */
+	private Vec3 levelled(Vec3 at) {
+		Vec3 eye = self.getEyePosition();
+		double away = Math.sqrt((at.x - eye.x) * (at.x - eye.x) + (at.z - eye.z) * (at.z - eye.z));
+		double drop = eye.y - at.y;
+		// A quarter of the distance, which is about fifteen degrees. Anything inside
+		// that is level ground as far as looking is concerned.
+		if (Math.abs(drop) <= Math.max(2, away * 0.25)) return new Vec3(at.x, eye.y, at.z);
+		return at;
 	}
 
 	// ------------------------------------------------------------- the shooting
@@ -316,10 +416,18 @@ public final class Watch {
 			Long clearAt = seenFlying.get(flying.getId());
 			if (clearAt == null) {
 				seenFlying.put(flying.getId(), now + Shots.WORKING_IT_OUT);
+				clearAt = now + Shots.WORKING_IT_OUT;
+			}
+
+			// The arrow itself first. This was missing and was reported as her not
+			// looking at the arrow at all — the deduction was written and the noticing
+			// was not, so she went from unaware straight to knowing where the archer
+			// was. Which is the wrong picture even when the answer is right: what a
+			// person does is watch the thing go past, and then look back along it.
+			if (now < clearAt) {
+				best = better(best, Lead.noise(flying.position(), null, startle, Shots.SEEING_IT));
 				continue;
 			}
-			if (now < clearAt) continue;
-
 			best = better(best, Lead.noise(backAlong(flying), null, startle, Shots.URGENCY));
 		}
 

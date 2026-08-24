@@ -220,5 +220,90 @@ public final class Din {
 		synchronized (heard) {
 			heard.clear();
 		}
+		synchronized (familiar) {
+			familiar.clear();
+		}
+	}
+
+	// ------------------------------------------------------- getting used to it
+
+	/**
+	 * How many times the same noise has come from the same place lately.
+	 *
+	 * Keyed on the block and on a rough idea of how loud, so that a door opening and
+	 * closing counts as one thing happening repeatedly, while a door and then a
+	 * gunshot at the same doorway do not.
+	 */
+	private static final java.util.Map<Long, int[]> familiar = new java.util.HashMap<>();
+
+	/**
+	 * How much a noise still means, having heard it several times already.
+	 *
+	 * <h2>Why anybody stops looking</h2>
+	 *
+	 * Because a miller does not jump at his own mill. The fifth time a piston fires
+	 * in the same place it is furniture, not an event, and a character who turns her
+	 * head to it every time is not vigilant — she is broken in a way that is
+	 * tiring to watch and trivially exploitable: hold down a button and she never
+	 * looks anywhere else.
+	 *
+	 * <h2>But an explosion is an explosion the tenth time</h2>
+	 *
+	 * The forgetting is proportional to how ordinary the thing was. A door fades to
+	 * almost nothing; a bang barely fades at all. That asymmetry is the whole point
+	 * — habituation that treats everything alike would make somebody who blows a
+	 * hole in a wall five times in a row invisible, which is the opposite of what
+	 * habituation is for.
+	 *
+	 * @param heard how many times it has been heard, this one included
+	 */
+	public static float dulledBy(int heard, float urgency) {
+		if (heard <= 1) return 1;
+		// How readily this kind of thing becomes background. Nothing ever fades
+		// completely: the fifth piston is still worth a glance, just not a turn.
+		float fades = 1 - Math.clamp(urgency, 0f, 1f);
+		float worn = (float) Math.pow(0.55, heard - 1);
+		return Math.clamp(1 - fades * (1 - worn), FLOOR_OF_INTEREST, 1f);
+	}
+
+	/** However familiar, a noise never becomes literally nothing. */
+	public static final float FLOOR_OF_INTEREST = 0.15f;
+
+	/** How long a place goes on being remembered as noisy, in ticks. */
+	private static final int REMEMBERED_FOR = 200;
+
+	/**
+	 * Counts this noise against its place, and says how much of it is still news.
+	 *
+	 * Counted per noise rather than per listener, which is a simplification worth
+	 * naming: two guards either side of a wall get used to a piston at the same
+	 * rate, even though only one of them can hear it well. The alternative is a
+	 * memory per character per place, and the reward is a distinction nobody will
+	 * ever see.
+	 */
+	public static float familiarity(Rumour rumour, long now) {
+		long place = keyOf(rumour);
+		synchronized (familiar) {
+			int[] seen = familiar.get(place);
+			if (seen == null || now - seen[1] > REMEMBERED_FOR) {
+				familiar.put(place, new int[] { 1, (int) now });
+				if (familiar.size() > 256) {
+					familiar.entrySet().removeIf(e -> now - e.getValue()[1] > REMEMBERED_FOR);
+				}
+				return 1;
+			}
+			seen[0] = Math.min(seen[0] + 1, 12);
+			seen[1] = (int) now;
+			return dulledBy(seen[0], rumour.urgency());
+		}
+	}
+
+	private static long keyOf(Rumour rumour) {
+		long x = (long) Math.floor(rumour.at().x / 3);
+		long y = (long) Math.floor(rumour.at().y / 3);
+		long z = (long) Math.floor(rumour.at().z / 3);
+		long loud = Math.round(rumour.loudness() * 4);
+		return (((x & 0xFFFFF) << 44) | ((y & 0xFFFFF) << 24) | ((z & 0xFFFFF) << 4)
+			| (loud & 0xF));
 	}
 }

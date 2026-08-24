@@ -240,9 +240,25 @@ public final class NpcCommands {
 				within + " noise" + (within == 1 ? "" : "s") + " in earshot"), false);
 		}
 
+		// What she is actually attending to, in full. Everything above is how she
+		// feels; this is the one line that says what about — and every round trip so
+		// far has been spent working that out from the outside by watching a head.
+		var lead = watch.lead();
+		if (lead != null) {
+			String about = lead.seen() ? "watching " + (quarry == null ? "somebody"
+					: quarry.getName().getString())
+				: "a noise at " + Math.round(lead.at().x) + " "
+					+ Math.round(lead.at().y) + " " + Math.round(lead.at().z);
+			source.sendSuccess(() -> Component.literal(
+				"on: " + about
+					+ " — urgency " + Math.round(lead.urgency() * 100) + "%"
+					+ ", strength " + Math.round(lead.strength() * 100) + "%"
+					+ ", turning " + Math.round(lead.turningAt()) + "°/tick"), false);
+		}
+
 		String said = "watching — " + watch.mood()
 			+ ", alarm " + Math.round(watch.alarm() * 100) + "%"
-			+ (quarry == null ? ", nothing noticed"
+			+ (quarry == null ? ", nobody identified"
 				// Which sense it is going on, because the two mean very different
 				// things and look identical from outside: seeing you is what makes it
 				// certain, hearing you never can.

@@ -74,6 +74,22 @@ public final class Shots {
 	public static final float URGENCY = 1f;
 
 	/**
+	 * How urgent the arrow itself is, while it is still going past.
+	 *
+	 * <h2>The half that was missing</h2>
+	 *
+	 * The deduction was written and the noticing was not, so a character went from
+	 * unaware straight to knowing where the archer stood. Reported as: she does not
+	 * even look at the arrow. Which is the wrong picture even when the answer is
+	 * right — what a person does is follow the thing with their eyes, and only then
+	 * look back along it.
+	 *
+	 * High, but under the conclusion it leads to. The arrow is alarming; where it
+	 * came from is what matters, and the head should go there second and stay.
+	 */
+	public static final float SEEING_IT = 0.85f;
+
+	/**
 	 * How strongly a shot registers, by how close it went past.
 	 *
 	 * One that nearly parts your hair is unmissable; one at the far edge of vision
