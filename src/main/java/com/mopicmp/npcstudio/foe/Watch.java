@@ -111,6 +111,8 @@ public final class Watch {
 		strength = 0;
 		bySight = false;
 		lastKnown = null;
+		attending = 0;
+		attendingUntil = 0;
 	}
 
 	/**
@@ -180,9 +182,31 @@ public final class Watch {
 	 * blocks away and behind a shoulder. Nearest-first would have the character
 	 * staring past the person it can actually see.
 	 */
+	/**
+	 * How important whatever currently has her attention was, and until when.
+	 *
+	 * <h2>Why attention has to be held rather than recomputed</h2>
+	 *
+	 * Because otherwise the loudest thing in the last second always wins, and a
+	 * character who has just turned towards an explosion is pulled away from it by
+	 * somebody shutting a door nearby. That is not being alert, it is being
+	 * distractible, and it looks foolish in exactly the moment a character most
+	 * needs not to.
+	 *
+	 * So something serious holds on for a few seconds after it stops making a noise,
+	 * and only something more serious can take over. It decays rather than latching:
+	 * once the hold runs out, an ordinary noise is interesting again.
+	 */
+	private float attending;
+	private long attendingUntil;
+
+	/** How long the most serious possible noise holds attention, in ticks. */
+	private static final int HOLDS_FOR = 80;
+
 	private void look() {
 		strength = 0;
 		bySight = false;
+		if (self.level().getGameTime() > attendingUntil) attending = 0;
 		LivingEntity best = null;
 
 		for (Player player : self.level().players()) {
@@ -203,21 +227,39 @@ public final class Watch {
 		// And then whatever the world itself banged, which has no author. A noise
 		// tells you a place and never a person: something happened over there, and
 		// finding out what means going and looking.
-		Din.Rumour loudest = null;
-		for (Din.Rumour rumour : Din.since(self.level().getGameTime())) {
-			float reaching = Noise.heard(
-				self.position().distanceTo(rumour.at()), rumour.loudness(), rumour.carries());
-			if (reaching > strength) {
-				strength = reaching;
-				loudest = rumour;
-			}
+		//
+		// Chosen by what matters rather than by what is loudest, and that distinction
+		// is the fix for a real fault. Dynamite makes one loud bang and then a great
+		// many quiet ones as each broken block reports itself — from the crater, at
+		// your feet. Ranked by loudness, a nearby crater block beat the distant
+		// explosion and a character stood staring at the floor while a hole appeared
+		// in the world behind her.
+		Din.Rumour worst = null;
+		float worstStrength = 0;
+		long now = self.level().getGameTime();
+		for (Din.Rumour rumour : Din.since(now)) {
+			double away = self.position().distanceTo(rumour.at());
+			float reaching = Noise.heard(away, rumour.loudness(), rumour.carries());
+			if (reaching <= 0) continue;
+			if (worst != null && rumour.urgency() <= worst.urgency()) continue;
+			worst = rumour;
+			worstStrength = reaching;
 		}
-		if (loudest != null) {
+		if (worst != null && worst.urgency() >= attending) {
 			// Deliberately keeps whatever quarry there was rather than clearing it: a
 			// crash from over there does not mean she has stopped caring about the
 			// person she was already watching, it means there is now somewhere to look.
+			strength = Math.max(strength, worstStrength);
 			bySight = false;
-			lastKnown = loudest.at();
+			attending = worst.urgency();
+			// And a bang does not have to keep banging to go on mattering. Something
+			// serious holds the attention for a few seconds afterwards, which is what
+			// stops a door closing nearby from pulling a character's head away from an
+			// explosion she has only just turned towards.
+			attendingUntil = now + (long) (HOLDS_FOR * worst.urgency());
+			lastKnown = Din.guessAt(worst,
+				Din.vagueness(worstStrength, self.position().distanceTo(worst.at())),
+				self.position());
 			return;
 		}
 

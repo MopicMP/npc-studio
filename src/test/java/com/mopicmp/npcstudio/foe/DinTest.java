@@ -96,4 +96,122 @@ class DinTest {
 		assertEquals(0f, Din.loudnessFor(0f), 1e-4);
 		assertEquals(0f, Din.loudnessFor(-1f), 1e-4);
 	}
+
+	// ------------------------------------------------------------- what matters
+
+	@Test
+	@DisplayName("an explosion out-ranks the rubble it makes")
+	void theCraterDoesNotOutShoutTheBang() {
+		// The fault this whole separation exists for. Dynamite makes one loud bang
+		// and then a great many quiet ones as each broken block reports itself, from
+		// the crater at your feet. Ranked by loudness the nearby rubble won, and a
+		// character stood staring at the floor while a hole appeared behind her.
+		float bang = Din.urgencyFor(DYNAMITE, false);
+		float rubble = Din.urgencyFor(PLACING, false);
+		assertTrue(bang > rubble, bang + " against " + rubble);
+
+		// And loudness alone would have said the opposite once distance is counted.
+		float bangHeard = Noise.heard(40, Din.loudnessFor(DYNAMITE), Din.carriesFor(DYNAMITE));
+		float rubbleHeard = Noise.heard(3, Din.loudnessFor(PLACING), Din.carriesFor(PLACING));
+		assertTrue(rubbleHeard > bangHeard,
+			"rubble at three blocks is genuinely louder than dynamite at forty: "
+				+ rubbleHeard + " against " + bangHeard);
+	}
+
+	@Test
+	@DisplayName("a fight across a courtyard beats a door beside you")
+	void dangerBeatsFurniture() {
+		assertTrue(Din.urgencyFor(1f, true) > Din.urgencyFor(1f, false));
+	}
+
+	@Test
+	@DisplayName("every noise is worth at least a glance")
+	void nothingIsWorthNothing() {
+		// Without a floor a character would ignore footsteps entirely once she had
+		// heard one door, which is a strange sort of vigilance.
+		assertTrue(Din.urgencyFor(FOOTSTEP, false) > 0);
+		for (float volume : new float[] { 0.1f, 0.5f, 1f, 2f, 4f, 10f }) {
+			float urgency = Din.urgencyFor(volume, false);
+			assertTrue(urgency > 0 && urgency <= 1, volume + " came to " + urgency);
+		}
+	}
+
+	// ------------------------------------------------------- ears are not eyes
+
+	@Test
+	@DisplayName("a loud noise beside you is placed almost exactly")
+	void closeAndLoudIsWellPlaced() {
+		assertTrue(Din.vagueness(1f, 2) < 1, "came to " + Din.vagueness(1f, 2));
+	}
+
+	@Test
+	@DisplayName("a faint noise far off could be anywhere")
+	void farAndFaintIsVague() {
+		// It was reported that she knew exactly where a sound came from, which is not
+		// something anybody can do. It matters beyond realism: a character who places
+		// a noise precisely has in effect seen you, and then hearing stops being the
+		// lesser sense the whole arrangement depends on it being.
+		double vague = Din.vagueness(0.1f, 40);
+		assertTrue(vague > 5, "forty blocks off and barely heard came to " + vague);
+		assertTrue(vague <= 12, "and not so vague as to be useless: " + vague);
+	}
+
+	@Test
+	@DisplayName("vagueness grows with distance and shrinks with loudness")
+	void vaguenessIsOrdered() {
+		assertTrue(Din.vagueness(0.5f, 20) > Din.vagueness(0.5f, 5));
+		assertTrue(Din.vagueness(0.2f, 20) > Din.vagueness(0.9f, 20));
+	}
+
+	@Test
+	@DisplayName("the same guess comes back every time it is asked")
+	void guessingIsSteady() {
+		// It has to be, or the head twitches about a point sixty times a second. The
+		// guess is worked out from the noise rather than drawn afresh.
+		var at = new net.minecraft.world.phys.Vec3(10, 64, 10);
+		var rumour = new Din.Rumour(at, 0.5f, 32, 0.5f, 100);
+		var from = new net.minecraft.world.phys.Vec3(0, 64, 0);
+		var once = Din.guessAt(rumour, 6, from);
+		var again = Din.guessAt(rumour, 6, from);
+		assertEquals(once.x, again.x, 1e-9);
+		assertEquals(once.z, again.z, 1e-9);
+	}
+
+	@Test
+	@DisplayName("two characters in different places guess differently")
+	void everybodyGuessesForThemselves() {
+		var at = new net.minecraft.world.phys.Vec3(10, 64, 10);
+		var rumour = new Din.Rumour(at, 0.5f, 32, 0.5f, 100);
+		var here = Din.guessAt(rumour, 6, new net.minecraft.world.phys.Vec3(0, 64, 0));
+		var there = Din.guessAt(rumour, 6, new net.minecraft.world.phys.Vec3(30, 64, 5));
+		assertTrue(here.x != there.x || here.z != there.z,
+			"they are standing in different places and should be wrong differently");
+	}
+
+	@Test
+	@DisplayName("the guess is never wrong about how high up it was")
+	void heightIsNeverGuessed() {
+		// Being wrong about the height has a character staring into the ground or up
+		// at the sky, which reads as broken rather than as approximate. It is also
+		// the one direction ears are genuinely good at: a noise from below sounds
+		// like it came from below.
+		var at = new net.minecraft.world.phys.Vec3(10, 64, 10);
+		var rumour = new Din.Rumour(at, 0.2f, 32, 0.5f, 100);
+		for (int i = 0; i < 20; i++) {
+			var guess = Din.guessAt(rumour, 12,
+				new net.minecraft.world.phys.Vec3(i, 64, i * 2));
+			assertEquals(64, guess.y, 1e-9);
+		}
+	}
+
+	@Test
+	@DisplayName("the guess stays inside the vagueness it was given")
+	void theGuessIsBounded() {
+		var at = new net.minecraft.world.phys.Vec3(0, 64, 0);
+		var rumour = new Din.Rumour(at, 0.3f, 32, 0.5f, 7);
+		for (int i = 0; i < 200; i++) {
+			var guess = Din.guessAt(rumour, 5, new net.minecraft.world.phys.Vec3(i, 64, -i));
+			assertTrue(guess.distanceTo(at) <= 5.0001, "wandered to " + guess.distanceTo(at));
+		}
+	}
 }

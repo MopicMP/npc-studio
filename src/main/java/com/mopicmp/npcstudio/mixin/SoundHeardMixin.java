@@ -54,6 +54,19 @@ public class SoundHeardMixin {
 			&& source != SoundSource.UI && source != SoundSource.VOICE;
 	}
 
+	/**
+	 * Whether a noise came from something dangerous rather than from the furniture.
+	 *
+	 * The game's own categories answer this well enough: a hostile creature is a
+	 * threat, and so is a player, since a player is what a guard is guarding
+	 * against. A block is a block. It is a coarse answer and it is the right sort of
+	 * coarse — a weapon from another mod will be playing its shot under one of these
+	 * categories already, without knowing we exist.
+	 */
+	private static boolean npcStudio$dangerous(SoundSource source) {
+		return source == SoundSource.HOSTILE || source == SoundSource.PLAYERS;
+	}
+
 	@Inject(method = "playSeededSound(Lnet/minecraft/world/entity/Entity;DDD"
 		+ "Lnet/minecraft/core/Holder;Lnet/minecraft/sounds/SoundSource;FFJ)V", at = @At("HEAD"))
 	private void npcStudio$noiseSomewhere(Entity by, double x, double y, double z,
@@ -61,7 +74,7 @@ public class SoundHeardMixin {
 			long seed, CallbackInfo info) {
 		if (!npcStudio$worthHearing(source)) return;
 		ServerLevel self = (ServerLevel) (Object) this;
-		Din.made(new Vec3(x, y, z), volume, self.getGameTime());
+		Din.made(new Vec3(x, y, z), volume, npcStudio$dangerous(source), self.getGameTime());
 	}
 
 	@Inject(method = "playSeededSound(Lnet/minecraft/world/entity/Entity;"
@@ -72,7 +85,11 @@ public class SoundHeardMixin {
 			long seed, CallbackInfo info) {
 		if (!npcStudio$worthHearing(source)) return;
 		ServerLevel self = (ServerLevel) (Object) this;
-		Din.made(from.position(), volume, self.getGameTime());
+		// From the middle of whatever made it rather than from its feet. A noise
+		// placed at ground level has anybody who turns towards it looking at the
+		// floor, which is the wrong picture even when the position is right.
+		Din.made(from.getEyePosition(), volume, npcStudio$dangerous(source),
+			self.getGameTime());
 	}
 
 	/**
@@ -93,7 +110,12 @@ public class SoundHeardMixin {
 			int detail, CallbackInfo info) {
 		if (what != BREAKING) return;
 		ServerLevel self = (ServerLevel) (Object) this;
-		Din.made(Vec3.atCenterOf(where), 1f, self.getGameTime());
+		// Never dangerous, whatever broke it. A block giving way is worth a look and
+		// is not a threat in itself — and an explosion breaks a great many of them at
+		// once, all of them in the crater at your feet. Ranked as a threat they would
+		// out-shout the explosion that caused them, which is precisely the fault this
+		// separation exists to prevent.
+		Din.made(Vec3.atCenterOf(where), 1f, false, self.getGameTime());
 	}
 
 	/** The game's own number for "a block was destroyed here". */
