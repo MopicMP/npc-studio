@@ -427,24 +427,10 @@ public class NpcEntity extends Avatar {
 
 		Vec3 at = watch.lookingAt();
 		if (at == null) return;
-		turnTowards(at, watch.mood() == com.mopicmp.npcstudio.foe.Alarm.Mood.ALERT,
-			watch.squaresUp());
+		var lead = watch.lead();
+		if (lead == null) return;
+		turnTowards(at, lead, watch.squaresUp());
 	}
-
-	/** How far the head may swing in one tick: a glance, and a snap round. */
-	private static final float GLANCING = 9f;
-	private static final float SHARPLY = 18f;
-
-	/**
-	 * And the body, which always lags the head — unhurried, then in earnest.
-	 *
-	 * Two rates for the same reason the head has two. Somebody who has merely
-	 * noticed you brings their shoulders round without hurrying; somebody who has
-	 * decided about you turns to face you properly, and at a rate no runner circling
-	 * them at arm's length is going to beat.
-	 */
-	private static final float SHOULDERS = 8f;
-	private static final float SQUARELY = 16f;
 
 	/**
 	 * Turns to look at a point, head first and body only when the neck runs out.
@@ -461,10 +447,15 @@ public class NpcEntity extends Avatar {
 	 *
 	 * <h2>Two speeds, and what they say</h2>
 	 *
-	 * A suspicious character glances; an alert one snaps round. Reproducing that is
-	 * not decoration — from across a room those two mean "I might still get away"
-	 * and "I will not", and that is information the player needs and has no other
-	 * way of getting.
+	 * <h2>The speed says what happened</h2>
+	 *
+	 * It used to be chosen by her mood, which cannot say it: mood moves slowly by
+	 * design, so a dropped stick and a stick of dynamite turned her head at the same
+	 * rate. She whipped round at nothing and took her time about explosions.
+	 *
+	 * The rate now comes from how urgent the thing was, which is already the number
+	 * that means exactly this. Quick for a bang, unhurried for a footstep — and a
+	 * player learns to read which happened from across a room without being told.
 	 *
 	 * <h2>And then she squares up</h2>
 	 *
@@ -482,10 +473,9 @@ public class NpcEntity extends Avatar {
 	 *
 	 * @param squareUp whether to bring the body round as well, or only the head
 	 */
-	private void turnTowards(Vec3 at, boolean sharply, boolean squareUp) {
+	private void turnTowards(Vec3 at, com.mopicmp.npcstudio.foe.Lead lead, boolean squareUp) {
 		float wanted = (float) com.mopicmp.npcstudio.foe.Sight.yawTo(getX(), getZ(), at.x, at.z);
-		float head = com.mopicmp.npcstudio.foe.Neck.step(getYHeadRot(), wanted,
-			sharply ? SHARPLY : GLANCING);
+		float head = com.mopicmp.npcstudio.foe.Neck.step(getYHeadRot(), wanted, lead.turningAt());
 
 		// While it is a glance, the body moves only when the neck runs out — the game
 		// already has an opinion about how far that is. Once it is attention, the
@@ -496,7 +486,7 @@ public class NpcEntity extends Avatar {
 			: com.mopicmp.npcstudio.foe.Neck.overTurn(head, yBodyRot, limit);
 		if (excess != 0) {
 			float body = com.mopicmp.npcstudio.foe.Neck.step(yBodyRot, yBodyRot + excess,
-				sharply ? SQUARELY : SHOULDERS);
+				lead.squaringAt());
 			yBodyRot = body;
 			setYRot(body);
 		}
@@ -508,7 +498,7 @@ public class NpcEntity extends Avatar {
 		setYHeadRot(com.mopicmp.npcstudio.foe.Neck.held(head, yBodyRot, limit));
 		Vec3 eye = getEyePosition();
 		float pitch = com.mopicmp.npcstudio.foe.Neck.pitchTo(eye.x, eye.y, eye.z, at.x, at.y, at.z);
-		setXRot(com.mopicmp.npcstudio.foe.Neck.step(getXRot(), pitch, sharply ? SHARPLY : GLANCING));
+		setXRot(com.mopicmp.npcstudio.foe.Neck.step(getXRot(), pitch, lead.turningAt()));
 	}
 
 	private EntityDataAccessor<String> slotFor(Motion motion) {

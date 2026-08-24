@@ -2,6 +2,7 @@ package com.mopicmp.npcstudio.foe;
 
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -9,31 +10,38 @@ import net.minecraft.world.phys.Vec3;
  *
  * <h2>What is here and what is deliberately not</h2>
  *
- * Here: finding somebody to look at, asking the world whether a wall is in the
- * way, and turning the head. Not here: any of the arithmetic — how wide a cone
- * is, how fast noticing happens, when a mood changes. That lives in {@link
- * Sight} and {@link Alarm}, where it is tested without a game, and this class
- * is the thin wiring between those and Minecraft.
+ * Here: gathering what the senses bring in, asking the world about walls, and
+ * saying where the head should point. Not here: any of the arithmetic — how wide
+ * a cone is, how fast noticing happens, how vague a noise is, how fast to turn.
+ * That lives in {@link Sight}, {@link Alarm}, {@link Din}, {@link Shots} and
+ * {@link Lead}, where it is tested without a game.
  *
  * The split is not tidiness. A guard who notices a little too eagerly does not
  * crash and does not log; the report comes back a week later as "it feels
  * wrong", and finding out why means being able to ask the numbers a question.
  *
+ * <h2>One kind of finding</h2>
+ *
+ * Every sense produces a {@link Lead} and the best one wins. This replaced a
+ * branch per sense, each writing into its own fields, with what she was looking
+ * at reassembled from those fields afterwards by a second set of rules — and the
+ * two sets disagreed. See {@link Lead} for the bugs that came of it; they were
+ * reported as one symptom and were really one cause.
+ *
  * <h2>Server only</h2>
  *
- * Because two answers to "have I seen you" is worse than none. The client is
- * told the mood and believes it — see the synced mood on the character — which
- * also means a client cannot be lied to about whether it has been spotted by
- * checking what its own copy of the world thinks.
+ * Because two answers to "have I been seen" is worse than none. The client is
+ * told the mood and believes it, which also means a client cannot find out
+ * whether it has been spotted by asking its own copy of the world.
  */
 public final class Watch {
 
 	/**
 	 * How often the world is asked, in ticks.
 	 *
-	 * Not every tick, because the expensive question here is the wall — a ray cast
-	 * through blocks, once per watching character per player in range. Five times a
-	 * second is far finer than noticing needs and a fifth of the cost.
+	 * Not every tick, because the expensive questions here are the walls and the
+	 * search through the air. Five times a second is far finer than noticing needs
+	 * and a fifth of the cost.
 	 *
 	 * The alarm still moves every tick. That is the point of separating them: the
 	 * meter is smooth even though the looking is not, so nothing downstream can
@@ -47,34 +55,8 @@ public final class Watch {
 	private float alarm;
 	private Alarm.Mood mood = Alarm.Mood.CALM;
 
-	/** What is being watched, and how strongly it was seen when last looked at. */
-	private LivingEntity quarry;
-	private float strength;
-
-	/** Whether the last thing that raised the alarm was eyes rather than ears. */
-	private boolean bySight;
-
-	/**
-	 * Where the quarry was when it was last actually noticed.
-	 *
-	 * <h2>The bug this is the fix for</h2>
-	 *
-	 * Without it a character went on tracking you <em>through the wall</em> you had
-	 * just stepped behind — her head following you along it for the two or three
-	 * seconds the alarm takes to drain, and then abruptly giving up. It was
-	 * reported exactly that way: she keeps watching until you stop, and then
-	 * suddenly realises she cannot see through walls.
-	 *
-	 * Nothing was wrong with the noticing. The mistake was that "look at the
-	 * quarry" asked the quarry where it was <em>now</em>, and while forgetting
-	 * somebody you do not know where they are — that is what forgetting is. So the
-	 * position is remembered at the moment of seeing, and the head goes there.
-	 *
-	 * Which is also the behaviour worth having on its own account: a guard staring
-	 * at the doorway you vanished through is what being hunted looks like, and it
-	 * is the hook every later step hangs on. Walking over to look is the next one.
-	 */
-	private Vec3 lastKnown;
+	/** What she is attending to, or null. The single answer to "what now". */
+	private Lead lead;
 
 	private int untilLook;
 
@@ -98,30 +80,37 @@ public final class Watch {
 		return alarm;
 	}
 
-	/** Who is being watched, or null. */
+	public Lead lead() {
+		return lead;
+	}
+
+	/** Who is being watched, or null when it was only a noise. */
 	public LivingEntity quarry() {
-		return quarry;
+		return lead == null ? null : lead.who();
+	}
+
+	/** Whether what she is going on is eyes rather than ears. */
+	public boolean bySight() {
+		return lead != null && lead.seen();
 	}
 
 	/** Forgets everything: used when something else takes the character over. */
 	public void standDown() {
 		alarm = 0;
 		mood = Alarm.Mood.CALM;
-		quarry = null;
-		strength = 0;
-		bySight = false;
-		lastKnown = null;
+		lead = null;
+		attention = 0;
 		attending = 0;
 		attendingUntil = 0;
+		seenFlying.clear();
 	}
 
 	/**
 	 * One tick of watching.
 	 *
 	 * The order matters and is the opposite of the obvious one: the world is asked
-	 * occasionally and the meter is moved every time. Written the other way round —
-	 * meter moved only when the world was asked — the alarm rose in four-tick steps
-	 * and a character noticed you in visible jumps.
+	 * occasionally and the meter is moved every time. Written the other way round
+	 * the alarm rose in four-tick steps and a character noticed you in jumps.
 	 */
 	public void tick() {
 		if (--untilLook <= 0) {
@@ -129,13 +118,13 @@ public final class Watch {
 			look();
 		}
 		// Sound alone stops short of certainty. Sight has no ceiling, so the two are
-		// the same call with a different limit rather than two paths that have to be
-		// kept saying the same thing.
-		alarm = Alarm.next(alarm, strength, bySight ? 1f : Noise.CEILING);
+		// one call with a different limit rather than two paths that have to be kept
+		// saying the same thing.
+		float strength = lead == null ? 0 : lead.strength();
+		alarm = Alarm.next(alarm, strength, bySight() ? 1f : Noise.CEILING);
 		mood = Alarm.moodOf(alarm, mood);
 		if (mood == Alarm.Mood.CALM) {
-			quarry = null;
-			lastKnown = null;
+			lead = null;
 			attention = 0;
 		} else {
 			attention++;
@@ -145,17 +134,9 @@ public final class Watch {
 	/**
 	 * How long this has been paying attention to something, in ticks.
 	 *
-	 * <h2>What it is for</h2>
-	 *
-	 * The difference between a glance and turning to face somebody. Reported like
-	 * this: it is natural to turn your head towards a stranger, but standing there
-	 * looking sideways at them is not — not while you talk to them, and not for
-	 * minutes on end. Nobody holds their neck at sixty degrees; after a moment they
-	 * bring their shoulders round.
-	 *
-	 * A counter rather than a state, because the whole question is <em>how long</em>,
-	 * and because it costs one int and turns "glance, then commit" into arithmetic
-	 * the character can be asked about.
+	 * The difference between a glance and turning to face somebody. It is natural to
+	 * turn your head towards a stranger; standing there looking sideways at them is
+	 * not, and nobody holds their neck at sixty degrees while they talk.
 	 */
 	private int attention;
 
@@ -163,148 +144,220 @@ public final class Watch {
 		return attention;
 	}
 
-	/**
-	 * Whether this has been looking long enough to turn and face what it sees.
-	 *
-	 * About a second. Short enough that it never looks like indecision, long enough
-	 * that a character following somebody past a doorway does it with her eyes, the
-	 * way a person would.
-	 */
+	/** Whether she has been looking long enough to turn and face it. */
 	public boolean squaresUp() {
 		return attention > 20;
 	}
 
 	/**
-	 * Finds the best thing to be looking at, and how well it is seen.
+	 * How important whatever has her attention was, and until when.
 	 *
-	 * "Best" is strongest rather than nearest, and the difference is real: somebody
-	 * ten blocks away and straight ahead is more of a concern than somebody four
-	 * blocks away and behind a shoulder. Nearest-first would have the character
-	 * staring past the person it can actually see.
-	 */
-	/**
-	 * How important whatever currently has her attention was, and until when.
+	 * Otherwise the loudest thing in the last second always wins, and a character
+	 * who has just turned towards an explosion is pulled away by somebody shutting a
+	 * door. That is not alertness, it is distractibility, and it looks foolish in
+	 * exactly the moment a character most needs not to.
 	 *
-	 * <h2>Why attention has to be held rather than recomputed</h2>
-	 *
-	 * Because otherwise the loudest thing in the last second always wins, and a
-	 * character who has just turned towards an explosion is pulled away from it by
-	 * somebody shutting a door nearby. That is not being alert, it is being
-	 * distractible, and it looks foolish in exactly the moment a character most
-	 * needs not to.
-	 *
-	 * So something serious holds on for a few seconds after it stops making a noise,
-	 * and only something more serious can take over. It decays rather than latching:
-	 * once the hold runs out, an ordinary noise is interesting again.
+	 * Held rather than latched: the hold runs out and ordinary things are
+	 * interesting again. And a sighting ignores it entirely — nothing outranks
+	 * looking straight at somebody.
 	 */
 	private float attending;
 	private long attendingUntil;
 
 	/** How long the most serious possible noise holds attention, in ticks. */
-	private static final int HOLDS_FOR = 80;
+	private static final int HOLDS_FOR = 60;
+
+	// ------------------------------------------------------------- the looking
 
 	private void look() {
-		strength = 0;
-		bySight = false;
-		if (self.level().getGameTime() > attendingUntil) attending = 0;
-		LivingEntity best = null;
+		long now = self.level().getGameTime();
+		if (now > attendingUntil) attending = 0;
 
+		Lead best = null;
 		for (Player player : self.level().players()) {
 			if (!worthWatching(player)) continue;
-
-			float seen = strengthOf(player);
-			float noise = heardFrom(player);
-			// Eyes win ties, because when both are available the eyes are the better
-			// evidence and the ceiling should not apply.
-			float evidence = Math.max(seen, noise);
-			if (evidence <= strength) continue;
-
-			strength = evidence;
-			bySight = seen >= noise;
-			best = player;
+			best = better(best, fromEyes(player));
+			best = better(best, fromEars(player));
 		}
+		best = better(best, fromTheWorld(now));
+		best = better(best, fromShots(now));
 
-		// And then whatever the world itself banged, which has no author. A noise
-		// tells you a place and never a person: something happened over there, and
-		// finding out what means going and looking.
-		//
-		// Chosen by what matters rather than by what is loudest, and that distinction
-		// is the fix for a real fault. Dynamite makes one loud bang and then a great
-		// many quiet ones as each broken block reports itself — from the crater, at
-		// your feet. Ranked by loudness, a nearby crater block beat the distant
-		// explosion and a character stood staring at the floor while a hole appeared
-		// in the world behind her.
-		Din.Rumour worst = null;
-		float worstStrength = 0;
-		long now = self.level().getGameTime();
+		if (best == null) {
+			// Nothing new. Whatever she was attending to stays where it was, so that a
+			// character does not turn away the instant a sound stops — the alarm
+			// draining is what ends it, and that takes seconds.
+			return;
+		}
+		// A sighting is never held off by anything; every other kind has to be at
+		// least as important as what is already occupying her.
+		if (!best.seen() && best.urgency() < attending) return;
+
+		lead = best;
+		if (!best.seen()) {
+			attending = best.urgency();
+			attendingUntil = now + (long) (HOLDS_FOR * best.urgency());
+		}
+	}
+
+	private static Lead better(Lead held, Lead offered) {
+		return offered != null && offered.beats(held) ? offered : held;
+	}
+
+	/**
+	 * Somebody in view.
+	 *
+	 * <h2>The cone is for noticing, not for keeping hold of</h2>
+	 *
+	 * Once somebody has your full attention you do not lose them because your head
+	 * lagged behind them. Without that rule the angle is checked afresh every look,
+	 * so a character who had already seen you could be un-seen simply by being
+	 * faster than her neck — which is what "you can jog in circles behind her"
+	 * meant. Turning the head faster never fixes it: there is always a radius at
+	 * which a running player out-turns any fixed rate.
+	 */
+	private Lead fromEyes(Player player) {
+		double distance = self.distanceTo(player);
+		if (distance > sight.range()) return null;
+
+		Vec3 eye = self.getEyePosition();
+		double towards = Sight.yawTo(eye.x, eye.z, player.getX(), player.getZ());
+		// The head and not the body: a character standing one way and looking another
+		// sees where she is looking, which is the whole reason heads turn.
+		double off = Sight.turnBetween(self.getYHeadRot(), towards);
+
+		boolean holding = mood == Alarm.Mood.ALERT && player == quarry();
+		float seen = sight.strength(distance, holding ? 0 : off);
+		if (seen <= 0) return null;
+
+		// Asked last, because it is the expensive one and most candidates have been
+		// ruled out by an angle or a distance that costs nothing.
+		return self.hasLineOfSight(player) ? Lead.sighting(player, seen) : null;
+	}
+
+	/**
+	 * Somebody heard but not seen.
+	 *
+	 * Placed as vaguely as any other noise, and that is a correction rather than a
+	 * flourish. Hearing somebody move behind a wall used to hand back their exact
+	 * position every tick, which is watching them through the wall by another name;
+	 * and when they stopped, the head snapped away as though nothing had happened.
+	 * One mistake, reported as two.
+	 */
+	private Lead fromEars(Player player) {
+		float loudness = loudnessOf(player);
+		if (loudness <= 0) return null;
+
+		float wall = throughWalls(player);
+		float reaching = Noise.heard(self.distanceTo(player), loudness * wall);
+		if (wall < 1) {
+			double round = around(player);
+			if (round >= 0) reaching = Math.max(reaching, Noise.heard(round, loudness));
+		}
+		if (reaching <= 0) return null;
+
+		double away = self.position().distanceTo(player.position());
+		Vec3 guess = Din.guessAt(
+			new Din.Rumour(player.position(), loudness, Noise.EARSHOT, FOOTSTEPS, self.tickCount),
+			Din.vagueness(reaching, away), self.position());
+		// The person is remembered even though the place is a guess: it costs nothing
+		// and it is what lets a sighting a moment later be recognised as the same
+		// person rather than as a fresh discovery.
+		return Lead.noise(guess, player, reaching, FOOTSTEPS);
+	}
+
+	/**
+	 * How urgent somebody moving about is.
+	 *
+	 * The plainest thing there is. Footsteps are how you notice that anybody is
+	 * there at all, and they must never out-rank a bang — that was the whole of the
+	 * crater problem, in the other direction.
+	 */
+	private static final float FOOTSTEPS = 0.2f;
+
+	/** Whatever the world itself banged, which has no author. */
+	private Lead fromTheWorld(long now) {
+		Lead best = null;
 		for (Din.Rumour rumour : Din.since(now)) {
 			double away = self.position().distanceTo(rumour.at());
 			float reaching = Noise.heard(away, rumour.loudness(), rumour.carries());
 			if (reaching <= 0) continue;
-			if (worst != null && rumour.urgency() <= worst.urgency()) continue;
-			worst = rumour;
-			worstStrength = reaching;
+			Vec3 guess = Din.guessAt(rumour, Din.vagueness(reaching, away), self.position());
+			best = better(best, Lead.noise(guess, null, reaching, rumour.urgency()));
 		}
-		if (worst != null && worst.urgency() >= attending) {
-			// Deliberately keeps whatever quarry there was rather than clearing it: a
-			// crash from over there does not mean she has stopped caring about the
-			// person she was already watching, it means there is now somewhere to look.
-			strength = Math.max(strength, worstStrength);
-			bySight = false;
-			attending = worst.urgency();
-			// And a bang does not have to keep banging to go on mattering. Something
-			// serious holds the attention for a few seconds afterwards, which is what
-			// stops a door closing nearby from pulling a character's head away from an
-			// explosion she has only just turned towards.
-			attendingUntil = now + (long) (HOLDS_FOR * worst.urgency());
-			lastKnown = Din.guessAt(worst,
-				Din.vagueness(worstStrength, self.position().distanceTo(worst.at())),
-				self.position());
-			return;
+		return best;
+	}
+
+	// ------------------------------------------------------------- the shooting
+
+	/** Projectiles noticed going past, and the tick their meaning becomes clear. */
+	private final java.util.Map<Integer, Long> seenFlying = new java.util.HashMap<>();
+
+	/**
+	 * An arrow going past, and where it must have come from.
+	 *
+	 * Watched first and understood a moment later. A character who snaps to the
+	 * firing position on the frame the arrow passes has not deduced anything — she
+	 * has read its owner — and it looks like it, because no thought is that fast.
+	 */
+	private Lead fromShots(long now) {
+		var near = self.getBoundingBox().inflate(Shots.NOTICED_WITHIN);
+		Lead best = null;
+
+		for (Projectile flying : self.level().getEntitiesOfClass(Projectile.class, near)) {
+			Vec3 course = flying.getDeltaMovement();
+			if (course.lengthSqr() < 0.01) continue;
+			// Its own doing, which is not news to her.
+			if (flying.getOwner() == self) continue;
+			if (!self.hasLineOfSight(flying)) continue;
+
+			float startle = Shots.startle(self.position().distanceTo(flying.position()));
+			if (startle <= 0) continue;
+
+			Long clearAt = seenFlying.get(flying.getId());
+			if (clearAt == null) {
+				seenFlying.put(flying.getId(), now + Shots.WORKING_IT_OUT);
+				continue;
+			}
+			if (now < clearAt) continue;
+
+			best = better(best, Lead.noise(backAlong(flying), null, startle, Shots.URGENCY));
 		}
 
-		if (best == null) return;
-		quarry = best;
-		// Remembered here and only here: this is the moment of noticing, and where
-		// somebody was when they were noticed is all a character can honestly know
-		// about where they are.
-		lastKnown = bySight ? best.getEyePosition() : best.position();
+		// Arrows land and are removed, so their entries would otherwise pile up for
+		// as long as the world stands.
+		seenFlying.entrySet().removeIf(entry -> now - entry.getValue() > 100);
+		return best;
 	}
 
 	/**
-	 * How loudly one candidate is heard, walls not included.
+	 * Back along the flight until something is in the way.
 	 *
-	 * Not included on purpose. A wall stops sight outright and muffles sound, and
-	 * modelling that properly means knowing what the wall is made of and how thick
-	 * it is — a large piece of work whose reward is that a guard hears you slightly
-	 * less through stone. Hearing straight through is the honest simplification,
-	 * and it is the one that makes hiding behind a wall tense rather than safe.
+	 * The wall it came round is a better guess at where the shooter is than a fixed
+	 * distance would be — an arrow through a doorway says the archer is at the
+	 * doorway, not sixteen blocks beyond it through solid rock.
 	 */
+	private Vec3 backAlong(Projectile flying) {
+		Vec3 at = flying.position();
+		Vec3 course = flying.getDeltaMovement();
+		Vec3 far = Shots.firedFrom(at, course, Shots.BACK_ALONG);
+
+		var blocked = self.level().clip(new net.minecraft.world.level.ClipContext(at, far,
+			net.minecraft.world.level.ClipContext.Block.COLLIDER,
+			net.minecraft.world.level.ClipContext.Fluid.NONE, flying));
+		if (blocked.getType() == net.minecraft.world.phys.HitResult.Type.MISS) return far;
+		return Shots.firedFrom(at, course, at.distanceTo(blocked.getLocation()));
+	}
+
+	// ------------------------------------------------------------- the plumbing
+
 	/**
-	 * How loudly one candidate is heard, by whichever route the sound gets here.
+	 * Whether somebody is a candidate at all, before any geometry.
 	 *
-	 * <h2>Two routes, and the louder wins</h2>
-	 *
-	 * Sound arrives both ways at once: some of it through the wall, muffled, and
-	 * some of it round through the doorway, undiminished but having gone further.
-	 * You hear the louder. Taking the better of the two is not a shortcut, it is
-	 * what actually happens.
-	 *
-	 * The way round is only looked for when the direct line is blocked, because in
-	 * the open the direct line already is the way round and the search would be an
-	 * expensive way of finding that out.
+	 * Spectators are not there; creative players are, deliberately. Skipping
+	 * creative would make this untestable by the only person going to test it.
 	 */
-	private float heardFrom(Player player) {
-		float loudness = loudnessOf(player);
-		if (loudness <= 0) return 0;
-
-		float wall = throughWalls(player);
-		float direct = Noise.heard(self.distanceTo(player), loudness * wall);
-		if (wall >= 1) return direct;
-
-		double round = around(player);
-		if (round < 0) return direct;
-		return Math.max(direct, Noise.heard(round, loudness));
+	private boolean worthWatching(Player player) {
+		return player.isAlive() && !player.isSpectator() && player != self;
 	}
 
 	/**
@@ -316,17 +369,11 @@ public final class Watch {
 	 * for the one kind of entity that matters. A player on the server does not move
 	 * by having a velocity applied — the client says where it has got to and the
 	 * server puts it there — so the field reads nought however hard somebody is
-	 * sprinting. Every player was permanently, perfectly silent, and had been since
-	 * hearing was written.
-	 *
-	 * It was reported as a wall one block high behind which nothing could be heard
-	 * whatever was done there, and then, rightly, as the hearing distance being
-	 * fixed and very small. Both are the same nought. The wall had nothing to do
-	 * with it: one block does not even interrupt the line between two people's eyes.
+	 * sprinting. Every player was perfectly silent, and had been since hearing was
+	 * written.
 	 *
 	 * {@code getKnownMovement} is the right call and this was checked rather than
-	 * assumed — {@code ServerGamePacketListenerImpl} sets it from the movement
-	 * packet, which is precisely the number wanted here.
+	 * assumed: {@code ServerGamePacketListenerImpl} sets it from the movement packet.
 	 */
 	public float loudnessOf(Player player) {
 		double pace = player.getKnownMovement().horizontalDistance();
@@ -336,21 +383,8 @@ public final class Watch {
 
 	/** What is actually reaching these ears from somebody, for a readout to show. */
 	public float hearing(Player player) {
-		return heardFrom(player);
-	}
-
-	/** How far the sound has to travel through open air, or -1 if it cannot. */
-	private double around(Player player) {
-		var level = self.level();
-		var from = self.blockPosition().above();
-		var to = player.blockPosition().above();
-		return Airways.reach(
-			(x, y, z) -> {
-				var where = new net.minecraft.core.BlockPos(x, y, z);
-				var state = level.getBlockState(where);
-				return state.isAir() || state.getCollisionShape(level, where).isEmpty();
-			},
-			from.getX(), from.getY(), from.getZ(), to.getX(), to.getY(), to.getZ());
+		Lead heard = fromEars(player);
+		return heard == null ? 0 : heard.strength();
 	}
 
 	/**
@@ -358,16 +392,9 @@ public final class Watch {
 	 *
 	 * <h2>Walked rather than clipped</h2>
 	 *
-	 * The game's own ray stops at the first thing it hits, which answers "is there
-	 * a wall" and not "how much wall" — and the difference is the whole feature. One
-	 * block of stone between you and a guard should be tense; four should be
-	 * silence. So the line is stepped along and every block it passes through is
-	 * counted, once each.
-	 *
-	 * At half a block a step this can miss a corner cut exactly diagonally. That is
-	 * a real inaccuracy and it is left in: the cost of doing it exactly is a proper
-	 * voxel traversal on every watcher every fifth of a second, and the reward is
-	 * being right about a sound that was already going to be borderline.
+	 * The game's own ray stops at the first thing it hits, which answers "is there a
+	 * wall" and not "how much wall" — and the difference is the feature. One block
+	 * of stone between you and a guard should be tense; four should be silence.
 	 */
 	private float throughWalls(Player player) {
 		Vec3 from = self.getEyePosition();
@@ -385,94 +412,39 @@ public final class Watch {
 			last = where;
 
 			var state = self.level().getBlockState(where);
-			// Anything you can walk through is not a wall, whatever its material says.
 			if (state.isAir() || state.getCollisionShape(self.level(), where).isEmpty()) continue;
 			absorbed += Muffle.factorOf(state.getSoundType());
 		}
 		return Muffle.carried(absorbed);
 	}
 
-	/**
-	 * Whether somebody is a candidate at all, before any geometry.
-	 *
-	 * Spectators are not there; creative players are, deliberately. Skipping
-	 * creative would make this untestable by the only person who is going to test
-	 * it, which is a poor trade for a realism nobody asked for.
-	 */
-	private boolean worthWatching(Player player) {
-		return player.isAlive() && !player.isSpectator() && player != self;
-	}
-
-	/**
-	 * How strongly one candidate is seen, walls included.
-	 *
-	 * <h2>The cone is for noticing, not for keeping hold of</h2>
-	 *
-	 * Once somebody has your full attention you do not lose them because your head
-	 * lagged half a second behind them. You keep them in sight by turning, and if
-	 * they run round you, you turn with them.
-	 *
-	 * Without that rule the angle is checked afresh every look, so a character who
-	 * had already seen you could be un-seen simply by being faster than her neck —
-	 * and that is precisely what was reported, twice: you can jog round behind her
-	 * while she turns, indefinitely, and nothing ever comes of it. Turning the head
-	 * faster does not fix it, because there is always a radius at which a running
-	 * player out-turns any fixed rate; it is the rule that is wrong, not the number.
-	 *
-	 * So while she is alert and it is you she is alert to, the angle stops
-	 * mattering and only the wall does. Getting away needs cover or distance, which
-	 * is what getting away ought to need.
-	 */
-	private float strengthOf(LivingEntity target) {
-		double distance = self.distanceTo(target);
-		if (distance > sight.range()) return 0;
-
-		Vec3 eye = self.getEyePosition();
-		double towards = Sight.yawTo(eye.x, eye.z, target.getX(), target.getZ());
-		// The head and not the body: a character standing one way and looking
-		// another sees where it is looking, which is the whole reason heads turn.
-		double off = Sight.turnBetween(self.getYHeadRot(), towards);
-
-		boolean holding = mood == Alarm.Mood.ALERT && target == quarry;
-		float seen = sight.strength(distance, holding ? 0 : off);
-		if (seen <= 0) return 0;
-
-		// Asked last, because it is the expensive one and most candidates have
-		// already been ruled out by an angle or a distance that costs nothing.
-		return self.hasLineOfSight(target) ? seen : 0;
+	/** How far the sound has to travel through open air, or -1 if it cannot. */
+	private double around(Player player) {
+		var level = self.level();
+		var from = self.blockPosition().above();
+		var to = player.blockPosition().above();
+		return Airways.reach(
+			(x, y, z) -> {
+				var where = new net.minecraft.core.BlockPos(x, y, z);
+				var state = level.getBlockState(where);
+				return state.isAir() || state.getCollisionShape(level, where).isEmpty();
+			},
+			from.getX(), from.getY(), from.getZ(), to.getX(), to.getY(), to.getZ());
 	}
 
 	/**
 	 * Where the head should be pointing this tick, or null to leave it alone.
 	 *
 	 * Handed back rather than applied, because who is allowed to turn this
-	 * character's head is not this class's business — a scene playing through it
-	 * outranks anything here, and the character itself is the only thing that knows
-	 * whether one is.
+	 * character's head is not this class's business — a scene playing through her
+	 * outranks anything here.
+	 *
+	 * One rule, and it is the whole of what used to go wrong: a sighting is followed
+	 * live, and everything else is a fixed place. A guess does not become a track
+	 * however long it goes on.
 	 */
 	public Vec3 lookingAt() {
-		if (mood == Alarm.Mood.CALM) return null;
-		// A noise with no author is a place and only a place, so that is where she
-		// looks. Nothing to track, nothing to be certain of, and no way to know it was
-		// you rather than a door.
-		if (!bySight && quarry == null) return lastKnown;
-		// While the quarry is being noticed right now — by either sense — its live
-		// position; the moment it is not, wherever it was last noticed. That switch
-		// is the fix for tracking somebody through a wall, see lastKnown.
-		//
-		// Either sense, and not only sight, which was a mistake worth naming: gating
-		// it on sight meant a character who could hear you was always turning towards
-		// where you had been rather than where you were, and so could never catch up
-		// with somebody circling her. Hearing does not tell you what something is. It
-		// tells you where it is, continuously, which is exactly what it is for.
-		if (strength > 0 && quarry != null) {
-			return bySight ? quarry.getEyePosition() : quarry.position();
-		}
-		return lastKnown;
-	}
-
-	/** Whether what the character is going on is eyes rather than ears. */
-	public boolean bySight() {
-		return bySight && strength > 0;
+		if (mood == Alarm.Mood.CALM || lead == null) return null;
+		return lead.seen() && lead.who() != null ? lead.who().getEyePosition() : lead.at();
 	}
 }
