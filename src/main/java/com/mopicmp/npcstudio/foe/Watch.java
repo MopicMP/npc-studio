@@ -134,7 +134,42 @@ public final class Watch {
 		if (mood == Alarm.Mood.CALM) {
 			quarry = null;
 			lastKnown = null;
+			attention = 0;
+		} else {
+			attention++;
 		}
+	}
+
+	/**
+	 * How long this has been paying attention to something, in ticks.
+	 *
+	 * <h2>What it is for</h2>
+	 *
+	 * The difference between a glance and turning to face somebody. Reported like
+	 * this: it is natural to turn your head towards a stranger, but standing there
+	 * looking sideways at them is not — not while you talk to them, and not for
+	 * minutes on end. Nobody holds their neck at sixty degrees; after a moment they
+	 * bring their shoulders round.
+	 *
+	 * A counter rather than a state, because the whole question is <em>how long</em>,
+	 * and because it costs one int and turns "glance, then commit" into arithmetic
+	 * the character can be asked about.
+	 */
+	private int attention;
+
+	public int attention() {
+		return attention;
+	}
+
+	/**
+	 * Whether this has been looking long enough to turn and face what it sees.
+	 *
+	 * About a second. Short enough that it never looks like indecision, long enough
+	 * that a character following somebody past a doorway does it with her eyes, the
+	 * way a person would.
+	 */
+	public boolean squaresUp() {
+		return attention > 20;
 	}
 
 	/**
@@ -186,7 +221,47 @@ public final class Watch {
 		double speed = player.getDeltaMovement().horizontalDistance();
 		float loudness = Noise.loudness(speed, player.isShiftKeyDown(),
 			player.isSprinting(), player.isInWater());
-		return Noise.heard(self.distanceTo(player), loudness);
+		if (loudness <= 0) return 0;
+		return Noise.heard(self.distanceTo(player), loudness * throughWalls(player));
+	}
+
+	/**
+	 * How much of a sound survives the walls between here and there.
+	 *
+	 * <h2>Walked rather than clipped</h2>
+	 *
+	 * The game's own ray stops at the first thing it hits, which answers "is there
+	 * a wall" and not "how much wall" — and the difference is the whole feature. One
+	 * block of stone between you and a guard should be tense; four should be
+	 * silence. So the line is stepped along and every block it passes through is
+	 * counted, once each.
+	 *
+	 * At half a block a step this can miss a corner cut exactly diagonally. That is
+	 * a real inaccuracy and it is left in: the cost of doing it exactly is a proper
+	 * voxel traversal on every watcher every fifth of a second, and the reward is
+	 * being right about a sound that was already going to be borderline.
+	 */
+	private float throughWalls(Player player) {
+		Vec3 from = self.getEyePosition();
+		Vec3 to = player.getEyePosition();
+		double span = from.distanceTo(to);
+		if (span < 0.5) return 1;
+
+		int steps = (int) Math.ceil(span * 2);
+		float absorbed = 0;
+		net.minecraft.core.BlockPos last = null;
+		for (int i = 1; i < steps; i++) {
+			Vec3 at = from.lerp(to, i / (double) steps);
+			var where = net.minecraft.core.BlockPos.containing(at);
+			if (where.equals(last)) continue;
+			last = where;
+
+			var state = self.level().getBlockState(where);
+			// Anything you can walk through is not a wall, whatever its material says.
+			if (state.isAir() || state.getCollisionShape(self.level(), where).isEmpty()) continue;
+			absorbed += Muffle.factorOf(state.getSoundType());
+		}
+		return Muffle.carried(absorbed);
 	}
 
 	/**
@@ -229,10 +304,18 @@ public final class Watch {
 	 */
 	public Vec3 lookingAt() {
 		if (mood == Alarm.Mood.CALM) return null;
-		// While the quarry is genuinely in sight, its live position; the moment it is
-		// not, wherever it was last seen. That switch is the whole of the fix for
-		// tracking somebody through a wall — see lastKnown.
-		if (bySight && strength > 0 && quarry != null) return quarry.getEyePosition();
+		// While the quarry is being noticed right now — by either sense — its live
+		// position; the moment it is not, wherever it was last noticed. That switch
+		// is the fix for tracking somebody through a wall, see lastKnown.
+		//
+		// Either sense, and not only sight, which was a mistake worth naming: gating
+		// it on sight meant a character who could hear you was always turning towards
+		// where you had been rather than where you were, and so could never catch up
+		// with somebody circling her. Hearing does not tell you what something is. It
+		// tells you where it is, continuously, which is exactly what it is for.
+		if (strength > 0 && quarry != null) {
+			return bySight ? quarry.getEyePosition() : quarry.position();
+		}
 		return lastKnown;
 	}
 

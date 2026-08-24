@@ -427,15 +427,16 @@ public class NpcEntity extends Avatar {
 
 		Vec3 at = watch.lookingAt();
 		if (at == null) return;
-		turnTowards(at, watch.mood() == com.mopicmp.npcstudio.foe.Alarm.Mood.ALERT);
+		turnTowards(at, watch.mood() == com.mopicmp.npcstudio.foe.Alarm.Mood.ALERT,
+			watch.squaresUp());
 	}
 
 	/** How far the head may swing in one tick: a glance, and a snap round. */
-	private static final float GLANCING = 6f;
-	private static final float SHARPLY = 15f;
+	private static final float GLANCING = 9f;
+	private static final float SHARPLY = 18f;
 
 	/** And the body, which always lags the head. */
-	private static final float SHOULDERS = 5f;
+	private static final float SHOULDERS = 8f;
 
 	/**
 	 * Turns to look at a point, head first and body only when the neck runs out.
@@ -456,18 +457,35 @@ public class NpcEntity extends Avatar {
 	 * not decoration — from across a room those two mean "I might still get away"
 	 * and "I will not", and that is information the player needs and has no other
 	 * way of getting.
+	 *
+	 * <h2>And then she squares up</h2>
+	 *
+	 * A glance is the head alone. Attention is not: nobody stands with their neck
+	 * held at sixty degrees while they talk to somebody, and a character who does
+	 * looks wrong in a way that is hard to name and impossible to ignore. It was
+	 * reported exactly so — turning the head towards a stranger is natural, standing
+	 * there sideways at them is not.
+	 *
+	 * So after about a second of paying attention the shoulders come round as well.
+	 * That also settles a second complaint, and it is worth noticing that it is the
+	 * same complaint: while the body never turned, the cone never turned either, so
+	 * somebody could jog in a circle around her and stay behind her for ever. A
+	 * character who has turned to face you cannot be walked around.
+	 *
+	 * @param squareUp whether to bring the body round as well, or only the head
 	 */
-	private void turnTowards(Vec3 at, boolean sharply) {
+	private void turnTowards(Vec3 at, boolean sharply, boolean squareUp) {
 		float wanted = (float) com.mopicmp.npcstudio.foe.Sight.yawTo(getX(), getZ(), at.x, at.z);
 		float head = com.mopicmp.npcstudio.foe.Neck.step(getYHeadRot(), wanted,
 			sharply ? SHARPLY : GLANCING);
 
-		// The body follows only once the head cannot turn any further, and the game
-		// already has an opinion about how far that is. A character following
-		// somebody across a doorway with her eyes should not shuffle round on the
-		// spot to do it.
+		// While it is a glance, the body moves only when the neck runs out — the game
+		// already has an opinion about how far that is. Once it is attention, the
+		// body goes where the head is going.
 		float limit = getMaxHeadRotationRelativeToBody();
-		float excess = com.mopicmp.npcstudio.foe.Neck.overTurn(head, yBodyRot, limit);
+		float excess = squareUp
+			? com.mopicmp.npcstudio.foe.Neck.wrap(head - yBodyRot)
+			: com.mopicmp.npcstudio.foe.Neck.overTurn(head, yBodyRot, limit);
 		if (excess != 0) {
 			float body = com.mopicmp.npcstudio.foe.Neck.step(yBodyRot, yBodyRot + excess, SHOULDERS);
 			yBodyRot = body;
