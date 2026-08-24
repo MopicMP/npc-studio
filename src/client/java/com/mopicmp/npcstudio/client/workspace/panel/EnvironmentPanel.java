@@ -3,10 +3,11 @@ package com.mopicmp.npcstudio.client.workspace.panel;
 import java.util.List;
 
 import com.mopicmp.npcstudio.client.editor.FlatSlider;
-import com.mopicmp.npcstudio.client.scene.Playing;
 import com.mopicmp.npcstudio.client.scene.Weather;
 import com.mopicmp.npcstudio.client.workspace.Icon;
 import com.mopicmp.npcstudio.client.workspace.IconTextButton;
+import com.mopicmp.npcstudio.client.workspace.Landing;
+import com.mopicmp.npcstudio.client.workspace.Property;
 import com.mopicmp.npcstudio.client.workspace.WorkspacePanel;
 import com.mopicmp.npcstudio.scene.Channels;
 
@@ -100,9 +101,29 @@ public class EnvironmentPanel extends WorkspacePanel {
 		return ticks / 24000f * 360f;
 	}
 
+	/**
+	 * The sky, which is a thing the world is rather than a thing a scene has.
+	 *
+	 * Saying so is what stopped this panel demanding a scene. See {@link Landing}:
+	 * the same sliders now write a key with a scene receiving and hold the world's
+	 * own sky otherwise, and neither case is a second copy of the panel.
+	 */
+	@Override
+	public Property edits() {
+		return Property.WORLD;
+	}
+
+	/**
+	 * Built whatever is open, which used to be the bug.
+	 *
+	 * The old guard here — no scene, no widgets — was half a rule. The other half,
+	 * the rebuild when a scene arrived, was missing, so a workspace opened before a
+	 * scene showed six headings and nothing else for ever. That half now lives in
+	 * {@code WorkspacePanel.ticked}; this half is gone entirely, because the panel
+	 * has somewhere to write with no scene at all.
+	 */
 	@Override
 	protected void build() {
-		if (Playing.scene() == null) return;
 		lay(true);
 	}
 
@@ -282,7 +303,6 @@ public class EnvironmentPanel extends WorkspacePanel {
 		// The switches show what the document says, so they are rebuilt when it
 		// changes under them — scrubbing the cursor across a key that turns the rain
 		// on has to light the switch, or the panel and the sky disagree.
-		if (Playing.scene() == null) return;
 		boolean rain = Weather.says(Channels.RAIN) && Weather.read(Channels.RAIN, 0) > 0.5f;
 		boolean storm = Weather.says(Channels.STORM) && Weather.read(Channels.STORM, 0) > 0.5f;
 		if (rain != wasRain || storm != wasStorm) {
@@ -297,13 +317,13 @@ public class EnvironmentPanel extends WorkspacePanel {
 
 	@Override
 	protected void draw(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-		if (Playing.scene() == null) {
-			graphics.text(font, Component.translatable("npc_studio.pose.no_scene"),
-				PAD, PAD, TEXT_DIM);
-			return;
-		}
 		graphics.text(font, Component.translatable("npc_studio.environment.sun"),
 			PAD, PAD, TEXT_DIM);
+		// Where the next movement of a slider goes, beside the sliders it is about.
+		// Right-aligned so it does not push the heading around as the word changes
+		// length between "мир" and "сцена".
+		int mark = Icon.SIZE + 3 + font.width(Landing.of(Property.WORLD).title());
+		Landing.mark(graphics, font, Math.max(PAD + 40, width - PAD - mark), PAD, Property.WORLD);
 		graphics.text(font, Component.translatable("npc_studio.environment.weather"),
 			PAD, weatherTop, TEXT_DIM);
 		// The colour itself, beside the three numbers that make it. Three sliders are

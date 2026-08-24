@@ -226,6 +226,10 @@ public class WorkspaceScreen extends Screen {
 			graphics.nextStratum();
 			drawMenu(graphics, mouseX, mouseY);
 		}
+		if (!landings.isEmpty()) {
+			graphics.nextStratum();
+			drawLandingMenu(graphics, mouseX, mouseY);
+		}
 	}
 
 	/**
@@ -248,6 +252,12 @@ public class WorkspaceScreen extends Screen {
 			Workspace.showPlayer() ? Icon.PLAYER_ON : Icon.PLAYER_OFF,
 			mouseX, mouseY, Workspace.showPlayer());
 		drawTool(graphics, bareLeft(), Icon.BARE, mouseX, mouseY, false);
+
+		// Where edits are landing, as the icon of the receiver in force. Lit when it
+		// has been pinned there, plain when it is following the work — so the one
+		// state somebody set on purpose is the one that stands out.
+		drawTool(graphics, landingLeft(), Landing.now().icon, mouseX, mouseY,
+			Landing.pinned() != null);
 
 		if (dock.maximized() != null) {
 			Component hint = Component.translatable("npc_studio.workspace.maximized");
@@ -291,6 +301,77 @@ public class WorkspaceScreen extends Screen {
 	 */
 	private int bareLeft() {
 		return playerLeft() + TOOL + 2;
+	}
+
+	/**
+	 * The receiver: where the next edit in any panel is written down.
+	 *
+	 * <h2>Why this is one control for the whole window rather than one per panel</h2>
+	 *
+	 * Because the confusion it removes is a confusion about the moment, not about
+	 * the panel. "Am I building a scene or setting the world up" has one answer at
+	 * a time, and every panel has to give the same one — a lighting slider keying
+	 * the timeline while a costume dresses the character would be two receivers in
+	 * one afternoon and no way to see it.
+	 *
+	 * It follows the work on its own and is only touched to disagree with it, which
+	 * is why it sits here as a small icon rather than as a mode anybody has to
+	 * choose before starting.
+	 */
+	private int landingLeft() {
+		return bareLeft() + TOOL + 8;
+	}
+
+	/**
+	 * The receivers on offer, with "follow the work" first.
+	 *
+	 * First because it is the answer nearly always wanted and the way back from any
+	 * pin. A list whose default is buried is a list people pin themselves into.
+	 */
+	private void openLandingMenu() {
+		landings = new ArrayList<>();
+		// Null is the un-pinned state rather than a fourth receiver, and it is drawn
+		// with whatever the work is currently choosing so the row is never a shrug.
+		landings.add(null);
+		landings.addAll(Landing.offered());
+		landingX = landingLeft();
+		landingY = TOOLBAR;
+	}
+
+	private List<Landing> landings = List.of();
+	private int landingX;
+	private int landingY;
+
+	private void drawLandingMenu(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+		int bottom = landingY + landings.size() * MENU_ROW;
+		graphics.fill(landingX - 1, landingY - 1, landingX + MENU_WIDTH + 1, bottom + 1, EDGE);
+		graphics.fill(landingX, landingY, landingX + MENU_WIDTH, bottom, PANEL);
+		for (int i = 0; i < landings.size(); i++) {
+			Landing row = landings.get(i);
+			int top = landingY + i * MENU_ROW;
+			boolean hovered = mouseX >= landingX && mouseX < landingX + MENU_WIDTH
+				&& mouseY >= top && mouseY < top + MENU_ROW;
+			if (hovered) graphics.fill(landingX, top, landingX + MENU_WIDTH, top + MENU_ROW, HOVER);
+			boolean on = row == Landing.pinned();
+			Icon icon = row == null ? Icon.FOCUS : row.icon;
+			icon.draw(graphics, landingX + 2, top + (MENU_ROW - Icon.SIZE) / 2,
+				on ? ACCENT : TEXT_DIM);
+			Component label = row == null
+				? Component.translatable("npc_studio.landing.follow") : row.title();
+			graphics.text(font, label, landingX + 4 + Icon.SIZE, top + (MENU_ROW - 8) / 2,
+				hovered || on ? TEXT : TEXT_DIM);
+		}
+	}
+
+	private boolean clickLanding(double px, double py) {
+		if (landings.isEmpty()) return false;
+		int row = (int) ((py - landingY) / MENU_ROW);
+		boolean inside = px >= landingX && px < landingX + MENU_WIDTH
+			&& row >= 0 && row < landings.size();
+		List<Landing> rows = landings;
+		landings = List.of();
+		if (inside) Landing.pin(rows.get(row));
+		return true;
 	}
 
 	// ------------------------------------------------------------- the menu
@@ -378,6 +459,7 @@ public class WorkspaceScreen extends Screen {
 
 	@Override
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+		if (clickLanding(event.x(), event.y())) return true;
 		if (clickMenu(event.x(), event.y())) return true;
 
 		if (event.y() < TOOLBAR) {
@@ -386,6 +468,7 @@ public class WorkspaceScreen extends Screen {
 				Workspace.showPlayer(!Workspace.showPlayer());
 			}
 			if (event.x() >= bareLeft() && event.x() < bareLeft() + TOOL) clean = true;
+			if (event.x() >= landingLeft() && event.x() < landingLeft() + TOOL) openLandingMenu();
 			return true;
 		}
 		return dock.mouseClicked(event, doubleClick);
@@ -435,6 +518,10 @@ public class WorkspaceScreen extends Screen {
 			}
 			if (clean) {
 				clean = false;
+				return true;
+			}
+			if (!landings.isEmpty()) {
+				landings = List.of();
 				return true;
 			}
 			if (dock.escape()) return true;

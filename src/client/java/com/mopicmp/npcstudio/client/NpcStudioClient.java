@@ -162,6 +162,11 @@ public class NpcStudioClient implements ClientModInitializer {
 			// name different characters or nobody at all.
 			com.mopicmp.npcstudio.client.scene.Playing.forget();
 			com.mopicmp.npcstudio.client.scene.Scenes.forget();
+			// The sky held for this world, and the receiver it was being held by.
+			// Both are statements about an afternoon in one world; carried into the
+			// next they would be a wrong sky with nothing on screen explaining it.
+			com.mopicmp.npcstudio.client.scene.Weather.forget();
+			com.mopicmp.npcstudio.client.workspace.Landing.pin(null);
 		});
 
 		ClientPlayNetworking.registerGlobalReceiver(EditorPayloads.Editing.TYPE,

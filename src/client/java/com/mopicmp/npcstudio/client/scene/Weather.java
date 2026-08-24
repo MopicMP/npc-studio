@@ -40,9 +40,16 @@ public final class Weather {
 
 	private Weather() { }
 
-	/** Whether the open scene says anything about the sky at all. */
+	/**
+	 * Whether anything at all has an opinion about the sky: a scene, or the world.
+	 *
+	 * Every mixin that touches the sky asks this first and stands down when the
+	 * answer is no, so it is the single switch between "the mod is colouring the
+	 * sky" and "the game is". Both sources have to be in it — the hold was
+	 * invisible for as long as this only knew about scenes.
+	 */
 	public static boolean showing() {
-		return part() != null;
+		return part() != null || !held.isEmpty();
 	}
 
 	/**
@@ -61,11 +68,55 @@ public final class Weather {
 		return null;
 	}
 
+	/**
+	 * What the sky is set to outside any scene.
+	 *
+	 * <h2>Why the panel needed this to exist</h2>
+	 *
+	 * The lighting panel was unusable without a scene open — not awkward, unusable:
+	 * every slider wrote a key, so with no timeline there was nowhere for a movement
+	 * to go, and the panel gave up and drew six headings. Which is absurd for the
+	 * one thing here that is not about a scene at all. The sky exists whether or not
+	 * anybody is filming, and wanting it to be evening while building a set is the
+	 * ordinary case rather than the exotic one.
+	 *
+	 * So there is a second place for these numbers to live, with the same reading
+	 * path and the same held-not-commanded bargain as the scene's: no {@code /time
+	 * set}, nothing counting down, the world underneath untouched. See {@link
+	 * com.mopicmp.npcstudio.client.workspace.Landing} for which of the two an edit
+	 * goes to and how that is decided.
+	 *
+	 * <h2>Kept for the session and not longer</h2>
+	 *
+	 * Dropped on leaving the world, like everything else here. Writing it to the
+	 * config would mean somebody who made it midnight to light one shot finds the
+	 * sky still wrong a week later with nothing on screen explaining why — and the
+	 * way out of that would have to be found rather than remembered.
+	 */
+	private static final java.util.Map<String, Float> held = new java.util.HashMap<>();
+
+	/** Dropped on leaving a world, along with the scenes. */
+	public static void forget() {
+		held.clear();
+	}
+
+	/**
+	 * A scene's answer, then the world's, then the caller's.
+	 *
+	 * That order and not the other one: a scene is a statement about a shot and the
+	 * world hold is a statement about the afternoon, so with a scene open its keys
+	 * win. Where the scene says nothing the hold shows through, which is what makes
+	 * it possible to set the sky up first and then film in it.
+	 */
 	private static float value(String channel, float unsaid) {
 		Scene scene = Playing.scene();
 		Role role = part();
-		if (scene == null || role == null) return unsaid;
-		return scene.valueAt(role.name(), channel, Playing.head().at(), unsaid);
+		if (scene != null && role != null) {
+			float keyed = scene.valueAt(role.name(), channel, Playing.head().at(), Float.NaN);
+			if (!Float.isNaN(keyed)) return keyed;
+		}
+		Float world = held.get(channel);
+		return world != null ? world : unsaid;
 	}
 
 	/** Whether the scene has anything to say about this number. */
@@ -103,8 +154,14 @@ public final class Weather {
 	public static float fadeAt(double when) {
 		Scene scene = Playing.scene();
 		Role role = part();
-		if (scene == null || role == null) return 0;
-		return clamp(scene.valueAt(role.name(), Channels.FADE, when, 0));
+		if (scene != null && role != null) {
+			float keyed = scene.valueAt(role.name(), Channels.FADE, when, Float.NaN);
+			if (!Float.isNaN(keyed)) return clamp(keyed);
+		}
+		// The same fall-through as every other channel, written out because this one
+		// is sampled between ticks and cannot go through value().
+		Float world = held.get(Channels.FADE);
+		return world == null ? 0 : clamp(world);
 	}
 
 	/**
@@ -166,8 +223,22 @@ public final class Weather {
 		return scene.with(Role.of(Channels.WORLD, Role.Kind.WORLD));
 	}
 
-	/** Keys one of the sky's numbers at the cursor. */
+	/**
+	 * Sets one of the sky's numbers, wherever edits are landing.
+	 *
+	 * A key on the cursor with a scene receiving, and the world's own hold
+	 * otherwise. The panel does not choose between these and must not: which of
+	 * them is in force is one answer for the whole workspace, so that every panel
+	 * agrees about it and the indicator in the toolbar is telling the truth about
+	 * all of them at once.
+	 */
 	public static void put(String channel, float value) {
+		if (com.mopicmp.npcstudio.client.workspace.Landing.of(
+				com.mopicmp.npcstudio.client.workspace.Property.WORLD)
+					!= com.mopicmp.npcstudio.client.workspace.Landing.SCENE) {
+			held.put(channel, value);
+			return;
+		}
 		Scene scene = Playing.scene();
 		if (scene == null) return;
 		Scene changed = withWorld(scene);
@@ -175,8 +246,20 @@ public final class Weather {
 			Key.at(Playing.head().tick(), value)));
 	}
 
-	/** Takes one of them back out, so the world's own answer returns. */
+	/**
+	 * Takes one of them back out, so the answer underneath returns.
+	 *
+	 * Underneath, not "the world's own": clearing a scene's channel now uncovers
+	 * the hold if there is one, and clearing the hold uncovers the game. Which is
+	 * the same rule reading and writing, so the two cannot disagree.
+	 */
 	public static void clear(String channel) {
+		if (com.mopicmp.npcstudio.client.workspace.Landing.of(
+				com.mopicmp.npcstudio.client.workspace.Property.WORLD)
+					!= com.mopicmp.npcstudio.client.workspace.Landing.SCENE) {
+			held.remove(channel);
+			return;
+		}
 		Scene scene = Playing.scene();
 		if (scene == null) return;
 		Scenes.keep(Playing.openName(), scene.without(Channels.WORLD, channel));
