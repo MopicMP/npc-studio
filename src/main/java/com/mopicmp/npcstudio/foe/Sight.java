@@ -1,0 +1,112 @@
+package com.mopicmp.npcstudio.foe;
+
+/**
+ * How well something is seen: the geometry alone, with no world in it.
+ *
+ * <h2>A number rather than a yes</h2>
+ *
+ * The obvious shape for this is {@code boolean canSee(target)}, and it is the
+ * wrong one. A boolean cannot say that somebody at the very edge of vision,
+ * forty blocks off and nearly behind, is <em>barely</em> seen — and that is the
+ * whole of what makes noticing feel like noticing rather than like a switch
+ * being thrown. Epic Fight arrives at the same conclusion from the other end:
+ * its own conditions test the angle to a target against a band of degrees
+ * chosen per behaviour, which only works because the angle is kept as a number
+ * for somebody else to judge. So this returns a strength, and what counts as
+ * enough is decided by {@link Alarm}, later and elsewhere.
+ *
+ * <h2>Nothing here touches the world</h2>
+ *
+ * No blocks, no entities, no level. Walls are somebody else's question and they
+ * are asked once, in {@link Watch}, where there is a world to ask. Keeping this
+ * to arithmetic is what lets the part that is easy to get subtly wrong be tested
+ * without starting a game — and getting it subtly wrong is the failure mode
+ * here, because a guard who notices a fraction too eagerly does not throw, he is
+ * just tiring to sneak past and nobody can say why.
+ *
+ * @param range how far this can see at all, in blocks
+ * @param cone  the whole width of vision in degrees, split either side of the
+ *              nose: 120 means sixty degrees each way
+ * @param near  how close somebody has to be to be noticed whatever the angle.
+ *              Not a nicety — without it a character standing at your shoulder,
+ *              breathing on you, is invisible because he happens to be facing a
+ *              wall, and that reads as broken rather than as sneaky
+ */
+public record Sight(double range, float cone, double near) {
+
+	/** What an ordinary watchful character can see: a wide human cone. */
+	public static final Sight ORDINARY = new Sight(24, 120, 3.5);
+
+	public Sight {
+		range = Math.max(0, range);
+		cone = Math.clamp(cone, 0, 360);
+		near = Math.max(0, near);
+	}
+
+	/**
+	 * How strongly a target at this distance and this angle is seen, nought to one.
+	 *
+	 * <h2>The two falls, and why neither is linear</h2>
+	 *
+	 * Distance falls off from full to nothing, but with the near half of the range
+	 * counted as full: somebody at ten blocks in clear sight is not half-seen, they
+	 * are seen. What the fall is for is the far edge, where a figure is a shape
+	 * that might be a figure. So the taper starts at half the range and runs to the
+	 * end of it.
+	 *
+	 * Angle falls off from the nose to the edge of the cone and is squared on the
+	 * way, which puts most of the sharpness in the middle where a person is
+	 * actually looking. Straight-line falloff made the edge of vision far too good:
+	 * a figure at fifty-five degrees off, all but out of the corner of the eye, was
+	 * still coming in at nearly a tenth.
+	 *
+	 * @param distance how far away, in blocks
+	 * @param angleOff how far from straight ahead, in degrees, never negative
+	 */
+	public float strength(double distance, double angleOff) {
+		if (distance <= near) return 1;
+		if (distance > range || range <= 0) return 0;
+
+		float half = cone / 2f;
+		if (angleOff > half) return 0;
+
+		double far = range / 2;
+		float byDistance = distance <= far ? 1
+			: (float) (1 - (distance - far) / (range - far));
+
+		// Squared, so the corner of the eye is genuinely poor rather than nominally
+		// worse. A cone with no falloff at all is a torch beam and reads as one.
+		float byAngle = half <= 0 ? 1 : 1 - (float) (angleOff / half);
+		byAngle *= byAngle;
+
+		return Math.clamp(byDistance * byAngle, 0f, 1f);
+	}
+
+	/**
+	 * The angle between where something faces and where something else is, in
+	 * degrees, always nought to a hundred and eighty.
+	 *
+	 * Kept here rather than at the call site because the wrapping is where this
+	 * sort of thing goes wrong: a character facing due north at 179 degrees and a
+	 * target at -179 are two degrees apart, and subtraction alone says 358.
+	 *
+	 * @param facing  which way the looker is turned, in Minecraft's yaw
+	 * @param towards the yaw from the looker to the target
+	 */
+	public static double turnBetween(float facing, double towards) {
+		double difference = Math.abs(towards - facing) % 360;
+		return difference > 180 ? 360 - difference : difference;
+	}
+
+	/**
+	 * The yaw from one point to another, in the game's own convention.
+	 *
+	 * Minecraft measures yaw from south, turning towards west, which is why this is
+	 * {@code atan2(-dx, dz)} and not any of the five other arrangements of those
+	 * three symbols. Written once, here, because every one of the other five looks
+	 * equally plausible at the call site and only one of them is right.
+	 */
+	public static double yawTo(double fromX, double fromZ, double toX, double toZ) {
+		return Math.toDegrees(Math.atan2(-(toX - fromX), toZ - fromZ));
+	}
+}

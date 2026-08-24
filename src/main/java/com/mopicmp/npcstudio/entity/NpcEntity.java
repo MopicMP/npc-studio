@@ -340,6 +340,97 @@ public class NpcEntity extends Avatar {
 		builder.define(DATA_ANIM_RUN, "");
 		builder.define(DATA_ANIM_JUMP, "");
 		builder.define(DATA_SKIN_MARK, "");
+		builder.define(DATA_WATCHFUL, false);
+		builder.define(DATA_MOOD, (byte) 0);
+	}
+
+	/**
+	 * Whether this character keeps an eye out at all.
+	 *
+	 * <h2>Why it is off unless somebody says otherwise</h2>
+	 *
+	 * Because every NPC already placed in every world is a performer, not a guard,
+	 * and a great many of them are standing in scenes with their heads keyed frame
+	 * by frame. Watching turns heads. Switched on by default this would have gone
+	 * through every existing world turning the cast to face whoever walked in, and
+	 * the report would rightly have been that the animation broke.
+	 *
+	 * So it is a property of the character, off until asked for, and the switch is
+	 * the line between "somebody in the scene" and "something to be wary of".
+	 */
+	private static final EntityDataAccessor<Boolean> DATA_WATCHFUL =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.BOOLEAN);
+
+	/**
+	 * What it currently makes of the world, as a number the client can be told.
+	 *
+	 * Sent rather than worked out on both sides, and that is the whole point: two
+	 * answers to "have I been seen" is worse than none. It also means a client
+	 * cannot find out whether it has been spotted by asking its own copy of the
+	 * world, which it could if the looking happened there.
+	 */
+	private static final EntityDataAccessor<Byte> DATA_MOOD =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.BYTE);
+
+	public boolean watchful() {
+		return entityData.get(DATA_WATCHFUL);
+	}
+
+	public void setWatchful(boolean on) {
+		entityData.set(DATA_WATCHFUL, on);
+		if (!on) {
+			watch.standDown();
+			entityData.set(DATA_MOOD, (byte) 0);
+		}
+	}
+
+	/** What this character makes of the world, on either side. */
+	public com.mopicmp.npcstudio.foe.Alarm.Mood mood() {
+		byte said = entityData.get(DATA_MOOD);
+		var moods = com.mopicmp.npcstudio.foe.Alarm.Mood.values();
+		return said >= 0 && said < moods.length ? moods[said] : moods[0];
+	}
+
+	/**
+	 * The looking itself, which only the server does.
+	 *
+	 * Not saved and not synced beyond the mood: it is rebuilt from the world on the
+	 * first tick after loading, and a character who has to notice you again after a
+	 * reload is behaving correctly rather than forgetfully.
+	 */
+	private final com.mopicmp.npcstudio.foe.Watch watch = new com.mopicmp.npcstudio.foe.Watch(this);
+
+	public com.mopicmp.npcstudio.foe.Watch watch() {
+		return watch;
+	}
+
+	/**
+	 * One tick of keeping an eye out, and the head that follows from it.
+	 *
+	 * <h2>The one thing this must never do</h2>
+	 *
+	 * Fight a scene. A character being filmed has its head placed frame by frame by
+	 * the timeline, and a watchman turning it towards whoever wandered past would
+	 * be two authors of one number — which does not error, it produces an animation
+	 * that is subtly wrong in a way nobody can point at.
+	 *
+	 * The guard for now is the switch itself: a performer is not watchful, so the
+	 * question does not arise. When a character has to be both — a boss who watches
+	 * the door and then plays a scripted entrance — this is where the scene will
+	 * have to say so, and {@link com.mopicmp.npcstudio.foe.Watch#standDown()} is
+	 * what it will call.
+	 */
+	private void keepWatch() {
+		if (!watchful()) return;
+		watch.tick();
+		entityData.set(DATA_MOOD, (byte) watch.mood().ordinal());
+
+		Vec3 at = watch.lookingAt();
+		if (at == null) return;
+		// Through the game's own turning rather than by writing the angles: it walks
+		// the head towards the target at the rate a neck moves, and setting yHeadRot
+		// outright makes a character snap round like a turret.
+		lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES, at);
 	}
 
 	private EntityDataAccessor<String> slotFor(Motion motion) {
@@ -407,6 +498,7 @@ public class NpcEntity extends Avatar {
 			expireGesture();
 			expireExpression();
 			refreshFace();
+			keepWatch();
 		}
 	}
 
@@ -758,6 +850,7 @@ public class NpcEntity extends Avatar {
 		output.putLong("Shape", entityData.get(DATA_SHAPE));
 		output.putLong("Posture", entityData.get(DATA_POSTURE));
 		output.putString("Costume", costumeId);
+		output.putBoolean("Watchful", watchful());
 	}
 
 	@Override
@@ -779,6 +872,9 @@ public class NpcEntity extends Avatar {
 		entityData.set(DATA_POSTURE, BodyShape.readPosture(
 			input.getLongOr("Posture", BodyShape.DEFAULT.packedPosture())));
 		costumeId = input.getStringOr("Costume", "");
+		// Off for every character placed before this existed, which is every character
+		// in every world so far and is the answer they all want.
+		setWatchful(input.getBooleanOr("Watchful", false));
 		wardrobe.clear();
 		int outfits = input.getIntOr("Outfits", 0);
 		for (int i = 0; i < outfits; i++) {

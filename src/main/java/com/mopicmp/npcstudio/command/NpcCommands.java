@@ -60,6 +60,10 @@ public final class NpcCommands {
 						StringArgumentType.getString(context, "name")))))
 			.then(Commands.literal("settings")
 				.executes(NpcCommands::settings))
+			.then(Commands.literal("watch")
+				.executes(context -> watch(context, null))
+				.then(Commands.literal("on").executes(context -> watch(context, true)))
+				.then(Commands.literal("off").executes(context -> watch(context, false))))
 			.then(Commands.literal("answer")
 				.then(Commands.argument("option", IntegerArgumentType.integer(0))
 					.executes(context -> answer(context, IntegerArgumentType.getInteger(context, "option"))))));
@@ -168,6 +172,50 @@ public final class NpcCommands {
 		}
 		net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(
 			source.getPlayerOrException(), com.mopicmp.npcstudio.net.NpcEditing.describe(npc));
+		return 1;
+	}
+
+	/**
+	 * Turns the nearest NPC into something that keeps an eye out, and reads it back.
+	 *
+	 * <h2>Why a command and why it also reports</h2>
+	 *
+	 * Scaffolding, like the rest of this file — the switch belongs in the character
+	 * panel and will move there. It reports as well as sets because noticing is
+	 * invisible from outside: a character that has seen you and one that has not
+	 * are the same character standing still, and the only difference is a number.
+	 * Without a way to read that number the first question after every change would
+	 * be "did it work", answerable only by staring.
+	 *
+	 * With no argument it says where things stand, which is the form actually used
+	 * while testing: walk about, run it, see what the character thinks.
+	 *
+	 * @param wanted true or false to set it, null to only ask
+	 */
+	private static int watch(CommandContext<CommandSourceStack> context, Boolean wanted)
+			throws CommandSyntaxException {
+		CommandSourceStack source = context.getSource();
+		NpcEntity npc = nearest(source);
+		if (npc == null) {
+			source.sendFailure(Component.literal("No NPC within 8 blocks."));
+			return 0;
+		}
+		if (wanted != null) npc.setWatchful(wanted);
+		if (!npc.watchful()) {
+			source.sendSuccess(() -> Component.literal("That NPC is not watching."), false);
+			return 1;
+		}
+
+		var watch = npc.watch();
+		var quarry = watch.quarry();
+		// The alarm as a percentage rather than a fraction: this is read at a glance
+		// while walking backwards, and "62%" is legible where "0.6183" is not.
+		String said = "watching — " + watch.mood()
+			+ ", alarm " + Math.round(watch.alarm() * 100) + "%"
+			+ (quarry == null ? ", nobody in sight"
+				: ", on " + quarry.getName().getString()
+					+ " at " + Math.round(npc.distanceTo(quarry)) + " blocks");
+		source.sendSuccess(() -> Component.literal(said), false);
 		return 1;
 	}
 
