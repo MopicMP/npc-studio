@@ -217,12 +217,47 @@ public final class Watch {
 	 * less through stone. Hearing straight through is the honest simplification,
 	 * and it is the one that makes hiding behind a wall tense rather than safe.
 	 */
+	/**
+	 * How loudly one candidate is heard, by whichever route the sound gets here.
+	 *
+	 * <h2>Two routes, and the louder wins</h2>
+	 *
+	 * Sound arrives both ways at once: some of it through the wall, muffled, and
+	 * some of it round through the doorway, undiminished but having gone further.
+	 * You hear the louder. Taking the better of the two is not a shortcut, it is
+	 * what actually happens.
+	 *
+	 * The way round is only looked for when the direct line is blocked, because in
+	 * the open the direct line already is the way round and the search would be an
+	 * expensive way of finding that out.
+	 */
 	private float heardFrom(Player player) {
 		double speed = player.getDeltaMovement().horizontalDistance();
 		float loudness = Noise.loudness(speed, player.isShiftKeyDown(),
 			player.isSprinting(), player.isInWater());
 		if (loudness <= 0) return 0;
-		return Noise.heard(self.distanceTo(player), loudness * throughWalls(player));
+
+		float wall = throughWalls(player);
+		float direct = Noise.heard(self.distanceTo(player), loudness * wall);
+		if (wall >= 1) return direct;
+
+		double round = around(player);
+		if (round < 0) return direct;
+		return Math.max(direct, Noise.heard(round, loudness));
+	}
+
+	/** How far the sound has to travel through open air, or -1 if it cannot. */
+	private double around(Player player) {
+		var level = self.level();
+		var from = self.blockPosition().above();
+		var to = player.blockPosition().above();
+		return Airways.reach(
+			(x, y, z) -> {
+				var where = new net.minecraft.core.BlockPos(x, y, z);
+				var state = level.getBlockState(where);
+				return state.isAir() || state.getCollisionShape(level, where).isEmpty();
+			},
+			from.getX(), from.getY(), from.getZ(), to.getX(), to.getY(), to.getZ());
 	}
 
 	/**
@@ -275,7 +310,26 @@ public final class Watch {
 		return player.isAlive() && !player.isSpectator() && player != self;
 	}
 
-	/** How strongly one candidate is seen, walls included. */
+	/**
+	 * How strongly one candidate is seen, walls included.
+	 *
+	 * <h2>The cone is for noticing, not for keeping hold of</h2>
+	 *
+	 * Once somebody has your full attention you do not lose them because your head
+	 * lagged half a second behind them. You keep them in sight by turning, and if
+	 * they run round you, you turn with them.
+	 *
+	 * Without that rule the angle is checked afresh every look, so a character who
+	 * had already seen you could be un-seen simply by being faster than her neck —
+	 * and that is precisely what was reported, twice: you can jog round behind her
+	 * while she turns, indefinitely, and nothing ever comes of it. Turning the head
+	 * faster does not fix it, because there is always a radius at which a running
+	 * player out-turns any fixed rate; it is the rule that is wrong, not the number.
+	 *
+	 * So while she is alert and it is you she is alert to, the angle stops
+	 * mattering and only the wall does. Getting away needs cover or distance, which
+	 * is what getting away ought to need.
+	 */
 	private float strengthOf(LivingEntity target) {
 		double distance = self.distanceTo(target);
 		if (distance > sight.range()) return 0;
@@ -286,7 +340,8 @@ public final class Watch {
 		// another sees where it is looking, which is the whole reason heads turn.
 		double off = Sight.turnBetween(self.getYHeadRot(), towards);
 
-		float seen = sight.strength(distance, off);
+		boolean holding = mood == Alarm.Mood.ALERT && target == quarry;
+		float seen = sight.strength(distance, holding ? 0 : off);
 		if (seen <= 0) return 0;
 
 		// Asked last, because it is the expensive one and most candidates have

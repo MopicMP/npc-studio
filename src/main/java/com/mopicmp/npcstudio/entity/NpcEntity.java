@@ -435,8 +435,16 @@ public class NpcEntity extends Avatar {
 	private static final float GLANCING = 9f;
 	private static final float SHARPLY = 18f;
 
-	/** And the body, which always lags the head. */
+	/**
+	 * And the body, which always lags the head — unhurried, then in earnest.
+	 *
+	 * Two rates for the same reason the head has two. Somebody who has merely
+	 * noticed you brings their shoulders round without hurrying; somebody who has
+	 * decided about you turns to face you properly, and at a rate no runner circling
+	 * them at arm's length is going to beat.
+	 */
 	private static final float SHOULDERS = 8f;
+	private static final float SQUARELY = 16f;
 
 	/**
 	 * Turns to look at a point, head first and body only when the neck runs out.
@@ -487,7 +495,8 @@ public class NpcEntity extends Avatar {
 			? com.mopicmp.npcstudio.foe.Neck.wrap(head - yBodyRot)
 			: com.mopicmp.npcstudio.foe.Neck.overTurn(head, yBodyRot, limit);
 		if (excess != 0) {
-			float body = com.mopicmp.npcstudio.foe.Neck.step(yBodyRot, yBodyRot + excess, SHOULDERS);
+			float body = com.mopicmp.npcstudio.foe.Neck.step(yBodyRot, yBodyRot + excess,
+				sharply ? SQUARELY : SHOULDERS);
 			yBodyRot = body;
 			setYRot(body);
 		}
