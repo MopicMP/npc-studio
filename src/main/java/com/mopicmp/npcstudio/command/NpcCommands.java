@@ -21,6 +21,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -66,7 +68,23 @@ public final class NpcCommands {
 				.then(Commands.literal("off").executes(context -> watch(context, false))))
 			.then(Commands.literal("answer")
 				.then(Commands.argument("option", IntegerArgumentType.integer(0))
-					.executes(context -> answer(context, IntegerArgumentType.getInteger(context, "option"))))));
+					.executes(context -> answer(context, IntegerArgumentType.getInteger(context, "option")))))
+			.then(Commands.literal("arm")
+				.executes(context -> arm(context, EquipmentSlot.MAINHAND, true))
+				.then(Commands.literal("off")
+					.executes(context -> arm(context, EquipmentSlot.MAINHAND, false))))
+			.then(Commands.literal("ammo")
+				.executes(context -> arm(context, EquipmentSlot.OFFHAND, true))
+				.then(Commands.literal("off")
+					.executes(context -> arm(context, EquipmentSlot.OFFHAND, false))))
+			.then(Commands.literal("endless")
+				.then(Commands.literal("on").executes(context -> endless(context, true)))
+				.then(Commands.literal("off").executes(context -> endless(context, false))))
+			.then(Commands.literal("shoot")
+				.executes(context -> shoot(context, com.mopicmp.npcstudio.foe.Draw.longEnoughFor(0.95f)))
+				.then(Commands.argument("draw", IntegerArgumentType.integer(1, 200))
+					.executes(context ->
+						shoot(context, IntegerArgumentType.getInteger(context, "draw"))))));
 	}
 
 	/**
@@ -311,6 +329,116 @@ public final class NpcCommands {
 			return 0;
 		}
 		DialogueRuntime.choose(source.getPlayerOrException(), npc, option);
+		return 1;
+	}
+
+	/**
+	 * Hands the nearest NPC whatever the caller is holding, or takes it away.
+	 *
+	 * <h2>Why it copies the caller's hand rather than naming an item</h2>
+	 *
+	 * Because the point of it is modded weapons, and a modded weapon is very often
+	 * not identifiable by name alone. The guns in the pack that runs on this version
+	 * are carrots on sticks carrying a page of components; typing that out is
+	 * error-prone in a way that holding the thing is not, and holding it is the only
+	 * way to be certain the NPC has the very item the mod means.
+	 *
+	 * Scaffolding, like everything else in this file. Giving a character a starting
+	 * item belongs in the character panel, and choosing what is in the hand from one
+	 * moment to the next belongs in the graph.
+	 */
+	private static int arm(CommandContext<CommandSourceStack> context, EquipmentSlot slot,
+			boolean giving) throws CommandSyntaxException {
+		CommandSourceStack source = context.getSource();
+		NpcEntity npc = nearest(source);
+		if (npc == null) {
+			source.sendFailure(Component.literal("No NPC within 8 blocks."));
+			return 0;
+		}
+		String where = slot == EquipmentSlot.MAINHAND ? "hand" : "off hand";
+		if (!giving) {
+			npc.setItemSlot(slot, ItemStack.EMPTY);
+			source.sendSuccess(() -> Component.literal("Emptied her " + where + "."), true);
+			return 1;
+		}
+
+		ItemStack holding = source.getPlayerOrException().getMainHandItem();
+		if (holding.isEmpty()) {
+			source.sendFailure(Component.literal("You are not holding anything."));
+			return 0;
+		}
+		// A copy, and the whole stack rather than one of it: arrows are ammunition
+		// and a quiver of one is a quiver that is empty after the first shot.
+		npc.setItemSlot(slot, holding.copy());
+		source.sendSuccess(() -> Component.literal(
+			"Her " + where + ": " + holding.getCount() + "x "
+				+ holding.getHoverName().getString()), true);
+		return 1;
+	}
+
+	private static int endless(CommandContext<CommandSourceStack> context, boolean on)
+			throws CommandSyntaxException {
+		CommandSourceStack source = context.getSource();
+		NpcEntity npc = nearest(source);
+		if (npc == null) {
+			source.sendFailure(Component.literal("No NPC within 8 blocks."));
+			return 0;
+		}
+		npc.setEndless(on);
+		source.sendSuccess(() -> Component.literal(on
+			? "She never runs out." : "She spends what she has."), true);
+		return 1;
+	}
+
+	/**
+	 * Orders one shot, and says enough about it to tell a failure from a refusal.
+	 *
+	 * The three ways this goes wrong are an empty hand, no ammunition, and a weapon
+	 * that simply does not do anything when used — and from outside, all three look
+	 * like a character standing still. So the readout names the item, the ammunition
+	 * and the draw before anything happens, and the shot itself is audible.
+	 */
+	private static int shoot(CommandContext<CommandSourceStack> context, int drawFor)
+			throws CommandSyntaxException {
+		CommandSourceStack source = context.getSource();
+		NpcEntity npc = nearest(source);
+		if (npc == null) {
+			source.sendFailure(Component.literal("No NPC within 8 blocks."));
+			return 0;
+		}
+		ItemStack weapon = npc.getMainHandItem();
+		if (weapon.isEmpty()) {
+			source.sendFailure(Component.literal("Her hand is empty — try /npc arm."));
+			return 0;
+		}
+		if (weapon.getItem() instanceof net.minecraft.world.item.ProjectileWeaponItem ranged) {
+			ItemStack ammo = com.mopicmp.npcstudio.foe.Firing.ammoFor(npc, ranged);
+			if (ammo.isEmpty()) {
+				source.sendFailure(Component.literal(
+					"Nothing to shoot — try /npc ammo while holding arrows, or /npc endless on."));
+				return 0;
+			}
+		}
+		// Points her at whoever asked, once, at the order. Aiming is a later step and
+		// an arrow that leaves the hand correctly but flies off at a wall proves
+		// nothing — and the arrow goes where the *body* is pointing, not the head,
+		// which is itself worth seeing before the aiming step is designed.
+		ServerPlayer at = source.getPlayerOrException();
+		float yaw = (float) com.mopicmp.npcstudio.foe.Sight.yawTo(
+			npc.getX(), npc.getZ(), at.getX(), at.getZ());
+		Vec3 eye = npc.getEyePosition();
+		Vec3 theirs = at.getEyePosition();
+		npc.setYRot(yaw);
+		npc.yBodyRot = yaw;
+		npc.setYHeadRot(yaw);
+		npc.setXRot(com.mopicmp.npcstudio.foe.Neck.pitchTo(
+			eye.x, eye.y, eye.z, theirs.x, theirs.y, theirs.z));
+
+		npc.fire(drawFor);
+		source.sendSuccess(() -> Component.literal(
+			"Firing " + weapon.getHoverName().getString()
+				+ " — drawing " + drawFor + " ticks, "
+				+ Math.round(com.mopicmp.npcstudio.foe.Draw.powerOf(drawFor) * 100) + "% power"), false);
 		return 1;
 	}
 

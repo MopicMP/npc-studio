@@ -337,12 +337,21 @@ public final class Watch {
 	 */
 	private static final float FOOTSTEPS = 0.2f;
 
+	/** Within this of her own feet, a noise is hers and is ignored. */
+	private static final double OWN_DOING = 1.5;
+
 	/** Whatever the world itself banged, which has no author. */
 	private Lead fromTheWorld(long now) {
 		Lead best = null;
 		for (Din.Rumour rumour : Din.since(now)) {
 			if (!counted.add(rumour)) continue;
 			double away = self.position().distanceTo(rumour.at());
+			// Her own doing is not news. A bang where she is standing is either
+			// something she did or something she is standing in, and either way there
+			// is nowhere to go and look — she is already there. Without this the first
+			// arrow she ever fired made her jump at herself, spin round, and go and
+			// investigate her own feet.
+			if (away < OWN_DOING) continue;
 			float reaching = Noise.heard(away, rumour.loudness(), rumour.carries());
 			if (reaching <= 0) continue;
 

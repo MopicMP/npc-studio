@@ -650,6 +650,64 @@ public class NpcEntity extends Avatar {
 		return walk;
 	}
 
+	// ---------------------------------------------------------------- the weapon
+
+	private final com.mopicmp.npcstudio.foe.Draw draw = new com.mopicmp.npcstudio.foe.Draw();
+
+	public com.mopicmp.npcstudio.foe.Draw draw() {
+		return draw;
+	}
+
+	/**
+	 * Whether her ammunition ever runs out.
+	 *
+	 * The game already has this idea and already honours it everywhere ammunition
+	 * is spent — it is what creative mode means to a bow. Borrowing it rather than
+	 * inventing an endless-arrows flag of our own means the one switch is obeyed by
+	 * vanilla's own code, and there is no second place for the two to disagree.
+	 */
+	private boolean endless;
+
+	public boolean endless() {
+		return endless;
+	}
+
+	public void setEndless(boolean on) {
+		endless = on;
+	}
+
+	@Override
+	public boolean hasInfiniteMaterials() {
+		return endless;
+	}
+
+	/** Orders one shot: draw whatever is in hand for this long, then loose it. */
+	public void fire(int drawFor) {
+		draw.pull(drawFor);
+	}
+
+	/**
+	 * One tick of using the thing in her hands.
+	 *
+	 * <h2>Three lines, and why that is the whole point</h2>
+	 *
+	 * Because this is what every other mod's NPC does not do. They animate an
+	 * archer; this starts using the item and lets go of it, which is what a player
+	 * does, so the bow draws because it is being drawn and the arrow leaves the
+	 * hand because the bow put it there. Everything that follows from an item being
+	 * used — enchantments, durability, the ammunition leaving the quiver, whatever
+	 * a mod hung on its own weapon — follows here for nothing.
+	 */
+	private void workTheWeapon() {
+		int drawnFor = isUsingItem() ? getTicksUsingItem() : -1;
+		switch (draw.tick(drawnFor)) {
+			case START -> startUsingItem(InteractionHand.MAIN_HAND);
+			case LOOSE -> releaseUsingItem();
+			case LET_GO -> stopUsingItem();
+			case NOTHING -> { }
+		}
+	}
+
 	/**
 	 * Turns to look at a point, head first and body only when the neck runs out.
 	 *
@@ -785,6 +843,7 @@ public class NpcEntity extends Avatar {
 			expireExpression();
 			refreshFace();
 			keepWatch();
+			workTheWeapon();
 		}
 	}
 
@@ -1137,6 +1196,9 @@ public class NpcEntity extends Avatar {
 		output.putLong("Posture", entityData.get(DATA_POSTURE));
 		output.putString("Costume", costumeId);
 		output.putBoolean("Watchful", watchful());
+		// The hands themselves are already saved by LivingEntity, which keeps
+		// equipment for everybody. Only the mark on the quiver is ours.
+		output.putBoolean("Endless", endless);
 	}
 
 	@Override
@@ -1161,6 +1223,7 @@ public class NpcEntity extends Avatar {
 		// Off for every character placed before this existed, which is every character
 		// in every world so far and is the answer they all want.
 		setWatchful(input.getBooleanOr("Watchful", false));
+		endless = input.getBooleanOr("Endless", false);
 		wardrobe.clear();
 		int outfits = input.getIntOr("Outfits", 0);
 		for (int i = 0; i < outfits; i++) {

@@ -5,6 +5,8 @@
 	"mixins": [
 		"EntityCollisionMixin",
 		"MinecraftServerMixin",
+		"NpcBowMixin",
+		"ProjectileWeaponAccess",
 		"SoundHeardMixin"
 	],
 	"injectors": {
