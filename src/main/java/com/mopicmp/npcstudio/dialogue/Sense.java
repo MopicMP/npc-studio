@@ -51,12 +51,38 @@ public final class Sense {
 	/** Whether there is anything in her main hand. Not which weapon it is. */
 	public static final String ARMED = "armed";
 
+	/**
+	 * What sort of thing is in her main hand: nothing, melee, drawn, loaded,
+	 * swung, shield, thrown, other.
+	 *
+	 * A guess made from what the item says about itself, and honest about
+	 * failing: an item nobody can place reads as "other" rather than as the
+	 * nearest thing. See {@code foe/Arms}.
+	 */
+	public static final String WEAPON = "weapon";
+
+	/**
+	 * The name of what is in her main hand, or empty.
+	 *
+	 * <h2>Why the raw name is offered as well as the guess</h2>
+	 *
+	 * Because it is how an author corrects us without touching java. The guess
+	 * will be wrong about somebody's weapon eventually - a mod that fires on a
+	 * plain use, a datapack that hides a gun inside a stick - and when it is, a
+	 * graph can say "if what she is holding is called this, treat it as that" and
+	 * carry on.
+	 *
+	 * That is the whole of what was meant by teaching the brain with blocks, and
+	 * it costs one reading rather than an extension point.
+	 */
+	public static final String HAND = "hand";
+
 	/** How far the nearest living player is. */
 	public static final String PLAYER_DISTANCE = "player.distance";
 
 	public static final List<String> KNOWN = List.of(
 		ALARM, MOOD, LEAD, LEAD_STRENGTH, LEAD_URGENCY, LEAD_SEEN, LEAD_DISTANCE,
-		WALKING, ARMED, PLAYER_DISTANCE);
+		WALKING, ARMED, WEAPON, HAND, PLAYER_DISTANCE);
 
 	/**
 	 * A distance meaning "nobody" or "nothing".
@@ -83,7 +109,7 @@ public final class Sense {
 	public static String typeOf(String name) {
 		return switch (name) {
 			case ALARM, LEAD_STRENGTH, LEAD_URGENCY, LEAD_DISTANCE, PLAYER_DISTANCE -> "number";
-			case MOOD -> "text";
+			case MOOD, WEAPON, HAND -> "text";
 			case LEAD, LEAD_SEEN, WALKING, ARMED -> "flag";
 			default -> null;
 		};

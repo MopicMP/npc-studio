@@ -175,6 +175,15 @@ public final class Bench {
 		if (weapon.isEmpty()) {
 			return List.of("Her hand is empty — give her something on the character panel.");
 		}
+		var kind = com.mopicmp.npcstudio.foe.Arms.of(weapon);
+		if (kind != com.mopicmp.npcstudio.foe.Arms.Kind.DRAWN) {
+			// Named rather than refused outright: the bench is for finding out what
+			// happens, and "she is holding something that is not drawn and released"
+			// is exactly the sort of thing that is invisible from the outside.
+			return List.of(weapon.getHoverName().getString() + " reads as "
+				+ kind.name().toLowerCase(java.util.Locale.ROOT) + ",",
+				"and only a drawn weapon can be fired this way yet.");
+		}
 		if (weapon.getItem() instanceof net.minecraft.world.item.ProjectileWeaponItem ranged
 				&& com.mopicmp.npcstudio.foe.Firing.ammoFor(npc, ranged).isEmpty()) {
 			return List.of("Nothing to shoot with: put ammunition in her off hand,",

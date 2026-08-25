@@ -35,7 +35,16 @@ class VerbTest {
 		};
 	}
 
+	/**
+	 * Holding a bow, and looking at you.
+	 *
+	 * The weapon has to be in every one of these. The sentry checks what is in her
+	 * hand before it fires, so a world that does not say leaves her holding
+	 * nothing — and then a test about range or eyesight passes because she was
+	 * unarmed, which is a test that proves nothing and says it proved something.
+	 */
 	private static final Condition.World SEES_YOU = feeling(Map.of(
+		Sense.WEAPON, new Value.Text("drawn"),
 		Sense.LEAD_SEEN, new Value.Flag(true),
 		Sense.LEAD_DISTANCE, new Value.Num(9)));
 
@@ -62,6 +71,7 @@ class VerbTest {
 		Dialogue graph = sentry();
 
 		Condition.World heardOnly = feeling(Map.of(
+			Sense.WEAPON, new Value.Text("drawn"),
 			Sense.LEAD_SEEN, new Value.Flag(false),
 			Sense.LEAD_DISTANCE, new Value.Num(9)));
 
@@ -89,6 +99,7 @@ class VerbTest {
 		Dialogue graph = sentry();
 
 		Condition.World faraway = feeling(Map.of(
+			Sense.WEAPON, new Value.Text("drawn"),
 			Sense.LEAD_SEEN, new Value.Flag(true),
 			Sense.LEAD_DISTANCE, new Value.Num(60)));
 		assertEquals(List.of(), resume(graph, DialogueState.start(graph, Map.of()), faraway).effects());
@@ -121,6 +132,25 @@ class VerbTest {
 
 		assertEquals(1, step.effects().stream().filter(e -> e instanceof Effect.Fire).count(),
 			"one shot per pass round the loop: " + step.effects());
+	}
+
+	@Test
+	@DisplayName("a sword is not drawn back and let go of")
+	void theWrongWeaponIsNotFired() {
+		// Everything else is right: she can see you, you are close enough. What she
+		// is holding cannot be fired that way, and a graph that did not check would
+		// stand there drawing a sword — which from outside is a character doing
+		// nothing, with no reason given.
+		com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry.registerBuiltIn();
+		Dialogue graph = sentry();
+
+		Condition.World withASword = feeling(Map.of(
+			Sense.WEAPON, new Value.Text("melee"),
+			Sense.LEAD_SEEN, new Value.Flag(true),
+			Sense.LEAD_DISTANCE, new Value.Num(4)));
+
+		assertEquals(List.of(),
+			resume(graph, DialogueState.start(graph, Map.of()), withASword).effects());
 	}
 
 	// ------------------------------------------------------------------- marks

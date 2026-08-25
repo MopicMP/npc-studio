@@ -70,6 +70,17 @@ public final class Senses {
 			// Whether there is anything in her main hand at all. Which weapon it is
 			// belongs to the classification step and is not guessed at here.
 			case Sense.ARMED -> new Value.Flag(!npc.getMainHandItem().isEmpty());
+			// What sort of thing, and what it is called. The first is our guess and
+			// the second is what lets an author overrule it with blocks when the
+			// guess is wrong, which one day it will be.
+			case Sense.WEAPON -> new Value.Text(com.mopicmp.npcstudio.foe.Arms
+				.of(npc.getMainHandItem()).name().toLowerCase(java.util.Locale.ROOT));
+			case Sense.HAND -> {
+				var stack = npc.getMainHandItem();
+				yield new Value.Text(stack.isEmpty() ? ""
+					: net.minecraft.core.registries.BuiltInRegistries.ITEM
+						.getKey(stack.getItem()).toString());
+			}
 
 			// The nearest person, which is what almost every graph anybody writes
 			// first wants to know, and what makes one testable by walking up to her.

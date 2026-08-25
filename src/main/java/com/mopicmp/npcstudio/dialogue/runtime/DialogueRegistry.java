@@ -118,6 +118,10 @@ public final class DialogueRegistry {
 	 *
 	 * Give her a bow and either arrows in the off hand or endless ammunition, and
 	 * turn watchfulness on — all three on the character panel.
+	 *
+	 * The weapon is checked rather than assumed. A graph that fires whatever is in
+	 * the hand is a graph that draws a sword back and lets go of it, and from
+	 * outside that is a character standing still for no stated reason.
 	 */
 	private static Dialogue sentry() {
 		return Dialogue.builder("sentry")
@@ -126,6 +130,12 @@ public final class DialogueRegistry {
 			// here costs one question a tick, which is what watching costs.
 			.add(new Node.Until("watch",
 				new Condition.All(List.of(
+					// A bow, or anything that behaves like one. Without this she draws
+					// a sword back and lets go of it, which is not a thing that
+					// happens - and from outside it is a character standing still
+					// with no reason given.
+					new Condition.Compare(Sense.WEAPON, Scope.SENSE,
+						Condition.Op.EQ, Value.of("drawn")),
 					new Condition.Compare(Sense.LEAD_SEEN, Scope.SENSE,
 						Condition.Op.EQ, Value.of(true)),
 					new Condition.Compare(Sense.LEAD_DISTANCE, Scope.SENSE,
