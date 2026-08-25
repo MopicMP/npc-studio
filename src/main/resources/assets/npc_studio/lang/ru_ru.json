@@ -214,5 +214,18 @@
   "npc_studio.camera.exportGo": "снимать",
   "npc_studio.workspace.bare": "показать кадр",
   "npc_studio.camera.frameWindow": "кадр: всё окно",
-  "npc_studio.camera.frameViewport": "кадр: вьюпорт"
+  "npc_studio.camera.frameViewport": "кадр: вьюпорт",
+  "npc_studio.panel.bench": "испытательный стенд",
+  "npc_studio.bench.looking": "что она замечает",
+  "npc_studio.bench.doing": "заставить её сделать",
+  "npc_studio.bench.memory": "её память",
+  "npc_studio.bench.senses": "прочитать все чувства",
+  "npc_studio.bench.watch": "на что направлено внимание",
+  "npc_studio.bench.fire": "выстрелить в меня",
+  "npc_studio.bench.forget": "забыть всё",
+  "npc_studio.character.brain": "мозг (граф поведения)",
+  "npc_studio.character.watchful": "наблюдает",
+  "npc_studio.character.watchful.what": "Замечает людей, звуки и выстрелы, поворачивается посмотреть",
+  "npc_studio.character.endless": "патроны не кончаются",
+  "npc_studio.character.endless.what": "Никогда не тратит то, чем стреляет"
 }

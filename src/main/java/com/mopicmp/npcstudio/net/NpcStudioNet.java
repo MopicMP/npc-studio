@@ -46,6 +46,12 @@ public final class NpcStudioNet {
 		PayloadTypeRegistry.serverboundPlay().register(
 			NpcPayloads.SolidModel.TYPE, NpcPayloads.SolidModel.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(NpcPayloads.Apply.TYPE, NpcPayloads.Apply.CODEC);
+
+		// The bench. Everything about it is scaffolding and all of it — these two
+		// lines, the two below, one payload file, one handler and one panel — is
+		// meant to come out together when block programming can say the same things.
+		PayloadTypeRegistry.serverboundPlay().register(BenchPayloads.Ask.TYPE, BenchPayloads.Ask.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(BenchPayloads.Told.TYPE, BenchPayloads.Told.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(NpcPayloads.SkinUpload.TYPE, NpcPayloads.SkinUpload.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(NpcPayloads.SkinPlease.TYPE, NpcPayloads.SkinPlease.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(NpcPayloads.Shape.TYPE, NpcPayloads.Shape.CODEC);
@@ -107,6 +113,9 @@ public final class NpcStudioNet {
 
 		ServerPlayNetworking.registerGlobalReceiver(NpcPayloads.Open.TYPE, (payload, context) ->
 			NpcEditing.open(context.player(), payload.entityId()));
+		ServerPlayNetworking.registerGlobalReceiver(BenchPayloads.Ask.TYPE, (payload, context) ->
+			com.mopicmp.npcstudio.bench.Bench.asked(
+				context.player(), payload.entityId(), payload.action()));
 		ServerPlayNetworking.registerGlobalReceiver(NpcPayloads.PlaceModel.TYPE, (payload, context) ->
 			NpcEditing.placeModel(context.player(), payload.name()));
 		ServerPlayNetworking.registerGlobalReceiver(NpcPayloads.RemoveModel.TYPE, (payload, context) ->

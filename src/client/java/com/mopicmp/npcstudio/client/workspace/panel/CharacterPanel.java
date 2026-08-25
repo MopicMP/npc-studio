@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.mopicmp.npcstudio.client.editor.FlatSlider;
+import com.mopicmp.npcstudio.client.editor.ToggleSwitch;
 import com.mopicmp.npcstudio.client.entity.AnimationCatalogue;
 import com.mopicmp.npcstudio.client.skin.SkinImport;
 import com.mopicmp.npcstudio.client.workspace.Icon;
@@ -39,6 +40,9 @@ public class CharacterPanel extends WorkspacePanel {
 	private static final int ROW = 18;
 	private static final int GAP = 5;
 
+	/** A switch is as wide as it needs to be to be a switch, not as wide as the panel. */
+	private static final int SWITCH = 34;
+
 	private static final int TEXT = 0xFFECEFF1;
 	private static final int TEXT_DIM = 0xFF8A99A6;
 	private static final int ACCENT = 0xFF4FC3F7;
@@ -48,12 +52,25 @@ public class CharacterPanel extends WorkspacePanel {
 
 	private String skinText = "";
 	private String dialogueText = "";
+
+	/**
+	 * How she behaves when nobody is talking to her.
+	 *
+	 * These three arrived as commands and did not belong there. Which graph runs a
+	 * character is the same sort of fact as which dialogue she opens or which skin
+	 * she wears: it belongs to this one character, it is authorship, and a command
+	 * is a place to try something rather than a place for a setting to live.
+	 */
+	private String brainText = "";
+	private boolean watchful;
+	private boolean endless;
 	private final List<String> animations = new ArrayList<>();
 	private final List<String> held = new ArrayList<>();
 	private float scale = 1f;
 
 	private EditBox skin;
 	private EditBox dialogue;
+	private EditBox brain;
 	private EditBox mainHand;
 	private EditBox offHand;
 
@@ -104,8 +121,12 @@ public class CharacterPanel extends WorkspacePanel {
 			held.set(i, details.held().get(i));
 		}
 		scale = details.scale() <= 0 ? 1f : details.scale();
+		brainText = details.brain();
+		watchful = details.watchful();
+		endless = details.endless();
 		skin = null;
 		dialogue = null;
+		brain = null;
 		mainHand = null;
 		offHand = null;
 		rebuild();
@@ -123,6 +144,10 @@ public class CharacterPanel extends WorkspacePanel {
 		held.set(slot, item);
 		EditBox box = slot == 0 ? mainHand : offHand;
 		if (box != null) box.setValue(item);
+		touched();
+	}
+
+	private void touched() {
 		notice = Component.translatable("npc_studio.character.unsaved").getString();
 	}
 
@@ -155,6 +180,7 @@ public class CharacterPanel extends WorkspacePanel {
 		scale = 1f;
 		skin = null;
 		dialogue = null;
+		brain = null;
 		mainHand = null;
 		offHand = null;
 		rebuild();
@@ -201,6 +227,30 @@ public class CharacterPanel extends WorkspacePanel {
 		y += LABEL;
 		offHand = field(offHand, PAD, y, across, held.get(1), text -> held.set(1, text),
 			"minecraft:shield");
+		y += ROW + GAP + 4;
+
+		y += LABEL;
+		brain = field(brain, PAD, y, across, brainText, text -> brainText = text,
+			"graph name");
+		y += ROW + GAP;
+
+		// Two switches on one row: they are both one-word facts about a character,
+		// and a full-width track for a yes-or-no reads as a slider somebody forgot
+		// to finish.
+		y += LABEL;
+		int half = across / 2;
+		add(new ToggleSwitch(PAD, y, SWITCH, ROW,
+			Component.translatable("npc_studio.character.watchful.what"), ACCENT,
+			() -> watchful, () -> {
+				watchful = !watchful;
+				touched();
+			}));
+		add(new ToggleSwitch(PAD + half, y, SWITCH, ROW,
+			Component.translatable("npc_studio.character.endless.what"), ACCENT,
+			() -> endless, () -> {
+				endless = !endless;
+				touched();
+			}));
 		y += ROW + GAP + 4;
 
 		add(new FlatSlider(PAD, y, across, ROW, "size", 0.25, 4.0, 0.05, ACCENT,
@@ -261,6 +311,13 @@ public class CharacterPanel extends WorkspacePanel {
 		}
 		y = label(graphics, "npc_studio.character.main_hand", y);
 		y = label(graphics, "npc_studio.character.off_hand", y);
+		y = label(graphics, "npc_studio.character.brain", y);
+		// The one row with two things on it, so it is written out rather than
+		// going through the helper that assumes one label to a row.
+		graphics.text(font, Component.translatable("npc_studio.character.watchful"),
+			PAD, y, TEXT_DIM);
+		graphics.text(font, Component.translatable("npc_studio.character.endless"),
+			PAD + (width - PAD * 2) / 2, y, TEXT_DIM);
 
 		if (!notice.isEmpty()) {
 			graphics.text(font, Component.literal(notice), PAD, height - 12, TEXT_DIM);
@@ -309,7 +366,8 @@ public class CharacterPanel extends WorkspacePanel {
 	private void save() {
 		if (about < 0) return;
 		ClientPlayNetworking.send(
-			new NpcPayloads.Apply(about, skinText, dialogueText, animations, held, scale));
+			new NpcPayloads.Apply(about, skinText, dialogueText, animations, held, scale,
+				brainText, watchful, endless));
 		// Saved is the new starting point, so closing afterwards must not put the
 		// old size back.
 		originalScale = null;

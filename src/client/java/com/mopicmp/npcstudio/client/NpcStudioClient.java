@@ -208,6 +208,12 @@ public class NpcStudioClient implements ClientModInitializer {
 					com.mopicmp.npcstudio.client.workspace.panel.CharacterPanel.class,
 					panel -> panel.accept(payload));
 			}));
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.BenchPayloads.Told.TYPE,
+			(payload, context) -> context.client().execute(() ->
+				com.mopicmp.npcstudio.client.workspace.WorkspaceScreen.deliver(
+					com.mopicmp.npcstudio.client.workspace.panel.BenchPanel.class,
+					panel -> panel.accept(payload))));
 		ClientPlayNetworking.registerGlobalReceiver(EditorPayloads.Listing.TYPE,
 			(payload, context) -> context.client().execute(() -> {
 				// Always remembered, because two screens want the same answer for

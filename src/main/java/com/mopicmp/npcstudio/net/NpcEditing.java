@@ -171,7 +171,7 @@ public final class NpcEditing {
 		// a resolved profile would show them a UUID.
 		return new NpcPayloads.Details(npc.getId(), npc.getProfile().name().orElse(""),
 			npc.dialogueId(), animations, List.of(held(npc, HANDS[0]), held(npc, HANDS[1])),
-			npc.scale());
+			npc.scale(), npc.brainId(), npc.watchful(), npc.endless());
 	}
 
 	/** Main hand, then off hand, in the order the packet expects. */
@@ -220,6 +220,14 @@ public final class NpcEditing {
 			hold(npc, HANDS[i], edit.held().get(i));
 		}
 		npc.setScale(edit.scale());
+		// Only when it changed. Setting a brain throws away where she had got to in
+		// it, so an unrelated edit — a skin, a scale — would restart her thinking
+		// for no reason anybody could see.
+		if (!edit.brain().trim().equals(npc.brainId())) {
+			npc.setBrainId(edit.brain().trim());
+		}
+		npc.setWatchful(edit.watchful());
+		npc.setEndless(edit.endless());
 		player.sendOverlayMessage(Component.literal("NPC updated."));
 	}
 

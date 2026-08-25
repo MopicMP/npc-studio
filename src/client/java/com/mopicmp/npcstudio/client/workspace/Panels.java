@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 
 import com.mopicmp.npcstudio.client.workspace.panel.AnimationPanel;
 import com.mopicmp.npcstudio.client.workspace.panel.AssetsPanel;
+import com.mopicmp.npcstudio.client.workspace.panel.BenchPanel;
 import com.mopicmp.npcstudio.client.workspace.panel.BodyPanel;
 import com.mopicmp.npcstudio.client.workspace.panel.CameraPanel;
 import com.mopicmp.npcstudio.client.workspace.panel.CaptionPanel;
@@ -51,7 +52,11 @@ public final class Panels {
 		new Kind("shaders", ShadersPanel::new, "right"),
 		new Kind("graph", GraphPanel::new, "bottom"),
 		new Kind("timeline", TimelinePanel::new, "bottom"),
-		new Kind("credits", CreditsPanel::new, "float"));
+		new Kind("credits", CreditsPanel::new, "float"),
+		// Scaffolding, and the only entry here that is meant to be deleted rather
+		// than grown. See BenchPanel: when block programming can order what it
+		// orders, this line and that file go together.
+		new Kind("bench", BenchPanel::new, "right"));
 
 	private Panels() { }
 
