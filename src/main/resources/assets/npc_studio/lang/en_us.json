@@ -227,5 +227,6 @@
   "npc_studio.camera.exportGo": "record",
   "npc_studio.workspace.bare": "show the frame",
   "npc_studio.camera.frameWindow": "frame: whole window",
-  "npc_studio.camera.frameViewport": "frame: the viewport"
+  "npc_studio.camera.frameViewport": "frame: the viewport",
+  "npc_studio.character.no_dialogue": "— no conversation —"
 }

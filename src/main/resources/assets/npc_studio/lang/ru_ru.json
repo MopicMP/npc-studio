@@ -227,5 +227,6 @@
   "npc_studio.character.watchful": "наблюдает",
   "npc_studio.character.watchful.what": "Замечает людей, звуки и выстрелы, поворачивается посмотреть",
   "npc_studio.character.endless": "патроны не кончаются",
-  "npc_studio.character.endless.what": "Никогда не тратит то, чем стреляет"
+  "npc_studio.character.endless.what": "Никогда не тратит то, чем стреляет",
+  "npc_studio.character.no_dialogue": "— без разговора —"
 }
