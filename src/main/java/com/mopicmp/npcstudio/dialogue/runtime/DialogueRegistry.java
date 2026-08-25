@@ -10,6 +10,7 @@ import com.mopicmp.npcstudio.dialogue.Condition;
 import com.mopicmp.npcstudio.dialogue.Dialogue;
 import com.mopicmp.npcstudio.dialogue.DialogueValidator;
 import com.mopicmp.npcstudio.dialogue.Effect;
+import com.mopicmp.npcstudio.dialogue.Mark;
 import com.mopicmp.npcstudio.dialogue.Node;
 import com.mopicmp.npcstudio.dialogue.Presentation;
 import com.mopicmp.npcstudio.dialogue.Scope;
@@ -92,6 +93,55 @@ public final class DialogueRegistry {
 		register(example());
 		register(torchbearer());
 		register(doorman());
+		register(sentry());
+	}
+
+	/**
+	 * A behaviour graph that shoots at you, written entirely as nodes.
+	 *
+	 * <h2>What it is proving</h2>
+	 *
+	 * That the brain has verbs. Every decision in it — whether that is worth
+	 * shooting at, how long to wait between shots, when to stop — is in the graph
+	 * and none of it is in java. The java below it is routes, necks and
+	 * bowstrings, which are physics and which no block was ever going to bend.
+	 *
+	 * She watches whatever she notices. When she has seen — not merely heard —
+	 * something within twenty blocks, she shoots at it, waits a second and a half,
+	 * and looks again. Losing sight of it sends her back to watching.
+	 *
+	 * <h2>Seen, not heard, and why that is the whole test</h2>
+	 *
+	 * A character who fires at noises shoots through walls at a pig. The
+	 * distinction was built into perception long before there was a graph to use
+	 * it, and this is the first time anything has actually asked.
+	 *
+	 * Give her a bow and either arrows in the off hand or endless ammunition, and
+	 * turn watchfulness on — all three on the character panel.
+	 */
+	private static Dialogue sentry() {
+		return Dialogue.builder("sentry")
+			.start("watch")
+			// Nothing is worth doing until she has actually seen something. Standing
+			// here costs one question a tick, which is what watching costs.
+			.add(new Node.Until("watch",
+				new Condition.All(List.of(
+					new Condition.Compare(Sense.LEAD_SEEN, Scope.SENSE,
+						Condition.Op.EQ, Value.of(true)),
+					new Condition.Compare(Sense.LEAD_DISTANCE, Scope.SENSE,
+						Condition.Op.LT, Value.of(20)))),
+				"face"))
+			.add(new Node.Act("face", new Effect.LookAt(Mark.LEAD), "shoot"))
+			.add(new Node.Act("shoot", new Effect.Fire(Mark.LEAD), "between"))
+			// Long enough to draw, loose and lower the bow before the next one. A
+			// shorter gap does not fire faster — the weapon has its own mind about
+			// that — it only makes her order shots she cannot take yet.
+			.add(new Node.Every("between", 30, "still?"))
+			.add(new Node.Branch("still?", List.of(new Node.Arm(
+				new Condition.Compare(Sense.LEAD_SEEN, Scope.SENSE,
+					Condition.Op.EQ, Value.of(true)), "shoot")), "lower"))
+			.add(new Node.Act("lower", new Effect.LookAt(Mark.NOTHING), "watch"))
+			.build();
 	}
 
 	/**

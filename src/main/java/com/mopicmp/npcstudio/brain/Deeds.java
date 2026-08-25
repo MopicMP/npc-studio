@@ -30,6 +30,24 @@ public final class Deeds {
 		switch (effect) {
 			case Effect.PlayAnimation(String animation, int ticks) -> npc.playGesture(animation, ticks);
 			case Effect.Express(String expression, int ticks) -> npc.express(expression, ticks);
+
+			// The verbs. Each is one line here because the hard part is already
+			// written and is not a decision: routes, necks and bowstrings are
+			// physics, and the graph's whole job was to say which and at what.
+			case Effect.WalkTo(String mark, float pace) -> {
+				if (com.mopicmp.npcstudio.dialogue.Mark.POST.equals(mark) && npc.post() == null) {
+					npc.markPost();
+				}
+				npc.walkTo(Marks.feet(npc, mark), pace);
+			}
+			case Effect.Halt _ -> npc.halt();
+			case Effect.LookAt(String mark) -> npc.lookAt(mark);
+			case Effect.Fire(String mark) -> {
+				// How long to hold it is the weapon's business rather than the
+				// author's. A graph that had to name a number of ticks would be a
+				// graph that has to be rewritten for every bow in every mod.
+				npc.fireAt(mark, com.mopicmp.npcstudio.foe.Draw.longEnoughFor(0.95f));
+			}
 			case Effect.PlaySound(String sound, float volume, float pitch) ->
 				NpcStudio.LOGGER.warn("A graph asked for the sound \"{}\"; sounds are not wired up yet.",
 					sound);

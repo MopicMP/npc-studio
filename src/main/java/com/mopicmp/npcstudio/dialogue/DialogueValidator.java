@@ -61,6 +61,7 @@ public final class DialogueValidator {
 		checkStart(dialogue, found);
 		checkExitsExist(dialogue, found);
 		checkVariables(dialogue, found);
+		checkMarks(dialogue, found);
 		checkChoices(dialogue, found);
 		checkReachable(dialogue, found);
 		checkEveryPathEnds(dialogue, found);
@@ -159,6 +160,30 @@ public final class DialogueValidator {
 							+ use.comparedWith().typeName() + " — that can never match"));
 				}
 			}
+		}
+	}
+
+	/**
+	 * A verb pointed at something nobody has heard of.
+	 *
+	 * The same failure as a misspelt reading and worth the same care: a mark that
+	 * names nothing resolves to nothing, and a character told to walk to nothing
+	 * stands still. From outside that is a graph which does not work, with nothing
+	 * in it to point at.
+	 */
+	private static void checkMarks(Dialogue dialogue, List<Problem> found) {
+		for (Node node : dialogue.nodes().values()) {
+			if (!(node instanceof Node.Act act)) continue;
+			String mark = switch (act.effect()) {
+				case Effect.WalkTo(String at, float _) -> at;
+				case Effect.LookAt(String at) -> at;
+				case Effect.Fire(String at) -> at;
+				default -> null;
+			};
+			if (mark == null || Mark.known(mark)) continue;
+			found.add(new Problem(Severity.ERROR, node.id(),
+				"points at \"" + mark + "\", which is not something she can be pointed at. "
+					+ "Known: " + String.join(", ", Mark.KNOWN)));
 		}
 	}
 

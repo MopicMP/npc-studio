@@ -339,8 +339,86 @@ public class NodePanel {
 					}, add));
 				y += ROW;
 			}
+
+			// The verbs. All four take a mark, and a mark is picked from a list
+			// rather than typed: there are four of them and every one an author can
+			// spell wrong is a character who quietly does nothing.
+			case Effect.WalkTo(String mark, float pace) -> {
+				y = markButton(x, y, width, "walk to", mark, add,
+					picked -> new Effect.WalkTo(picked, pace));
+				labels.add(new Label("how fast", x, y - 10));
+				add.accept(new FlatButton(x, y, width, 18,
+					Component.literal(paceName(pace)), 0xFFFF8A65, () -> {
+						Node.Act now = current(Node.Act.class);
+						Effect.WalkTo was = (Effect.WalkTo) now.effect();
+						put(new Node.Act(now.id(),
+							new Effect.WalkTo(was.mark(), nextPace(was.pace())), now.next()));
+						screen.refreshPanel();
+					}));
+				y += ROW;
+			}
+			case Effect.LookAt(String mark) ->
+				y = markButton(x, y, width, "look at", mark, add, Effect.LookAt::new);
+			case Effect.Fire(String mark) ->
+				y = markButton(x, y, width, "shoot at", mark, add, Effect.Fire::new);
+			case Effect.Halt _ -> {
+				// Nothing to fill in. Said out loud rather than left blank, because an
+				// empty form reads as one that failed to load.
+				labels.add(new Label("she stops where she is", x, y - 10));
+			}
 		}
 		return y;
+	}
+
+	/** A button that walks through the marks, since there are only ever a few. */
+	private int markButton(int x, int y, int width, String label, String mark,
+			Consumer<AbstractWidget> add, java.util.function.Function<String, Effect> rebuild) {
+		labels.add(new Label(label, x, y - 10));
+		add.accept(new FlatButton(x, y, width, 18,
+			Component.literal(markName(mark)), 0xFFFF8A65, () -> {
+				Node.Act now = current(Node.Act.class);
+				put(new Node.Act(now.id(), rebuild.apply(nextMark(mark)), now.next()));
+				screen.refreshPanel();
+			}));
+		return y + ROW;
+	}
+
+	private static String nextMark(String mark) {
+		var all = com.mopicmp.npcstudio.dialogue.Mark.KNOWN;
+        int at = all.indexOf(mark);
+		return all.get((at + 1) % all.size());
+	}
+
+	/** What an author calls each mark, rather than what the file calls it. */
+	private static String markName(String mark) {
+		return switch (mark) {
+			case com.mopicmp.npcstudio.dialogue.Mark.LEAD -> "what she has noticed";
+			case com.mopicmp.npcstudio.dialogue.Mark.PLAYER -> "the nearest player";
+			case com.mopicmp.npcstudio.dialogue.Mark.POST -> "where she was posted";
+			case com.mopicmp.npcstudio.dialogue.Mark.NOTHING -> "nothing";
+			default -> mark;
+		};
+	}
+
+	/**
+	 * Four paces rather than a slider.
+	 *
+	 * The number is continuous and the choice is not: nobody means 0.63, they
+	 * mean "hurrying". A slider would invite fiddling with a difference nobody
+	 * can see.
+	 */
+	private static float nextPace(float pace) {
+		if (pace < 0.35f) return 0.45f;
+		if (pace < 0.6f) return 0.75f;
+		if (pace < 0.9f) return 1f;
+		return 0.25f;
+	}
+
+	private static String paceName(float pace) {
+		if (pace < 0.35f) return "creeping";
+		if (pace < 0.6f) return "walking";
+		if (pace < 0.9f) return "briskly";
+		return "running";
 	}
 
 	/** The expressions in the order the button walks through them. */
@@ -394,6 +472,10 @@ public class NodePanel {
 			case Effect.PlaySound _ -> "play a sound";
 			case Effect.PlaceStructure _ -> "place a structure";
 			case Effect.Express _ -> "make a face";
+			case Effect.WalkTo _ -> "walk somewhere";
+			case Effect.Halt _ -> "stop walking";
+			case Effect.LookAt _ -> "look at something";
+			case Effect.Fire _ -> "shoot at something";
 		};
 	}
 
@@ -407,7 +489,12 @@ public class NodePanel {
 			case Effect.PlaySound _ -> new Effect.PlaceStructure("", "npc", 40);
 			case Effect.PlaceStructure _ ->
 				new Effect.Express(com.mopicmp.npcstudio.entity.Expression.HAPPY.name(), 60);
-			case Effect.Express _ -> new Effect.PlayAnimation("wave",
+			case Effect.Express _ -> new Effect.WalkTo(
+				com.mopicmp.npcstudio.dialogue.Mark.LEAD, 0.45f);
+			case Effect.WalkTo _ -> new Effect.Halt();
+			case Effect.Halt _ -> new Effect.LookAt(com.mopicmp.npcstudio.dialogue.Mark.PLAYER);
+			case Effect.LookAt _ -> new Effect.Fire(com.mopicmp.npcstudio.dialogue.Mark.PLAYER);
+			case Effect.Fire _ -> new Effect.PlayAnimation("wave",
 				com.mopicmp.npcstudio.client.entity.NpcGestures.lengthOf("wave"));
 		};
 	}

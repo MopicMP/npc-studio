@@ -157,6 +157,10 @@ public final class DialogueCodecs {
 			case Effect.PlaySound _ -> "play_sound";
 			case Effect.PlayAnimation _ -> "play_animation";
 			case Effect.Express _ -> "express";
+			case Effect.WalkTo _ -> "walk_to";
+			case Effect.Halt _ -> "halt";
+			case Effect.LookAt _ -> "look_at";
+			case Effect.Fire _ -> "fire";
 		};
 	}
 
@@ -197,6 +201,18 @@ public final class DialogueCodecs {
 				// animation is: that is what an author who did not think about it meant.
 				Codec.INT.optionalFieldOf("ticks", 0).forGetter(Effect.Express::ticks)
 			).apply(instance, Effect.Express::new));
+			case "walk_to" -> RecordCodecBuilder.<Effect.WalkTo>mapCodec(instance -> instance.group(
+				Codec.STRING.fieldOf("mark").forGetter(Effect.WalkTo::mark),
+				// A stroll by default. Somebody who did not say how fast meant
+				// "go there", and a character who sprints at everything reads as
+				// panicking rather than as walking.
+				Codec.FLOAT.optionalFieldOf("pace", 0.45f).forGetter(Effect.WalkTo::pace)
+			).apply(instance, Effect.WalkTo::new));
+			case "halt" -> MapCodec.unit(new Effect.Halt());
+			case "look_at" -> Codec.STRING.fieldOf("mark")
+				.xmap(Effect.LookAt::new, Effect.LookAt::mark);
+			case "fire" -> Codec.STRING.fieldOf("mark")
+				.xmap(Effect.Fire::new, Effect.Fire::mark);
 			default -> MapCodec.unit(new Effect.PlayAnimation("none", 0))
 				.validate(_ -> com.mojang.serialization.DataResult.error(() ->
 					"unknown effect type \"" + type + "\""));

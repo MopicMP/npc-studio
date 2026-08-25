@@ -73,4 +73,55 @@ public sealed interface Effect {
 	 *                   something else changes it, the same as an animation.
 	 */
 	record Express(String expression, int ticks) implements Effect { }
+
+	// ------------------------------------------------------------- the verbs
+
+	/**
+	 * Walk to a {@link Mark}.
+	 *
+	 * <h2>Why this does not wait</h2>
+	 *
+	 * It orders a walk and returns at once, and the graph waits for the arrival
+	 * itself — {@code until walking is false}. That is not a shortcut: it is what
+	 * lets a character do something else on the way. A walk that blocked the
+	 * graph until it finished would be a character who cannot look at anything,
+	 * change her mind, or notice she is being shot at while crossing a courtyard.
+	 *
+	 * @param pace nought to one. Below half is a stroll to go and see something;
+	 *             one is a run. The number is the same one the legs already
+	 *             work in, so an author can ask for anything in between.
+	 */
+	record WalkTo(String mark, float pace) implements Effect { }
+
+	/** Stop where she is. The walk is abandoned, not paused. */
+	record Halt() implements Effect { }
+
+	/**
+	 * Turn to face a {@link Mark}, and keep facing it.
+	 *
+	 * Held rather than done once, because looking at somebody is a state and not
+	 * an act — a character told to look at you and then left alone should still
+	 * be looking at you a second later. {@link Mark#NOTHING} lets go.
+	 *
+	 * <h2>What this overrules</h2>
+	 *
+	 * The watching reflex, which turns her head towards whatever she notices. A
+	 * graph saying where to look is an author saying it, and an author outranks a
+	 * reflex — otherwise a scripted stare would be broken by a door closing
+	 * somewhere behind the camera.
+	 */
+	record LookAt(String mark) implements Effect { }
+
+	/**
+	 * Aim at a {@link Mark} and shoot whatever is in her hand.
+	 *
+	 * She keeps aiming for as long as the weapon takes to ready, rather than
+	 * pointing once at the moment of the order: a bow takes a second to draw, and
+	 * anything worth shooting at has moved by then.
+	 *
+	 * Whether there is ammunition, how long the draw is worth, whether the item
+	 * can be fired at all — none of that is here. It belongs to the weapon and is
+	 * already answered by it; this only says at whom.
+	 */
+	record Fire(String mark) implements Effect { }
 }

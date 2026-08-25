@@ -259,10 +259,12 @@ public final class DialogueRuntime {
 					player.createCommandSourceStack()
 						.withMaximumPermission(PermissionSet.ALL_PERMISSIONS),
 					command);
-			case Effect.PlayAnimation(String animation, int ticks) -> npc.playGesture(animation, ticks);
-			case Effect.Express(String expression, int ticks) -> npc.express(expression, ticks);
-			case Effect.PlaySound _, Effect.PlaceStructure _ ->
-				NpcStudio.LOGGER.debug("effect {} is not built yet", effect);
+			// Everything that is about the character rather than about the player
+			// goes to the one place that knows how to do it. A conversation that
+			// ends with the guard turning and walking away is an ordinary thing to
+			// write, and there is no reason for it to mean something different here
+			// from what it means in a behaviour graph.
+			default -> com.mopicmp.npcstudio.brain.Deeds.doTo(effect, npc);
 		}
 	}
 }

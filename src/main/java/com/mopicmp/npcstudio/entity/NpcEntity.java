@@ -429,6 +429,15 @@ public class NpcEntity extends Avatar {
 		watch.tick();
 		entityData.set(DATA_MOOD, (byte) watch.mood().ordinal());
 
+		// A character with a brain is run by it. Everything below this line is the
+		// reflex - going to look, turning to face - and every part of it is a
+		// decision, which is exactly what a graph is for. Leaving both running
+		// would be two authors of one body.
+		//
+		// It is also the measure of step D: when the reflex has been written as a
+		// graph that ships with the mod, everything below goes.
+		if (!brainId.isEmpty()) return;
+
 		goAndLook();
 
 		Vec3 at = watch.lookingAt();
@@ -480,16 +489,75 @@ public class NpcEntity extends Avatar {
 	 * stuck, calms down, or something genuinely elsewhere turns up.
 	 */
 	private void goAndLook() {
-		walk.moved(getX(), getZ());
 		Vec3 wanted = watch.worthInvestigating();
 
 		if (wanted != null && wantsToGoElsewhere(wanted)) {
-			headingFor = wanted;
-			walk.follow(routeTo(wanted));
+			walkTo(wanted, paceFor(watch.lead()));
 		}
 		// Calming down is the one thing that ends a walk early. Losing the sound is
 		// not: that is the moment somebody most wants to go and look.
-		if (watch.mood() == com.mopicmp.npcstudio.foe.Alarm.Mood.CALM || walk.stuck()) {
+		if (watch.mood() == com.mopicmp.npcstudio.foe.Alarm.Mood.CALM) {
+			halt();
+		}
+	}
+
+	/**
+	 * A stroll to see what a door was, a run at a gunshot.
+	 *
+	 * Urgency already means exactly this, so it is what decides. It stays here
+	 * rather than moving into the walking because it is a judgement, and a graph
+	 * makes its own by naming a pace when it orders a walk.
+	 */
+	private static float paceFor(com.mopicmp.npcstudio.foe.Lead lead) {
+		return lead != null && lead.urgency() >= HURRIES_AT
+			? com.mopicmp.npcstudio.foe.Walk.HURRYING
+			: com.mopicmp.npcstudio.foe.Walk.WANDERING;
+	}
+
+	// -------------------------------------------------------------- the verbs
+
+	/** How fast the current walk is meant to be, whoever asked for it. */
+	private float wantedPace = com.mopicmp.npcstudio.foe.Walk.WANDERING;
+
+	/**
+	 * Sets off for a place.
+	 *
+	 * Finding the route happens here, once; following it happens in
+	 * {@link #walkOn}, every tick. That split is what lets the search be
+	 * expensive: it runs when the destination changes and not otherwise.
+	 *
+	 * @return whether there was a way there at all, so that a graph can tell
+	 *         being unable to go from having arrived
+	 */
+	public boolean walkTo(Vec3 wanted, float pace) {
+		if (wanted == null) return false;
+		wantedPace = Math.clamp(pace, 0f, 1f);
+		headingFor = wanted;
+		var route = routeTo(wanted);
+		walk.follow(route);
+		return route != null && !route.isEmpty();
+	}
+
+	public void halt() {
+		stopWalking();
+	}
+
+	/**
+	 * One tick of putting one foot in front of the other.
+	 *
+	 * Runs whoever gave the order and whether or not she has a brain, because
+	 * walking is not a decision - it is the carrying out of one, and a character
+	 * whose legs stop while her graph is thinking is a character standing in a
+	 * doorway.
+	 */
+	private void walkOn() {
+		walk.moved(getX(), getZ());
+		if (!walk.walking()) return;
+
+		// Wedged against a fence post. Nobody needs to decide this: a route that
+		// cannot be followed is not a route, and keeping it would mean pushing at
+		// the post until something else happened.
+		if (walk.stuck()) {
 			stopWalking();
 			return;
 		}
@@ -500,6 +568,76 @@ public class NpcEntity extends Avatar {
 			return;
 		}
 		stride(step);
+	}
+
+	/**
+	 * What a graph told her to look at, or empty for nothing.
+	 *
+	 * Held rather than done once, because looking at somebody is a state. It
+	 * outranks the watching reflex, because an author outranks a reflex - a
+	 * scripted stare broken by a door closing behind the camera would be nobody's
+	 * idea of a scene.
+	 */
+	private String gazingAt = "";
+
+	public void lookAt(String mark) {
+		gazingAt = mark == null ? "" : mark;
+	}
+
+	public String gazingAt() {
+		return gazingAt;
+	}
+
+	/** How fast a head comes round to something she was told to watch. */
+	private static final float GAZE_RATE = 12f;
+
+	private void gaze() {
+		if (gazingAt.isEmpty()) return;
+		if (com.mopicmp.npcstudio.dialogue.Mark.NOTHING.equals(gazingAt)) return;
+		Vec3 at = com.mopicmp.npcstudio.brain.Marks.eyes(this, gazingAt);
+		// A mark that names nothing at the moment is not an error and not a reason
+		// to let go: told to watch the lead, she goes on facing where it was until
+		// the graph says otherwise, which is what a person does.
+		if (at == null) return;
+		turnBodily(at, GAZE_RATE);
+	}
+
+	/**
+	 * Brings head and shoulders round to a point, at a given rate.
+	 *
+	 * Body as well as head, unlike a glance: a graph pointing a character at
+	 * something means her attention. It also matters for shooting, because a
+	 * projectile leaves along the body's rotation and not the head's - a
+	 * character aiming with her neck alone fires wherever her shoulders happen to
+	 * be pointing.
+	 */
+	private void turnBodily(Vec3 at, float rate) {
+		float wanted = (float) com.mopicmp.npcstudio.foe.Sight.yawTo(getX(), getZ(), at.x, at.z);
+		float body = com.mopicmp.npcstudio.foe.Neck.step(yBodyRot, wanted, rate);
+		yBodyRot = body;
+		setYRot(body);
+		setYHeadRot(com.mopicmp.npcstudio.foe.Neck.step(getYHeadRot(), wanted, rate * 2f));
+		Vec3 eye = getEyePosition();
+		float pitch = com.mopicmp.npcstudio.foe.Neck.pitchTo(eye.x, eye.y, eye.z, at.x, at.y, at.z);
+		setXRot(com.mopicmp.npcstudio.foe.Neck.step(getXRot(), pitch, rate));
+	}
+
+	/**
+	 * Where she is to come back to.
+	 *
+	 * A place rather than a name, because "where I was told to stand" is a fact
+	 * about this character in this world and there is nothing else it could mean.
+	 * Unset until a graph asks for it, so a character who never posts anywhere
+	 * carries nothing.
+	 */
+	private Vec3 post;
+
+	public Vec3 post() {
+		return post;
+	}
+
+	public void markPost() {
+		post = position();
 	}
 
 	/**
@@ -541,13 +679,9 @@ public class NpcEntity extends Avatar {
 		yBodyRot = bearing;
 		setYRot(bearing);
 
-		// A stroll to see what a door was, a run at a gunshot. Urgency already means
-		// exactly this, so it says how fast as well as how quickly to turn.
-		var lead = watch.lead();
-		float wanted = lead != null && lead.urgency() >= HURRIES_AT
-			? com.mopicmp.npcstudio.foe.Walk.HURRYING
-			: com.mopicmp.npcstudio.foe.Walk.WANDERING;
-		setSpeed(WALKING_PACE * walk.pacing(wanted));
+		// How fast was settled when the walk was ordered - by a reflex or by a
+		// graph - and is not decided again on every step.
+		setSpeed(WALKING_PACE * walk.pacing(wantedPace));
 		zza = 1;
 		xxa = 0;
 
@@ -794,6 +928,43 @@ public class NpcEntity extends Avatar {
 	}
 
 	/**
+	 * What she is shooting at, or empty for nothing.
+	 *
+	 * <h2>Why aiming is held rather than done once</h2>
+	 *
+	 * Because a bow takes a second to draw and anything worth shooting at has
+	 * moved by the time it is ready. Pointing her at the order and letting go
+	 * twenty ticks later is how you build a character who reliably shoots at
+	 * where you used to be.
+	 *
+	 * Separate from {@link #gazingAt} on purpose, though they usually agree. A
+	 * character can be watching a doorway and shooting at what came out of a
+	 * different one, and more to the point she can be told to keep looking at
+	 * somebody after the shot is gone.
+	 */
+	private String aimingAt = "";
+
+	/** Orders a shot at a mark, drawn for as long as the weapon is worth. */
+	public void fireAt(String mark, int drawFor) {
+		aimingAt = mark == null ? "" : mark;
+		draw.pull(drawFor);
+	}
+
+	public String aimingAt() {
+		return aimingAt;
+	}
+
+	/**
+	 * How fast she swings round to bring a weapon to bear.
+	 *
+	 * Brisker than a glance and brisker than a gaze, because it is neither: it is
+	 * somebody who has decided to shoot. Over an ordinary bow draw this is enough
+	 * to come round from any angle, so a shot that misses is a shot that missed
+	 * rather than a character who never finished turning.
+	 */
+	private static final float AIM_RATE = 20f;
+
+	/**
 	 * One tick of using the thing in her hands.
 	 *
 	 * <h2>Three lines, and why that is the whole point</h2>
@@ -806,11 +977,27 @@ public class NpcEntity extends Avatar {
 	 * a mod hung on its own weapon — follows here for nothing.
 	 */
 	private void workTheWeapon() {
+		// Before the trigger, not after: the shot leaves along the rotation this
+		// sets, so turning after the release would aim the previous shot.
+		if (!aimingAt.isEmpty() && draw.pulling()) {
+			Vec3 at = com.mopicmp.npcstudio.brain.Marks.eyes(this, aimingAt);
+			if (at != null) turnBodily(at, AIM_RATE);
+		}
+
 		int drawnFor = isUsingItem() ? getTicksUsingItem() : -1;
 		switch (draw.tick(drawnFor)) {
 			case START -> startUsingItem(InteractionHand.MAIN_HAND);
-			case LOOSE -> releaseUsingItem();
-			case LET_GO -> stopUsingItem();
+			case LOOSE -> {
+				releaseUsingItem();
+				// The aim is let go with the arrow. Holding it would mean a character
+				// who fired once tracking her target for ever afterwards, which is a
+				// different thing and the graph should have to ask for it.
+				aimingAt = "";
+			}
+			case LET_GO -> {
+				stopUsingItem();
+				aimingAt = "";
+			}
 			case NOTHING -> { }
 		}
 	}
@@ -950,6 +1137,10 @@ public class NpcEntity extends Avatar {
 			expireExpression();
 			refreshFace();
 			keepWatch();
+			// The doing, as against the deciding: whoever ordered the walk - a
+			// reflex or a graph - the legs move here, every tick, the same way.
+			walkOn();
+			gaze();
 			workTheWeapon();
 			com.mopicmp.npcstudio.brain.Brain.tick(this);
 		}
