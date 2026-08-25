@@ -926,6 +926,43 @@ public class NpcEntity extends Avatar {
 		return doingNow;
 	}
 
+	/**
+	 * The last thing her brain could not do, in words, or empty.
+	 *
+	 * <h2>Why this is kept rather than only logged</h2>
+	 *
+	 * Because a refusal in a server log is a refusal nobody reads. A graph that
+	 * calls a skill which is not there produces a character standing perfectly
+	 * still, and the one line explaining it is in a file behind the game — which
+	 * is exactly as useful as no line at all.
+	 */
+	private String brainTrouble = "";
+
+	public String brainTrouble() {
+		return brainTrouble;
+	}
+
+	public void brainTrouble(String said) {
+		brainTrouble = said == null ? "" : said;
+	}
+
+	/** The last answer to "who else has my brain", and when it was worked out. */
+	private int kinAsOf = -1;
+	private NpcEntity kinFound;
+
+	public boolean kinKnown(int tick) {
+		return kinAsOf == tick;
+	}
+
+	public NpcEntity kinRemembered() {
+		return kinFound;
+	}
+
+	public void rememberKin(int tick, NpcEntity found) {
+		kinAsOf = tick;
+		kinFound = found;
+	}
+
 	/** Whoever the running skill was told to act on. */
 	public String doingAt() {
 		return doingAt;

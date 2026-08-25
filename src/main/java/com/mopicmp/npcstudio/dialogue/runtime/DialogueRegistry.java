@@ -51,6 +51,29 @@ public final class DialogueRegistry {
 		return Optional.ofNullable(own != null ? own : DIALOGUES.get(id));
 	}
 
+	/**
+	 * The copy a world was given, as against the one that ships with the mod.
+	 *
+	 * <h2>Why anybody needs to tell them apart</h2>
+	 *
+	 * Because the world's own wins, silently, and that is right while it is a
+	 * deliberate edit — somebody working on a graph is looking at the thing they
+	 * changed. It is not right when the world's copy is damaged: the built-in one
+	 * is sitting there working and the character uses the broken one, and nothing
+	 * anywhere says which is in play.
+	 *
+	 * That happened. The editor used to drop a document's segments on save, so a
+	 * brain opened once and saved came back with its nodes and none of its skills,
+	 * and from then on every character running it stood still.
+	 */
+	public static Optional<Dialogue> worldOwn(String id) {
+		return Optional.ofNullable(WORLD.get(id));
+	}
+
+	public static Optional<Dialogue> shipped(String id) {
+		return Optional.ofNullable(DIALOGUES.get(id));
+	}
+
 	public static List<String> names() {
 		return java.util.stream.Stream.concat(DIALOGUES.keySet().stream(), WORLD.keySet().stream())
 			.distinct().sorted().toList();

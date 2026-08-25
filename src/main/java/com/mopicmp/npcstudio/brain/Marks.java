@@ -30,10 +30,21 @@ public final class Marks {
 	/**
 	 * As far as one character can be from another and still be found.
 	 *
-	 * Generous, because this is not eyesight - a graph asking about kin is asking
-	 * who else is about, and the deciding about range is the graph's own.
+	 * <h2>Why it is generous, and why it can afford to be</h2>
+	 *
+	 * This is not eyesight. A graph asking about kin is asking who else is about,
+	 * and how close is close enough is the graph's own business — it has
+	 * {@code kin.distance} for exactly that. A tight number here would be us
+	 * deciding, badly, on everybody's behalf: a boss who should notice an
+	 * intruder across an arena and a guard who should not care past the doorway
+	 * are the same question with different answers, and only the author knows
+	 * which they are writing.
+	 *
+	 * It was thirty-two, chosen to keep the cost down, and that was the wrong
+	 * thing to trade. The cost is now paid once a tick rather than once a
+	 * question — see {@link #kin} — so the number can be what it should be.
 	 */
-	public static final double WITHIN = 32.0;
+	public static final double WITHIN = 64.0;
 
 	/**
 	 * The living thing a mark names, or null when it names a place or nothing.
@@ -74,8 +85,25 @@ public final class Marks {
 	 * fight through it. Everything else about the choosing - how close is close
 	 * enough, whether to approach - belongs to the graph.
 	 */
+	/**
+	 * The nearest other character running the same graph, in sight.
+	 *
+	 * <h2>Remembered for the tick it was worked out in</h2>
+	 *
+	 * A scenario waiting on kin asks every tick; so does the reading beside it,
+	 * and so does every verb pointed at kin. Three sweeps of a hundred-and-twenty
+	 * block box per character per tick is not a price worth paying three times
+	 * for one answer that cannot have changed in between.
+	 */
 	public static NpcEntity kin(NpcEntity npc) {
 		if (npc.brainId().isEmpty()) return null;
+		if (npc.kinKnown(npc.tickCount)) return npc.kinRemembered();
+		NpcEntity found = lookForKin(npc);
+		npc.rememberKin(npc.tickCount, found);
+		return found;
+	}
+
+	private static NpcEntity lookForKin(NpcEntity npc) {
 		NpcEntity best = null;
 		double closest = WITHIN * WITHIN;
 		var near = npc.getBoundingBox().inflate(WITHIN);

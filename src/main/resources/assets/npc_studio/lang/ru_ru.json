@@ -234,5 +234,6 @@
   "npc_studio.graph.brain.pick": "сначала выбери узел, потом назови его умением",
   "npc_studio.graph.brain.make": "+ сделать выбранный узел умением",
   "npc_studio.bench.brain": "почему мозг бездействует",
-  "npc_studio.character.no_brain": "— без мозга —"
+  "npc_studio.character.no_brain": "— без мозга —",
+  "npc_studio.bench.shipped": "забыть копию этого мира"
 }

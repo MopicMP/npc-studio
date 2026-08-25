@@ -63,6 +63,7 @@ public final class Bench {
 		tell(player, switch (action) {
 			case "senses" -> senses(npc);
 			case "brain" -> brain(npc);
+			case "shipped" -> shipped(npc);
 			case "watch" -> watching(npc, player);
 			case "fire" -> fire(npc, player);
 			case "forget" -> forget(npc);
@@ -116,15 +117,36 @@ public final class Bench {
 			return List.of("Her brain is \"" + npc.brainId() + "\", which no longer exists.");
 		}
 
-		lines.add("brain \"" + npc.brainId() + "\"");
+		// Which copy. The world's own wins silently over the one that ships with
+		// the mod, and that is right for a deliberate edit and wrong for a damaged
+		// one — and the two are indistinguishable without being told.
+		boolean ownCopy = com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry
+			.worldOwn(npc.brainId()).isPresent();
+		lines.add("brain \"" + npc.brainId() + "\""
+			+ (ownCopy ? " (this world's own copy)" : " (built in)"));
+
 		var mind = npc.mind(graph);
 		lines.add("  scenario at: " + mind.currentNode());
 		lines.add(npc.doingNow().isEmpty()
 			? "  no skill running"
 			: "  doing \"" + npc.doingNow() + "\" at " + (npc.doingState() == null
 				? "?" : npc.doingState().currentNode()) + ", about " + npc.doingAt());
-		if (!graph.segments().isEmpty()) {
-			lines.add("  skills: " + String.join(", ", graph.segments().keySet()));
+		// Said even when empty. Leaving the line out when there are none is the
+		// same silence this whole readout exists to end: a graph with no skills at
+		// all looked exactly like one whose skills were fine.
+		lines.add("  skills: " + (graph.segments().isEmpty()
+			? "NONE" : String.join(", ", graph.segments().keySet())));
+		if (!npc.brainTrouble().isEmpty()) {
+			lines.add("  REFUSED: " + npc.brainTrouble());
+		}
+
+		if (ownCopy) {
+			var built = com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry
+				.shipped(npc.brainId()).orElse(null);
+			if (built != null && !built.segments().isEmpty() && graph.segments().isEmpty()) {
+				lines.add("  the built-in one has skills and this copy has none —");
+				lines.add("  press \"forget this world's copy\" below.");
+			}
 		}
 
 		// The census. Everybody else near enough to matter, and what they are
@@ -265,6 +287,41 @@ public final class Bench {
 		return List.of("Firing " + weapon.getHoverName().getString(),
 			"drawing " + drawFor + " ticks, "
 				+ Math.round(Draw.powerOf(drawFor) * 100) + "% power");
+	}
+
+	/**
+	 * Throws away this world's own copy of her brain.
+	 *
+	 * <h2>Why this exists at all</h2>
+	 *
+	 * Because saving a graph in the editor writes a copy into the world, that copy
+	 * wins from then on, and until now nothing anywhere could remove it. So a
+	 * single bad save was permanent — and there was one: the editor used to drop a
+	 * document's skills on save, which left a brain that looked complete, ran, and
+	 * did nothing.
+	 *
+	 * It is not only a repair. Going back to the version that ships with the mod,
+	 * or the one a datapack provides, is an ordinary thing to want after an
+	 * experiment.
+	 */
+	private static List<String> shipped(NpcEntity npc) {
+		if (npc.brainId().isEmpty()) return List.of("She has no brain to reset.");
+		String id = npc.brainId();
+		if (com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry.worldOwn(id).isEmpty()) {
+			return List.of("\"" + id + "\" is already the built-in one.");
+		}
+		if (com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry.shipped(id).isEmpty()) {
+			return List.of("\"" + id + "\" exists only as this world's copy —",
+				"forgetting it would leave nothing behind.");
+		}
+		if (!(npc.level() instanceof net.minecraft.server.level.ServerLevel level)) {
+			return List.of("That can only be done on the server.");
+		}
+		com.mopicmp.npcstudio.dialogue.runtime.WorldDialogues.of(level).remove(id);
+		// Her train of thought was built on the copy that has just gone.
+		npc.setBrainId(id);
+		return List.of("Forgot this world's copy of \"" + id + "\".",
+			"She is on the built-in one now.");
 	}
 
 	/**

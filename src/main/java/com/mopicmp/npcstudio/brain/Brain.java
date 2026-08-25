@@ -180,10 +180,14 @@ public final class Brain {
 
 		String at = graph.segment(call.segment());
 		if (at == null) {
+			String said = "\"" + graph.id() + "\" has no skill called \"" + call.segment() + "\"";
+			if (graph.segments().isEmpty()) said += " — it has none at all";
+			npc.brainTrouble(said);
 			NpcStudio.LOGGER.error("Graph \"{}\" has no segment called \"{}\".",
 				graph.id(), call.segment());
 			return;
 		}
+		npc.brainTrouble("");
 		npc.beginDoing(call.segment(), call.target(),
 			DialogueState.beginning(graph, at, java.util.Map.of(), npc.memory(), call.with()));
 	}

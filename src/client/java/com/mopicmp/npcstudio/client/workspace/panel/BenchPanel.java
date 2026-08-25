@@ -75,7 +75,8 @@ public class BenchPanel extends WorkspacePanel {
 		new Group("npc_studio.bench.doing", List.of(
 			new Deed(Icon.MAIN_HAND, "npc_studio.bench.fire", "fire"))),
 		new Group("npc_studio.bench.memory", List.of(
-			new Deed(Icon.RESET, "npc_studio.bench.forget", "forget"))));
+			new Deed(Icon.RESET, "npc_studio.bench.forget", "forget"),
+			new Deed(Icon.CANCEL, "npc_studio.bench.shipped", "shipped"))));
 
 	@Override
 	public String id() {
