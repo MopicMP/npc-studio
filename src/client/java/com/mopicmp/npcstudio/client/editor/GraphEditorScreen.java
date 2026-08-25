@@ -145,6 +145,12 @@ public class GraphEditorScreen extends Screen {
 				0xFFFFCA28, () -> { x.clear(); layout(); }),
 			new Spec(Icon.BROWSE, Component.translatable("npc_studio.graph.dialogues"),
 				0xFF8A99A6, () -> ClientPlayNetworking.send(new EditorPayloads.Browse())),
+			// The skills this document holds, in a list of their own. They are
+			// nodes in the same graph and always were, but they are a different
+			// sort of thing to look at: what a character knows how to do, as
+			// against what this particular character is doing about it.
+			new Spec(Icon.BODY, Component.translatable("npc_studio.graph.brain"),
+				0xFF9575CD, this::toggleBrain),
 			new Spec(Icon.SETTINGS, Component.translatable("npc_studio.graph.settings"),
 				0xFF8A99A6, () -> {
 					if (!WorkspaceScreen.embedded()) {
@@ -245,6 +251,9 @@ public class GraphEditorScreen extends Screen {
 			// The two that wait on something other than a person. Grey-blue, near
 			// enough to `end` to read as "nothing is happening here".
 			case Node.Every _, Node.Until _ -> 0xFF90A4AE;
+			// Calls into the brain, in the brain's own colour, so a scenario reads
+			// at a glance as mostly-its-own with a few borrowings.
+			case Node.Do _, Node.Stop _ -> 0xFF9575CD;
 		};
 	}
 
@@ -258,6 +267,8 @@ public class GraphEditorScreen extends Screen {
 			case Node.End _ -> "end";
 			case Node.Every _ -> "every";
 			case Node.Until _ -> "until";
+			case Node.Do _ -> "do";
+			case Node.Stop _ -> "stop";
 		};
 	}
 
@@ -282,6 +293,8 @@ public class GraphEditorScreen extends Screen {
 			// What it is standing there for, which is the whole content of both.
 			case Node.Every every -> List.of(every.ticks() + " ticks");
 			case Node.Until _ -> List.of("until");
+			case Node.Do call -> List.of(shorten(call.segment(), 15));
+			case Node.Stop stop -> List.of(shorten("stop " + stop.segment(), 15));
 		};
 	}
 
@@ -361,6 +374,98 @@ public class GraphEditorScreen extends Screen {
 	void rebuild() {
 		clearWidgets();
 		init();
+	}
+
+	/**
+	 * The skills, over the canvas.
+	 *
+	 * <h2>Why a list and not a second editor</h2>
+	 *
+	 * Because a skill is not a separate document — it is a named way into this
+	 * one. Two editors would mean two copies of the same nodes and a question
+	 * about which is right; a list that jumps the canvas to a skill's first node
+	 * has neither problem, and the wires between a scenario and the skill it calls
+	 * stay visible because they were never taken apart.
+	 */
+	private boolean showingBrain;
+
+	private void toggleBrain() {
+		showingBrain = !showingBrain;
+	}
+
+	private static final int BRAIN_ROW = 16;
+
+	/** Draws the skill list. Called after the nodes so it sits over them. */
+	private void drawBrain(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+		if (!showingBrain) return;
+		var skills = new java.util.ArrayList<>(state.segments().keySet());
+		int wide = 200;
+		int left = 12;
+		int top = 60;
+		int rows = skills.size() + 2;
+
+		graphics.fill(left, top, left + wide, top + rows * BRAIN_ROW + 6, 0xF01A1F26);
+		graphics.fill(left, top, left + wide, top + 1, 0xFF2C333D);
+		graphics.text(font, Component.translatable("npc_studio.graph.brain.title"),
+			left + 6, top + 5, 0xFF8A99A6);
+
+		for (int i = 0; i < skills.size(); i++) {
+			int y = top + BRAIN_ROW * (i + 1) + 4;
+			boolean hovered = mouseY >= y - 2 && mouseY < y + BRAIN_ROW - 2
+				&& mouseX >= left && mouseX < left + wide;
+			if (hovered) graphics.fill(left, y - 2, left + wide, y + BRAIN_ROW - 2, 0xFF232A34);
+			String name = skills.get(i);
+			graphics.text(font, Component.literal(name + "  \u2192  " + state.segments().get(name)),
+				left + 6, y + 2, 0xFFECEFF1);
+		}
+
+		int y = top + BRAIN_ROW * (skills.size() + 1) + 4;
+		boolean hovered = mouseY >= y - 2 && mouseY < y + BRAIN_ROW - 2
+			&& mouseX >= left && mouseX < left + wide;
+		boolean somethingPicked = panel != null;
+		graphics.text(font, Component.translatable(somethingPicked
+				? "npc_studio.graph.brain.make" : "npc_studio.graph.brain.pick"),
+			left + 6, y + 2, hovered && somethingPicked ? 0xFF9575CD : 0xFF8A99A6);
+	}
+
+	/**
+	 * A click in the skill list, or a click that closes it.
+	 *
+	 * @return whether it was ours, so the canvas does not also act on it
+	 */
+	private boolean brainClicked(double mouseX, double mouseY) {
+		if (!showingBrain) return false;
+		var skills = new java.util.ArrayList<>(state.segments().keySet());
+		int wide = 200;
+		int left = 12;
+		int top = 60;
+
+		if (mouseX < left || mouseX >= left + wide || mouseY < top) {
+			showingBrain = false;
+			return true;
+		}
+		int row = (int) ((mouseY - top - 4) / BRAIN_ROW) - 1;
+		if (row >= 0 && row < skills.size()) {
+			// Jumping rather than opening: the skill is right there in the same
+			// graph, and taking somebody to it is more use than hiding the rest.
+			String at = state.segments().get(skills.get(row));
+			int index = state.nodeIds().indexOf(at);
+			showingBrain = false;
+			if (index >= 0) select(index);
+			return true;
+		}
+		if (row == skills.size() && panel != null) {
+			// The node in hand becomes a way in, named after itself. Renaming it is
+			// the node panel's job and already works — and renaming keeps the
+			// segment pointing at it, because a segment is stored by node id and
+			// the rename walks every reference.
+			String at = state.nodes().get(panel.index()).id();
+			state.segment(at, at);
+			showingBrain = false;
+			return true;
+		}
+		showingBrain = false;
+		return true;
 	}
 
 	private void save() {
@@ -464,6 +569,9 @@ public class GraphEditorScreen extends Screen {
 
 	@Override
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+		// Before the buttons as well as before the canvas: an open list covers
+		// both, and a list you can click through is not a list.
+		if (brainClicked(event.x(), event.y())) return true;
 		if (super.mouseClicked(event, doubleClick)) return true;
 
 		int mx = (int) (event.x() / zoom) - panX;
@@ -618,6 +726,9 @@ public class GraphEditorScreen extends Screen {
 			case Node.End end -> end;
 			case Node.Every every -> new Node.Every(every.id(), every.ticks(), toId);
 			case Node.Until until -> new Node.Until(until.id(), until.condition(), toId);
+			case Node.Do call ->
+				new Node.Do(call.id(), call.segment(), call.target(), call.with(), toId);
+			case Node.Stop stop -> new Node.Stop(stop.id(), stop.segment(), toId);
 		});
 	}
 
@@ -657,6 +768,7 @@ public class GraphEditorScreen extends Screen {
 		if (panel != null) {
 			panel.draw(graphics, font, width - NodePanel.WIDTH, -panelScroll, height + panelScroll);
 		}
+		drawBrain(graphics, mouseX, mouseY);
 
 		super.extractRenderState(graphics, mouseX, mouseY, delta);
 	}

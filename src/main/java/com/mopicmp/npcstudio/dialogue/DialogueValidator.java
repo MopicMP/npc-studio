@@ -62,6 +62,7 @@ public final class DialogueValidator {
 		checkExitsExist(dialogue, found);
 		checkVariables(dialogue, found);
 		checkMarks(dialogue, found);
+		checkCalls(dialogue, found);
 		checkChoices(dialogue, found);
 		checkReachable(dialogue, found);
 		checkEveryPathEnds(dialogue, found);
@@ -113,11 +114,18 @@ public final class DialogueValidator {
 				// meant a character waiting for something that could never come true,
 				// which from outside is a character doing nothing at all.
 				case Node.Until until -> until.condition().collectVariables(uses);
-				case Node.Set set -> {
-					if (set.scope() == Scope.SENSE) {
+				case Node.Do call -> {
+					if (!Mark.known(call.target())) {
 						found.add(new Problem(Severity.ERROR, node.id(),
-							"writes to \"" + set.variable() + "\", which is something she "
-								+ "perceives rather than something she can be told"));
+							"points at \"" + call.target() + "\", which is not something she can "
+								+ "be pointed at. Known: " + String.join(", ", Mark.KNOWN)));
+					}
+				}
+				case Node.Set set -> {
+					if (set.scope() == Scope.SENSE || set.scope() == Scope.GIVEN) {
+						found.add(new Problem(Severity.ERROR, node.id(),
+							"writes to \"" + set.variable() + "\" in " + set.scope()
+								+ ", which is read-only"));
 						break;
 					}
 					String type = declared.get(set.variable());
@@ -137,6 +145,9 @@ public final class DialogueValidator {
 				// A reading is not declared by the graph — it is offered by the
 				// character, and the list of them is fixed. So the two checks are the
 				// same shape against a different book.
+				// What a call handed in is declared by whoever calls, not by the
+				// document, so there is nothing here to check it against.
+				if (use.scope() == Scope.GIVEN) continue;
 				if (use.scope() == Scope.SENSE) {
 					String kind = Sense.typeOf(use.name());
 					if (kind == null) {
@@ -188,6 +199,34 @@ public final class DialogueValidator {
 		}
 	}
 
+	/**
+	 * A call to a skill this document does not have.
+	 *
+	 * Checked against the document's own segments, because a character has one
+	 * brain and calls into it. A name that is not there means a scenario that
+	 * looks complete and does nothing at all - which is the failure this whole
+	 * layer exists to make impossible to write by accident.
+	 */
+	private static void checkCalls(Dialogue dialogue, List<Problem> found) {
+		for (Node node : dialogue.nodes().values()) {
+			String wanted = switch (node) {
+				case Node.Do call -> call.segment();
+				case Node.Stop stop -> stop.segment();
+				default -> null;
+			};
+			if (wanted == null) continue;
+			// Only checked when the document has any at all. A scenario in one
+			// document calling a skill in another is the ordinary arrangement once
+			// there are two documents, and refusing it here would forbid it.
+			if (dialogue.segments().isEmpty()) continue;
+			if (dialogue.segment(wanted) == null) {
+				found.add(new Problem(Severity.WARNING, node.id(),
+					"calls \"" + wanted + "\", which this brain does not have. Known: "
+						+ String.join(", ", dialogue.segments().keySet())));
+			}
+		}
+	}
+
 	/** A question the player cannot answer. */
 	private static void checkChoices(Dialogue dialogue, List<Problem> found) {
 		for (Node node : dialogue.nodes().values()) {
@@ -210,10 +249,28 @@ public final class DialogueValidator {
 	}
 
 	/** Nodes nobody can get to: usually leftovers from a rewrite. */
+	/**
+	 * Nodes nobody can get to.
+	 *
+	 * <h2>A graph may have several ways in</h2>
+	 *
+	 * The start is one of them; each named segment is another. Walking only from
+	 * the start would report every node of every skill as unreachable, which is
+	 * both wrong and the worst kind of wrong — a warning that is always there is
+	 * a warning nobody reads, and the one real leftover hides among them.
+	 */
 	private static void checkReachable(Dialogue dialogue, List<Problem> found) {
 		if (dialogue.start() == null || dialogue.node(dialogue.start()) == null) return;
 
-		Set<String> seen = reachableFrom(dialogue, dialogue.start());
+		Set<String> seen = new HashSet<>(reachableFrom(dialogue, dialogue.start()));
+		for (Map.Entry<String, String> way : dialogue.segments().entrySet()) {
+			if (dialogue.node(way.getValue()) == null) {
+				found.add(new Problem(Severity.ERROR, null, "the segment \"" + way.getKey()
+					+ "\" begins at \"" + way.getValue() + "\", which does not exist"));
+				continue;
+			}
+			seen.addAll(reachableFrom(dialogue, way.getValue()));
+		}
 		for (String id : dialogue.nodes().keySet()) {
 			if (!seen.contains(id)) {
 				found.add(new Problem(Severity.WARNING, id, "cannot be reached from the start"));
@@ -267,7 +324,11 @@ public final class DialogueValidator {
 			}
 		}
 
-		Set<String> reachable = dialogue.start() == null ? Set.of() : reachableFrom(dialogue, dialogue.start());
+		Set<String> reachable = new HashSet<>(
+			dialogue.start() == null ? Set.of() : reachableFrom(dialogue, dialogue.start()));
+		for (String at : dialogue.segments().values()) {
+			if (dialogue.node(at) != null) reachable.addAll(reachableFrom(dialogue, at));
+		}
 		for (String id : reachable) {
 			if (!canEnd.contains(id)) {
 				found.add(new Problem(Severity.ERROR, id, "no path from here ever reaches an end"));

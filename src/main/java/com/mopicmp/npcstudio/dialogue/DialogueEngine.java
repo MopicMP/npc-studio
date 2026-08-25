@@ -85,7 +85,26 @@ public final class DialogueEngine {
 	}
 
 	/** The outcome of one step. */
-	public record Step(DialogueState state, Screen screen, List<Effect> effects) { }
+	public record Step(DialogueState state, Screen screen, List<Effect> effects,
+			List<Call> calls) {
+
+		public Step(DialogueState state, Screen screen, List<Effect> effects) {
+			this(state, screen, effects, List.of());
+		}
+	}
+
+	/**
+	 * A segment somebody asked to have running, or asked to have stopped.
+	 *
+	 * Kept apart from {@link Effect} on purpose, though it looks like one. An
+	 * effect is something done to the world and forgotten; a call changes what is
+	 * running, and the thing that has to act on it is the runtime holding the
+	 * other bookmark rather than the one holding a sword.
+	 *
+	 * @param start false when this is a cancellation
+	 */
+	public record Call(String segment, String target, java.util.Map<String, Value> with,
+			boolean start) { }
 
 	/**
 	 * Advances the conversation.
@@ -99,6 +118,7 @@ public final class DialogueEngine {
 	 */
 	public static Step step(Dialogue dialogue, DialogueState state, Input input, Condition.World world) {
 		List<Effect> effects = new ArrayList<>();
+		List<Call> calls = new ArrayList<>();
 		DialogueState now = state;
 
 		Node current = require(dialogue, now.currentNode());
@@ -149,6 +169,16 @@ public final class DialogueEngine {
 			switch (node) {
 				case Node.Set set -> now = now.with(set.variable(), set.scope(), set.value()).at(set.next());
 				case Node.Act act -> { effects.add(act.effect()); now = now.at(act.next()); }
+				// A call goes out and the graph walks on in the same breath. What is
+				// waited for, if anything, the caller says for itself afterwards.
+				case Node.Do call -> {
+					calls.add(new Call(call.segment(), call.target(), call.with(), true));
+					now = now.at(call.next());
+				}
+				case Node.Stop stop -> {
+					calls.add(new Call(stop.segment(), null, java.util.Map.of(), false));
+					now = now.at(stop.next());
+				}
 				case Node.Branch branch -> {
 					String next = branch.otherwise();
 					for (Node.Arm arm : branch.arms()) {
@@ -157,7 +187,7 @@ public final class DialogueEngine {
 					now = now.at(next);
 				}
 				case Node.End _ -> {
-					return new Step(now, new Screen.Finished(), List.copyOf(effects));
+					return new Step(now, new Screen.Finished(), List.copyOf(effects), List.copyOf(calls));
 				}
 				// The bookmark is moved past the wait before parking, which is what
 				// keeps a timer from needing any state of its own — coming back is
@@ -168,7 +198,7 @@ public final class DialogueEngine {
 				case Node.Every every -> {
 					now = now.at(every.next());
 					return new Step(now, new Screen.Waiting(Math.max(every.ticks(), 0)),
-						List.copyOf(effects));
+						List.copyOf(effects), List.copyOf(calls));
 				}
 				// Unlike the timer, this one stays where it is: the bookmark is the
 				// question, and it is asked again on every entry until it holds.
@@ -177,7 +207,7 @@ public final class DialogueEngine {
 						now = now.at(until.next());
 						continue;
 					}
-					return new Step(now, new Screen.Waiting(0), List.copyOf(effects));
+					return new Step(now, new Screen.Waiting(0), List.copyOf(effects), List.copyOf(calls));
 				}
 				case Node.Line line -> {
 					// No length: a line's animation lasts as long as the line does, and
@@ -186,7 +216,7 @@ public final class DialogueEngine {
 					if (line.animation() != null) effects.add(new Effect.PlayAnimation(line.animation(), 0));
 					return new Step(now,
 						new Screen.Line(line.speaker(), line.text(), line.mode(), line.animation()),
-						List.copyOf(effects));
+						List.copyOf(effects), List.copyOf(calls));
 				}
 				case Node.Choice choice -> {
 					List<Screen.Shown> shown = new ArrayList<>();
@@ -205,7 +235,7 @@ public final class DialogueEngine {
 						throw new DialogueFault("no option is available at " + choice.id());
 					}
 					return new Step(now, new Screen.Choice(choice.speaker(), choice.prompt(), choice.mode(), List.copyOf(shown)),
-						List.copyOf(effects));
+						List.copyOf(effects), List.copyOf(calls));
 				}
 			}
 		}

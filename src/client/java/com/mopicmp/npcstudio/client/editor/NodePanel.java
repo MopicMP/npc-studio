@@ -607,6 +607,7 @@ public class NodePanel {
 			case WORLD -> "the world";
 			case CHARACTER -> "this character";
 			case SENSE -> "what she senses (cannot be set)";
+			case GIVEN -> "what she was asked to do (cannot be set)";
 		};
 	}
 
@@ -626,7 +627,7 @@ public class NodePanel {
 			case PLAYER -> Scope.WORLD;
 			case WORLD -> Scope.CHARACTER;
 			// Including the way out of a scope that should never have got here.
-			case CHARACTER, SENSE -> Scope.PLAYER;
+			case CHARACTER, SENSE, GIVEN -> Scope.PLAYER;
 		};
 	}
 
@@ -641,6 +642,9 @@ public class NodePanel {
 			case Node.End _ -> new Node.End(id);
 			case Node.Every every -> new Node.Every(id, every.ticks(), every.next());
 			case Node.Until until -> new Node.Until(id, until.condition(), until.next());
+			case Node.Do call ->
+				new Node.Do(id, call.segment(), call.target(), call.with(), call.next());
+			case Node.Stop stop -> new Node.Stop(id, stop.segment(), stop.next());
 		};
 	}
 
@@ -668,6 +672,10 @@ public class NodePanel {
 				? new Node.Every(every.id(), every.ticks(), to) : every;
 			case Node.Until until -> until.next().equals(from)
 				? new Node.Until(until.id(), until.condition(), to) : until;
+			case Node.Do call -> call.next().equals(from)
+				? new Node.Do(call.id(), call.segment(), call.target(), call.with(), to) : call;
+			case Node.Stop stop -> stop.next().equals(from)
+				? new Node.Stop(stop.id(), stop.segment(), to) : stop;
 			case Node.Branch branch -> new Node.Branch(branch.id(),
 				branch.arms().stream()
 					.map(arm -> arm.next().equals(from) ? new Node.Arm(arm.condition(), to) : arm)

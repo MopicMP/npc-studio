@@ -53,5 +53,18 @@ public enum Scope {
 	 * character whose fear is whatever was written last, which is not a feature
 	 * anybody asked for and is impossible to debug.
 	 */
-	SENSE
+	SENSE,
+
+	/**
+	 * GIVEN is what the call handed this segment, and only this segment.
+	 *
+	 * Read-only for the same reason SENSE is: it is a fact about how she was
+	 * asked, not something she can decide afterwards. A segment that could
+	 * rewrite its own instructions would be one whose behaviour depends on how
+	 * far through it you are, which nobody can reason about.
+	 *
+	 * Empty outside a segment, and that is not an error - a graph running on its
+	 * own account was handed nothing, and reads nought, "" or false.
+	 */
+	GIVEN
 }

@@ -228,5 +228,9 @@
   "npc_studio.workspace.bare": "show the frame",
   "npc_studio.camera.frameWindow": "frame: whole window",
   "npc_studio.camera.frameViewport": "frame: the viewport",
-  "npc_studio.character.no_dialogue": "— no conversation —"
+  "npc_studio.character.no_dialogue": "— no conversation —",
+  "npc_studio.graph.brain": "skills of the brain",
+  "npc_studio.graph.brain.title": "what she knows how to do",
+  "npc_studio.graph.brain.pick": "pick a node first, then name it a skill",
+  "npc_studio.graph.brain.make": "+ make the selected node a skill"
 }

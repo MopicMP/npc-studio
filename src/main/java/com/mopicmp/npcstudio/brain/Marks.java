@@ -43,11 +43,28 @@ public final class Marks {
 	 * striking at where you thought somebody was is not a thing to build on.
 	 */
 	public static LivingEntity creature(NpcEntity npc, String mark) {
-		return switch (mark) {
+		return switch (told(npc, mark)) {
 			case Mark.PLAYER -> nearest(npc);
 			case Mark.KIN -> kin(npc);
 			default -> null;
 		};
+	}
+
+	/**
+	 * Reads {@code target} back as whatever the call named.
+	 *
+	 * <h2>The one loop worth guarding against</h2>
+	 *
+	 * A call that passes {@code target} along — which is exactly what a skill
+	 * calling another skill would write, and is the obvious thing to write — would
+	 * otherwise ask itself the same question for ever. So the indirection is
+	 * followed once and no further: a target of "target" names nothing, which is
+	 * the same answer a skill nobody called gets.
+	 */
+	private static String told(NpcEntity npc, String mark) {
+		if (!Mark.TARGET.equals(mark)) return mark;
+		String was = npc.doingAt();
+		return Mark.TARGET.equals(was) ? Mark.NOTHING : was;
 	}
 
 	/**
@@ -74,7 +91,8 @@ public final class Marks {
 	}
 
 	/** Where to walk to, or null when the mark names nothing at the moment. */
-	public static Vec3 feet(NpcEntity npc, String mark) {
+	public static Vec3 feet(NpcEntity npc, String wanted) {
+		String mark = told(npc, wanted);
 		return switch (mark) {
 			case Mark.LEAD -> {
 				Lead lead = npc.watch().lead();

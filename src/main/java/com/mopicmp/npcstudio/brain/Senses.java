@@ -84,6 +84,16 @@ public final class Senses {
 
 			// The nearest person, which is what almost every graph anybody writes
 			// first wants to know, and what makes one testable by walking up to her.
+			case Sense.DOING -> new Value.Text(npc.doingNow());
+
+			// Whoever this skill was told about. Asked through the mark rather than
+			// worked out again here, so that "target" means one thing everywhere.
+			case Sense.TARGET -> new Value.Flag(
+				Marks.feet(npc, com.mopicmp.npcstudio.dialogue.Mark.TARGET) != null);
+			case Sense.TARGET_DISTANCE -> {
+				var at = Marks.feet(npc, com.mopicmp.npcstudio.dialogue.Mark.TARGET);
+				yield new Value.Num(at == null ? Sense.OUT_OF_MIND : npc.position().distanceTo(at));
+			}
 			case Sense.PLAYER_DISTANCE -> new Value.Num(nearestPlayer(npc));
 
 			// Somebody else running the same graph. Whether that makes them a

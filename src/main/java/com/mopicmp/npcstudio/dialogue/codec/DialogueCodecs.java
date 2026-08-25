@@ -10,6 +10,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.mopicmp.npcstudio.dialogue.Condition;
 import com.mopicmp.npcstudio.dialogue.Dialogue;
 import com.mopicmp.npcstudio.dialogue.Effect;
+import com.mopicmp.npcstudio.dialogue.Mark;
 import com.mopicmp.npcstudio.dialogue.Node;
 import com.mopicmp.npcstudio.dialogue.Presentation;
 import com.mopicmp.npcstudio.dialogue.Scope;
@@ -257,6 +258,8 @@ public final class DialogueCodecs {
 			case Node.End _ -> "end";
 			case Node.Every _ -> "every";
 			case Node.Until _ -> "until";
+			case Node.Do _ -> "do";
+			case Node.Stop _ -> "stop";
 		};
 	}
 
@@ -304,6 +307,21 @@ public final class DialogueCodecs {
 				Codec.INT.fieldOf("ticks").forGetter(Node.Every::ticks),
 				Codec.STRING.fieldOf("next").forGetter(Node.Every::next)
 			).apply(instance, Node.Every::new));
+			case "do" -> RecordCodecBuilder.<Node.Do>mapCodec(instance -> instance.group(
+				Codec.STRING.fieldOf("id").forGetter(Node.Do::id),
+				Codec.STRING.fieldOf("segment").forGetter(Node.Do::segment),
+				// Nothing in particular by default: plenty of skills - looking busy,
+				// taking cover - are not about anybody.
+				Codec.STRING.optionalFieldOf("target", Mark.NOTHING).forGetter(Node.Do::target),
+				Codec.unboundedMap(Codec.STRING, VALUE).optionalFieldOf("with", Map.of())
+					.forGetter(Node.Do::with),
+				Codec.STRING.fieldOf("next").forGetter(Node.Do::next)
+			).apply(instance, Node.Do::new));
+			case "stop" -> RecordCodecBuilder.<Node.Stop>mapCodec(instance -> instance.group(
+				Codec.STRING.fieldOf("id").forGetter(Node.Stop::id),
+				Codec.STRING.fieldOf("segment").forGetter(Node.Stop::segment),
+				Codec.STRING.fieldOf("next").forGetter(Node.Stop::next)
+			).apply(instance, Node.Stop::new));
 			case "until" -> RecordCodecBuilder.<Node.Until>mapCodec(instance -> instance.group(
 				Codec.STRING.fieldOf("id").forGetter(Node.Until::id),
 				CONDITION.fieldOf("condition").forGetter(Node.Until::condition),

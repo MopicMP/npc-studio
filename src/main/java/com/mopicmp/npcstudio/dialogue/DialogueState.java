@@ -26,6 +26,16 @@ public final class DialogueState {
 	private final Map<String, Value> playerVars;
 	private final Map<String, Value> worldVars;
 	private final Map<String, Value> characterVars;
+
+	/**
+	 * What the call handed this run, if it is a segment somebody started.
+	 *
+	 * Carried on the bookmark rather than beside it because it belongs to this
+	 * run and nothing else: two characters running the same segment were told
+	 * different things, and the same character can be told something different
+	 * next time.
+	 */
+	private final Map<String, Value> given;
 	private final Set<String> visited;
 	private final Map<String, String> declaredTypes;
 
@@ -35,13 +45,34 @@ public final class DialogueState {
 			Map<String, Value> characterVars,
 			Set<String> visited,
 			Map<String, String> declaredTypes) {
+		this(currentNode, playerVars, worldVars, characterVars, visited, declaredTypes, Map.of());
+	}
+
+	public DialogueState(String currentNode,
+			Map<String, Value> playerVars,
+			Map<String, Value> worldVars,
+			Map<String, Value> characterVars,
+			Set<String> visited,
+			Map<String, String> declaredTypes,
+			Map<String, Value> given) {
 		this.currentNode = currentNode;
 		this.playerVars = Map.copyOf(playerVars);
 		this.worldVars = Map.copyOf(worldVars);
 		this.characterVars = Map.copyOf(characterVars);
 		this.visited = Set.copyOf(visited);
 		this.declaredTypes = Map.copyOf(declaredTypes);
+		this.given = Map.copyOf(given);
 	}
+
+	/** The same bookmark, at a named way in, told these things. */
+	public static DialogueState beginning(Dialogue graph, String at,
+			Map<String, Value> worldVars, Map<String, Value> characterVars,
+			Map<String, Value> given) {
+		return new DialogueState(at, Map.of(), worldVars, characterVars, Set.of(),
+			graph.variableTypes(), given);
+	}
+
+	public Map<String, Value> given() { return given; }
 
 	/** A fresh bookmark at the start of a dialogue, with nothing remembered. */
 	public static DialogueState start(Dialogue dialogue, Map<String, Value> worldVars) {
@@ -89,6 +120,7 @@ public final class DialogueState {
 			// somebody read a sense off the state, and the empty map is the honest
 			// answer: there is nothing here to read.
 			case SENSE -> Map.of();
+			case GIVEN -> given;
 		};
 		Value found = from.get(name);
 		if (found != null) return found;
@@ -99,13 +131,15 @@ public final class DialogueState {
 	public Map<String, Value> characterVars() { return characterVars; }
 
 	public DialogueState at(String node) {
-		return new DialogueState(node, playerVars, worldVars, characterVars, visited, declaredTypes);
+		return new DialogueState(node, playerVars, worldVars, characterVars, visited,
+			declaredTypes, given);
 	}
 
 	public DialogueState withVisited(String node) {
 		Set<String> next = new HashSet<>(visited);
 		next.add(node);
-		return new DialogueState(currentNode, playerVars, worldVars, characterVars, next, declaredTypes);
+		return new DialogueState(currentNode, playerVars, worldVars, characterVars, next,
+			declaredTypes, given);
 	}
 
 	/**
@@ -120,6 +154,10 @@ public final class DialogueState {
 			throw new IllegalArgumentException(
 				"\"" + name + "\" is something she perceives, not something she can be told");
 		}
+		if (scope == Scope.GIVEN) {
+			throw new IllegalArgumentException(
+				"\"" + name + "\" is what she was asked to do, not something she can rewrite");
+		}
 		Map<String, Value> player = new HashMap<>(playerVars);
 		Map<String, Value> world = new HashMap<>(worldVars);
 		Map<String, Value> character = new HashMap<>(characterVars);
@@ -127,9 +165,10 @@ public final class DialogueState {
 			case PLAYER -> player.put(name, value);
 			case WORLD -> world.put(name, value);
 			case CHARACTER -> character.put(name, value);
-			case SENSE -> throw new AssertionError();
+			case SENSE, GIVEN -> throw new AssertionError();
 		}
-		return new DialogueState(currentNode, player, world, character, visited, declaredTypes);
+		return new DialogueState(currentNode, player, world, character, visited,
+			declaredTypes, given);
 	}
 
 	@Override

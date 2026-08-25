@@ -134,6 +134,48 @@ public sealed interface Node {
 		@Override public boolean waits() { return true; }
 	}
 
+	/**
+	 * Sets a segment of the brain running, and carries straight on.
+	 *
+	 * <h2>Why calling does not wait</h2>
+	 *
+	 * Because a conversation that starts a fight has to be able to end while the
+	 * fight goes on. Under a call that waited, the last line would be spoken only
+	 * once somebody had won, which is not a thing anybody would ever write on
+	 * purpose.
+	 *
+	 * So a segment runs alongside whatever called it. The caller keeps its own
+	 * turn every tick and can stop the segment whenever it likes — see
+	 * {@link Stop} — which is the same bargain as {@link Effect.WalkTo}: an order
+	 * goes out, and watching for the end of it is the caller's own business.
+	 *
+	 * <h2>What the segment is told</h2>
+	 *
+	 * A {@link Mark} to act on, which it reads back as {@link Mark#TARGET}, and
+	 * any number of named values, which it reads in {@link Scope#GIVEN}. That is
+	 * what makes one "how to fight" serve a duel, a brawl and a guard post: the
+	 * skill is the same and the circumstances are handed in.
+	 */
+	record Do(String id, String segment, String target, java.util.Map<String, Value> with,
+			String next) implements Node {
+
+		public Do(String id, String segment, String target, String next) {
+			this(id, segment, target, java.util.Map.of(), next);
+		}
+
+		@Override public boolean waits() { return false; }
+	}
+
+	/**
+	 * Stops a running segment, if that is the one running.
+	 *
+	 * Named rather than "stop whatever is going on", so that a scenario cannot
+	 * accidentally cancel something it did not start.
+	 */
+	record Stop(String id, String segment, String next) implements Node {
+		@Override public boolean waits() { return false; }
+	}
+
 	/** One option of a {@link Choice}. */
 	record Option(String label, String colour, Condition condition, String next) {
 		public Option(String label, String next) {
@@ -156,6 +198,8 @@ public sealed interface Node {
 				out.add(branch.otherwise());
 				yield List.copyOf(out);
 			}
+			case Do doing -> List.of(doing.next());
+			case Stop stop -> List.of(stop.next());
 			case Every every -> List.of(every.next());
 			case Until until -> List.of(until.next());
 			case End _ -> List.of();

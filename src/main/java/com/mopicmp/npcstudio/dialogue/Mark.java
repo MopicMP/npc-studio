@@ -62,10 +62,22 @@ public final class Mark {
 	 */
 	public static final String KIN = "kin";
 
+	/**
+	 * Whoever this segment was told to act on.
+	 *
+	 * The one mark that means something different in every call, which is the
+	 * whole point of it: "how to fight" written against the target fights whoever
+	 * the caller named, and works unchanged for a duel, a brawl and a guard.
+	 *
+	 * Outside a segment it names nothing.
+	 */
+	public static final String TARGET = "target";
+
 	/** Nothing: releases a gaze or an aim rather than pointing it somewhere. */
 	public static final String NOTHING = "nothing";
 
-	public static final List<String> KNOWN = List.of(LEAD, PLAYER, KIN, POST, NOTHING);
+	public static final List<String> KNOWN =
+		List.of(LEAD, PLAYER, KIN, POST, TARGET, NOTHING);
 
 	public static boolean known(String name) {
 		return KNOWN.contains(name);

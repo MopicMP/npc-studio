@@ -31,6 +31,16 @@ public final class EditorState {
 	private String start;
 	private final List<Node> nodes = new ArrayList<>();
 	private final Map<String, String> variables = new LinkedHashMap<>();
+
+	/**
+	 * The named ways into this document: the skills it holds.
+	 *
+	 * Carried through the editor rather than only through the file. Left out, a
+	 * brain opened here and saved would come back with every skill gone — the
+	 * nodes still present and nothing able to reach them — and nobody would find
+	 * out until a character stopped fighting.
+	 */
+	private final Map<String, String> segments = new LinkedHashMap<>();
 	private List<String> otherNames = List.of();
 
 	public static EditorState from(String json, List<String> otherNames) {
@@ -43,6 +53,7 @@ public final class EditorState {
 		state.start = dialogue.start();
 		state.nodes.addAll(dialogue.nodes().values());
 		state.variables.putAll(dialogue.variableTypes());
+		state.segments.putAll(dialogue.segments());
 		state.otherNames = otherNames;
 		return state;
 	}
@@ -58,6 +69,21 @@ public final class EditorState {
 	public List<Node> nodes() { return nodes; }
 
 	public Map<String, String> variables() { return variables; }
+
+	/** The skills this document holds, name to the node they begin at. */
+	public Map<String, String> segments() { return segments; }
+
+	/**
+	 * Names a skill at a node, or takes the name off it.
+	 *
+	 * Taking it off does not delete the nodes. A skill nobody calls is still a
+	 * piece of work somebody did, and losing it to a mis-click would be the sort
+	 * of thing people stop using an editor over.
+	 */
+	public void segment(String name, String at) {
+		if (at == null) segments.remove(name);
+		else segments.put(name, at);
+	}
 
 	public List<String> otherNames() { return otherNames; }
 
@@ -96,7 +122,7 @@ public final class EditorState {
 	public Dialogue build() {
 		Map<String, Node> byId = new LinkedHashMap<>();
 		for (Node node : nodes) byId.put(node.id(), node);
-		return new Dialogue(id, Dialogue.CURRENT_FORMAT, start, byId, variables);
+		return new Dialogue(id, Dialogue.CURRENT_FORMAT, start, byId, variables, segments);
 	}
 
 	public String toJson() {

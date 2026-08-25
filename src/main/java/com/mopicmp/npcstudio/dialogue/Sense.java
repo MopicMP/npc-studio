@@ -80,6 +80,32 @@ public final class Sense {
 	/** How far the nearest living player is. */
 	public static final String PLAYER_DISTANCE = "player.distance";
 
+	/**
+	 * Which skill of her brain she has running, or empty for none.
+	 *
+	 * The one reading a scenario needs about itself: "am I already fighting" is
+	 * the question that stops a scenario ordering the same fight twenty times a
+	 * second, and it is not answerable from anything else.
+	 */
+	public static final String DOING = "doing";
+
+	/**
+	 * Whether whoever this skill was told to act on is still there.
+	 *
+	 * <h2>Why a skill needs its own pair of these</h2>
+	 *
+	 * Because a skill is written about {@code target} and nothing else. "How to
+	 * fight" that asked about {@code kin} would only ever serve a duel; asked
+	 * about the target, the same nodes serve a duel, a brawl and a guard post,
+	 * and the caller decides which by naming who.
+	 *
+	 * Outside a skill these read as nothing and nought, the same as everything
+	 * else that names nobody.
+	 */
+	public static final String TARGET = "target";
+
+	public static final String TARGET_DISTANCE = "target.distance";
+
 	/** Whether another character running the same graph is in sight. */
 	public static final String KIN = "kin";
 
@@ -88,7 +114,8 @@ public final class Sense {
 
 	public static final List<String> KNOWN = List.of(
 		ALARM, MOOD, LEAD, LEAD_STRENGTH, LEAD_URGENCY, LEAD_SEEN, LEAD_DISTANCE,
-		WALKING, ARMED, WEAPON, HAND, PLAYER_DISTANCE, KIN, KIN_DISTANCE);
+		WALKING, ARMED, WEAPON, HAND, DOING, PLAYER_DISTANCE, KIN, KIN_DISTANCE,
+		TARGET, TARGET_DISTANCE);
 
 	/**
 	 * A distance meaning "nobody" or "nothing".
@@ -115,9 +142,9 @@ public final class Sense {
 	public static String typeOf(String name) {
 		return switch (name) {
 			case ALARM, LEAD_STRENGTH, LEAD_URGENCY, LEAD_DISTANCE, PLAYER_DISTANCE,
-				KIN_DISTANCE -> "number";
-			case MOOD, WEAPON, HAND -> "text";
-			case LEAD, LEAD_SEEN, WALKING, ARMED, KIN -> "flag";
+				KIN_DISTANCE, TARGET_DISTANCE -> "number";
+			case MOOD, WEAPON, HAND, DOING -> "text";
+			case LEAD, LEAD_SEEN, WALKING, ARMED, KIN, TARGET -> "flag";
 			default -> null;
 		};
 	}

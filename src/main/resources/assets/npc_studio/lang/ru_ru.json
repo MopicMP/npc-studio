@@ -228,5 +228,9 @@
   "npc_studio.character.watchful.what": "Замечает людей, звуки и выстрелы, поворачивается посмотреть",
   "npc_studio.character.endless": "патроны не кончаются",
   "npc_studio.character.endless.what": "Никогда не тратит то, чем стреляет",
-  "npc_studio.character.no_dialogue": "— без разговора —"
+  "npc_studio.character.no_dialogue": "— без разговора —",
+  "npc_studio.graph.brain": "умения мозга",
+  "npc_studio.graph.brain.title": "что она умеет делать",
+  "npc_studio.graph.brain.pick": "сначала выбери узел, потом назови его умением",
+  "npc_studio.graph.brain.make": "+ сделать выбранный узел умением"
 }

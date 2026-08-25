@@ -51,24 +51,47 @@ public final class Brain {
 	 */
 	private static final int ROUNDS = 16;
 
-	/** One tick of thinking, or of standing still, which is most of them. */
+	/**
+	 * One tick of thinking, or of standing still, which is most of them.
+	 *
+	 * <h2>Two graphs, and the order they go in</h2>
+	 *
+	 * The scenario first, then the skill it has running. That order is the whole
+	 * of the answer to "who wins when both order the body in one tick": the skill
+	 * does, because it acted last. Which is right — the skill is the specialist
+	 * and the scenario is what chose it. A scenario that wants the body for itself
+	 * stops the skill and then takes it.
+	 */
 	public static void tick(NpcEntity npc) {
 		if (npc.brainId().isEmpty()) return;
 
-		if (npc.stillWaiting()) return;
-
 		Dialogue graph = DialogueRegistry.get(npc.brainId()).orElse(null);
-		if (graph == null) {
-			// Named a graph that is not there. Said once and then forgotten, because
-			// this runs twenty times a second and a missing graph would otherwise
-			// fill the log faster than anybody could read the first line.
-			NpcStudio.LOGGER.error("NPC has no graph called \"{}\"; its brain is off.",
-				npc.brainId());
-			npc.setBrainId("");
+		if (graph != null) {
+			if (!npc.stillWaiting()) run(npc, graph, false);
+			// Asked even while the scenario is standing on a timer. A skill that only
+			// got a turn when its caller did would be a fight that happens in bursts
+			// of one tick every three seconds.
+			if (!npc.doingNow().isEmpty() && !npc.skillStillWaiting()) run(npc, graph, true);
 			return;
 		}
+		if (npc.stillWaiting()) return;
+		// Named a graph that is not there. Said once and then forgotten, because
+		// this runs twenty times a second and a missing graph would otherwise fill
+		// the log faster than anybody could read the first line.
+		NpcStudio.LOGGER.error("NPC has no graph called \"{}\"; its brain is off.", npc.brainId());
+		npc.setBrainId("");
+	}
 
-		DialogueState mind = npc.mind(graph);
+	/**
+	 * Runs one of the two bookmarks forward.
+	 *
+	 * @param skill which one: the character's own scenario, or the segment it has
+	 *              running. They share a graph and a world and differ only in
+	 *              where they are and what they were told.
+	 */
+	private static void run(NpcEntity npc, Dialogue graph, boolean skill) {
+		DialogueState mind = skill ? npc.doingState() : npc.mind(graph);
+		if (mind == null) return;
 		Condition.World world = worldFor(npc);
 
 		for (int round = 0; round < ROUNDS; round++) {
@@ -87,22 +110,33 @@ public final class Brain {
 			for (Effect effect : step.effects()) {
 				Deeds.doTo(effect, npc);
 			}
+			for (DialogueEngine.Call call : step.calls()) {
+				answer(npc, graph, call);
+			}
 			mind = step.state();
-			npc.remember(mind);
+			if (skill) npc.setDoingState(mind);
+			else npc.remember(mind);
 
 			switch (step.screen()) {
 				case DialogueEngine.Screen.Waiting(int ticks) -> {
 					// Nought means she is watching for something and wants asking
 					// again next tick, which is the ordinary case and not a wait at
 					// all. Anything more is a timer.
-					npc.waitFor(ticks);
+					if (skill) npc.waitDoing(ticks); else npc.waitFor(ticks);
 					return;
 				}
 				case DialogueEngine.Screen.Finished _ -> {
-					// A graph that ends is a character who has finished her business
+					// A skill that reaches its end has finished, and puts itself down.
+					// That is the other way out of a call, and the one a skill with a
+					// natural ending — pick that up, say that line — will use.
+					if (skill) {
+						npc.stopDoing();
+						return;
+					}
+					// A scenario that ends is a character who has finished her business
 					// and stands there. Leaving the bookmark on `end` means she is not
-					// asked again — a graph meant to go on says so by leading back to
-					// its own beginning.
+					// asked again — one meant to go on says so by leading back to its
+					// own beginning.
 					npc.waitFor(1);
 					return;
 				}
@@ -127,6 +161,31 @@ public final class Brain {
 		// see a character thinking in slow motion, which is the correct complaint.
 		NpcStudio.LOGGER.warn("Graph \"{}\" went round {} times in one tick.", graph.id(), ROUNDS);
 		npc.waitFor(20);
+	}
+
+	/**
+	 * Starts or stops a skill, on behalf of whichever bookmark asked.
+	 *
+	 * A skill that is already the one running is not started again. Without that,
+	 * a scenario written the obvious way — check every tick that she is fighting,
+	 * and say so if not — would restart the fight from its first node twenty times
+	 * a second, and she would never get past the first thing it does.
+	 */
+	private static void answer(NpcEntity npc, Dialogue graph, DialogueEngine.Call call) {
+		if (!call.start()) {
+			if (call.segment().equals(npc.doingNow())) npc.stopDoing();
+			return;
+		}
+		if (call.segment().equals(npc.doingNow())) return;
+
+		String at = graph.segment(call.segment());
+		if (at == null) {
+			NpcStudio.LOGGER.error("Graph \"{}\" has no segment called \"{}\".",
+				graph.id(), call.segment());
+			return;
+		}
+		npc.beginDoing(call.segment(), call.target(),
+			DialogueState.beginning(graph, at, java.util.Map.of(), npc.memory(), call.with()));
 	}
 
 	/**

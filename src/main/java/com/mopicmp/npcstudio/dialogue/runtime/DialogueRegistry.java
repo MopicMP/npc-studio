@@ -98,80 +98,86 @@ public final class DialogueRegistry {
 	}
 
 	/**
-	 * Two characters with this graph will fight each other.
+	 * Two characters with this brain will fight each other.
 	 *
-	 * <h2>What it is for</h2>
+	 * <h2>Two layers in one document, and why they are apart</h2>
 	 *
-	 * Put it on two of them, stand back. It is the shortest thing that exercises
-	 * everything built so far at once: finding somebody, deciding what to do about
-	 * them, walking, turning, shooting and hitting — all of it in nodes.
+	 * The document holds a <b>skill</b> — "how to fight whoever I was told about" —
+	 * and a <b>scenario</b> that decides who that is and when to stop. They are
+	 * written against different things on purpose: the skill knows only
+	 * {@code target}, and the scenario is the only part that has ever heard of
+	 * {@code kin}.
 	 *
-	 * <h2>Same graph means "the same sort of character", not "a friend"</h2>
+	 * That is what makes the skill worth having. The same nodes, called with a
+	 * different target, are a brawl, a guard turning on an intruder, or a bodyguard
+	 * defending somebody — and none of those needs the fighting rewritten. Put the
+	 * other way round: <b>the brain knows how, and the scenario decides what this
+	 * is.</b>
 	 *
-	 * {@link Mark#KIN} finds the nearest other character running the same graph.
-	 * Whether that makes them a comrade or an opponent is the graph's own
-	 * business, and this one has taken a view. A patrol graph using the same mark
-	 * would keep formation with them instead.
+	 * <h2>They run alongside each other</h2>
 	 *
-	 * It is also why this is a duel and not a massacre: a third character with a
-	 * different brain is not kin, and nobody here has any interest in her.
+	 * The call does not wait. The scenario keeps its own turn every tick and can
+	 * stop the fight whenever it likes, which is what lets it notice that the
+	 * other one has gone. A call that waited would mean the scenario was inside
+	 * the fight and could not look up until it ended.
 	 *
-	 * <h2>What she does about it</h2>
+	 * When both order the body in one tick the skill wins, because the skill is
+	 * the specialist and the scenario is what chose it.
 	 *
-	 * With a bow and something to shoot, and the other one more than five blocks
-	 * off, she shoots. Within reach, she swings. In between, she closes the
-	 * distance at a run. Whatever happens, she waits about half a second and looks
-	 * again, which is what stops the whole thing being decided in one tick.
+	 * <h2>What to expect</h2>
 	 *
-	 * <b>Empty hands still work.</b> Nothing in it requires a weapon: two unarmed
-	 * characters walk up to each other and punch, because a bare fist is a real
-	 * attack in this game and she now has the attack damage to make one. That
-	 * matters for a first test — nothing has to be given out for something to
-	 * happen.
-	 *
-	 * <h2>Where it stops short, honestly</h2>
-	 *
-	 * A gun from a datapack reads as {@code swung} and would want the swing rather
-	 * than the trigger, and whether swinging at empty air sets one off has not
-	 * been tested. So this checks for {@code drawn} — a bow, a crossbow's cousin,
-	 * a trident — and everything else falls through to closing and hitting.
+	 * Empty hands work: they walk up to each other and punch. A bow makes them
+	 * shoot from a distance and close when it gets short. A datapack gun reads as
+	 * {@code swung}, which cannot be fired yet, so they close and hit with it —
+	 * which is visibly the wrong thing and honestly so.
 	 */
 	private static Dialogue duel() {
 		return Dialogue.builder("duel")
-			.start("find")
-			// Nothing at all until there is somebody. Standing here costs one
-			// question a tick, which is what looking for somebody costs.
-			.add(new Node.Until("find",
+			// ------------------------------------------------ the scenario
+			.start("watch")
+			.add(new Node.Until("watch",
 				new Condition.Compare(Sense.KIN, Scope.SENSE, Condition.Op.EQ, Value.of(true)),
-				"decide"))
-			.add(new Node.Branch("decide", List.of(
-				// Shooting, but only from far enough away that it is the sensible
-				// thing. A bow at arm's length is a club held by the wrong end.
+				"engage"))
+			// Naming who. Everything the fighting does about "who" comes from here.
+			.add(new Node.Do("engage", "fight", Mark.KIN, "holding"))
+			// And the scenario's own job while it runs: notice when there is nobody
+			// left to fight. This is the turn a waiting call would have taken away.
+			.add(new Node.Until("holding",
+				new Condition.Not(
+					new Condition.Compare(Sense.KIN, Scope.SENSE, Condition.Op.EQ, Value.of(true))),
+				"break"))
+			.add(new Node.Stop("break", "fight", "watch"))
+
+			// -------------------------------------------------- the skill
+			.segment("fight", "fight.look")
+			.add(new Node.Branch("fight.look", List.of(
+				// A bow, and far enough off that it is the sensible thing. A bow at
+				// arm's length is a club held by the wrong end.
 				new Node.Arm(new Condition.All(List.of(
 					new Condition.Compare(Sense.WEAPON, Scope.SENSE,
 						Condition.Op.EQ, Value.of("drawn")),
-					new Condition.Compare(Sense.KIN_DISTANCE, Scope.SENSE,
-						Condition.Op.GT, Value.of(5)))), "aim"),
+					new Condition.Compare(Sense.TARGET_DISTANCE, Scope.SENSE,
+						Condition.Op.GT, Value.of(5)))), "fight.aim"),
 				// Close enough to hit. Under the reach rather than at it, so she is
 				// not swinging from the exact edge and missing every time.
-				new Node.Arm(new Condition.Compare(Sense.KIN_DISTANCE, Scope.SENSE,
-					Condition.Op.LT, Value.of(2.5)), "stop")),
-				"close"))
+				new Node.Arm(new Condition.Compare(Sense.TARGET_DISTANCE, Scope.SENSE,
+					Condition.Op.LT, Value.of(2.5)), "fight.stop")),
+				"fight.close"))
 
-			.add(new Node.Act("aim", new Effect.LookAt(Mark.KIN), "shoot"))
-			.add(new Node.Act("shoot", new Effect.Fire(Mark.KIN), "again"))
+			.add(new Node.Act("fight.aim", new Effect.LookAt(Mark.TARGET), "fight.shoot"))
+			.add(new Node.Act("fight.shoot", new Effect.Fire(Mark.TARGET), "fight.again"))
 
-			// Stopping first, or she walks through the person she is hitting and
-			// they shuffle across the floor together.
-			.add(new Node.Act("stop", new Effect.Halt(), "face"))
-			.add(new Node.Act("face", new Effect.LookAt(Mark.KIN), "hit"))
-			.add(new Node.Act("hit", new Effect.Strike(Mark.KIN), "again"))
+			// Stopping first, or she walks through the person she is hitting and the
+			// two of them shuffle across the floor together.
+			.add(new Node.Act("fight.stop", new Effect.Halt(), "fight.face"))
+			.add(new Node.Act("fight.face", new Effect.LookAt(Mark.TARGET), "fight.hit"))
+			.add(new Node.Act("fight.hit", new Effect.Strike(Mark.TARGET), "fight.again"))
 
-			.add(new Node.Act("close", new Effect.WalkTo(Mark.KIN, 1f), "again"))
+			.add(new Node.Act("fight.close", new Effect.WalkTo(Mark.TARGET, 1f), "fight.again"))
 
-			// Half a second. Long enough that the whole fight is not decided in one
+			// Half a second. Long enough that the whole fight is not settled in one
 			// tick, short enough that she notices the other one moving.
-			.add(new Node.Every("again", 10, "find"))
+			.add(new Node.Every("fight.again", 10, "fight.look"))
 			.build();
 	}
 

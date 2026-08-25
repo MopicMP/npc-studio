@@ -23,7 +23,29 @@ public record Dialogue(
 		int formatVersion,
 		String start,
 		Map<String, Node> nodes,
-		Map<String, String> variableTypes) {
+		Map<String, String> variableTypes,
+		Map<String, String> segments) {
+
+	/**
+	 * A graph may have more than one way in.
+	 *
+	 * <h2>What a segment is for</h2>
+	 *
+	 * {@code start} is where the graph begins when it is somebody's own. A
+	 * segment is a second, named beginning, meant to be called from elsewhere:
+	 * "how to fight", "how to take cover", "how to look busy". The nodes and the
+	 * declared variables are shared, so a document is a set of related skills
+	 * rather than a pile of unrelated files.
+	 *
+	 * <h2>Why this and not a graph per skill</h2>
+	 *
+	 * Because skills come in families and want to share. Fighting and retreating
+	 * read the same variables and lead into one another; kept as separate
+	 * documents they would need those variables declared twice, in step, for ever.
+	 *
+	 * A document with no segments is an ordinary graph and always was — which is
+	 * why every one written before this goes on working without a line changed.
+	 */
 
 	public static final int CURRENT_FORMAT = 1;
 
@@ -36,6 +58,24 @@ public record Dialogue(
 		// order.
 		nodes = Collections.unmodifiableMap(new LinkedHashMap<>(nodes));
 		variableTypes = Collections.unmodifiableMap(new LinkedHashMap<>(variableTypes));
+		segments = Collections.unmodifiableMap(new LinkedHashMap<>(segments));
+	}
+
+	/**
+	 * The five-part form, for everything written before segments existed.
+	 *
+	 * Not a convenience. A graph without segments is the ordinary case and will
+	 * stay the ordinary case, and making every caller pass an empty map would be
+	 * asking them all to say the same nothing.
+	 */
+	public Dialogue(String id, int formatVersion, String start,
+			Map<String, Node> nodes, Map<String, String> variableTypes) {
+		this(id, formatVersion, start, nodes, variableTypes, Map.of());
+	}
+
+	/** Where a named way in begins, or null if there is no such way in. */
+	public String segment(String name) {
+		return segments.get(name);
 	}
 
 	public Node node(String id) {
@@ -52,8 +92,15 @@ public record Dialogue(
 		private String start;
 		private final Map<String, Node> nodes = new LinkedHashMap<>();
 		private final Map<String, String> variables = new LinkedHashMap<>();
+		private final Map<String, String> segments = new LinkedHashMap<>();
 
 		private Builder(String id) { this.id = id; }
+
+		/** Names a way in, at the node the next {@link #add} will put there. */
+		public Builder segment(String name, String at) {
+			segments.put(name, at);
+			return this;
+		}
 
 		public Builder start(String node) { this.start = node; return this; }
 
@@ -72,7 +119,7 @@ public record Dialogue(
 		}
 
 		public Dialogue build() {
-			return new Dialogue(id, CURRENT_FORMAT, start, nodes, variables);
+			return new Dialogue(id, CURRENT_FORMAT, start, nodes, variables, segments);
 		}
 	}
 }

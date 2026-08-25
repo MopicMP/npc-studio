@@ -825,6 +825,10 @@ public class NpcEntity extends Avatar {
 		brainId = id == null ? "" : id;
 		mind = null;
 		waiting = 0;
+		// A skill belongs to the brain that started it. Keeping it running across a
+		// change of brain would leave a character fighting to instructions nobody
+		// can now read.
+		stopDoing();
 	}
 
 	/**
@@ -896,6 +900,78 @@ public class NpcEntity extends Avatar {
 		// Starting the graph again is cheap and correct; carrying on with a stale
 		// copy of what she knows is neither.
 		mind = null;
+	}
+
+	/**
+	 * The skill she has running, alongside whatever set it going.
+	 *
+	 * <h2>Why there are two bookmarks and not one</h2>
+	 *
+	 * Because a conversation that starts a fight has to be able to end while the
+	 * fight goes on. One bookmark would mean the caller was inside the call, and
+	 * the last line would be spoken once somebody had won.
+	 *
+	 * Two graphs driving one body is the thing that had been put off as awkward,
+	 * and the awkwardness is real but it is only one question: who wins when both
+	 * speak in the same tick. The answer is the segment, because the segment is
+	 * the specialist and the scenario is what chose it — so the scenario is
+	 * offered its turn first and the segment acts last.
+	 */
+	private String doingNow = "";
+	private com.mopicmp.npcstudio.dialogue.DialogueState doingState;
+	private String doingAt = com.mopicmp.npcstudio.dialogue.Mark.NOTHING;
+	private int doingWait;
+
+	public String doingNow() {
+		return doingNow;
+	}
+
+	/** Whoever the running skill was told to act on. */
+	public String doingAt() {
+		return doingAt;
+	}
+
+	public com.mopicmp.npcstudio.dialogue.DialogueState doingState() {
+		return doingState;
+	}
+
+	public void setDoingState(com.mopicmp.npcstudio.dialogue.DialogueState now) {
+		doingState = now;
+	}
+
+	/** Sets a skill running, from its named way in, told these things. */
+	public void beginDoing(String segment, String at,
+			com.mopicmp.npcstudio.dialogue.DialogueState from) {
+		doingNow = segment;
+		doingAt = at == null ? com.mopicmp.npcstudio.dialogue.Mark.NOTHING : at;
+		doingState = from;
+		doingWait = 0;
+	}
+
+	/**
+	 * Puts the skill down.
+	 *
+	 * The weapon and the walking are let go with it. A character told to stop
+	 * fighting who goes on drawing a bow at somebody is a character who did not
+	 * stop, and the graph that stopped her has no other way to say so.
+	 */
+	public void stopDoing() {
+		doingNow = "";
+		doingState = null;
+		doingAt = com.mopicmp.npcstudio.dialogue.Mark.NOTHING;
+		doingWait = 0;
+		draw.ease();
+		halt();
+	}
+
+	public void waitDoing(int ticks) {
+		doingWait = Math.max(ticks, 0);
+	}
+
+	public boolean skillStillWaiting() {
+		if (doingWait <= 0) return false;
+		doingWait--;
+		return true;
 	}
 
 	/** Ticks left before the graph is worth asking again. */
