@@ -78,6 +78,32 @@ public record Dialogue(
 		return segments.get(name);
 	}
 
+	/**
+	 * Whether anybody says anything in it.
+	 *
+	 * <h2>Why a graph has a sort at all</h2>
+	 *
+	 * One language, two runtimes, and each can serve only part of it: a
+	 * conversation cannot stand and wait, and a brain has nobody to speak to.
+	 * Both refuse when handed the wrong thing — but a refusal that arrives when a
+	 * player clicks an NPC is a refusal nobody sees.
+	 *
+	 * Asked here, it can be used at the moment somebody is choosing, which is the
+	 * moment they are looking. That was reported the hard way, twice: a behaviour
+	 * graph put in the conversation field, two characters standing still, and
+	 * nothing anywhere saying why.
+	 */
+	public boolean speaks() {
+		return nodes().values().stream()
+			.anyMatch(node -> node instanceof Node.Line || node instanceof Node.Choice);
+	}
+
+	/** Whether it ever stands still on its own account: a timer or a question. */
+	public boolean waits() {
+		return nodes().values().stream()
+			.anyMatch(node -> node instanceof Node.Every || node instanceof Node.Until);
+	}
+
 	public Node node(String id) {
 		return nodes.get(id);
 	}

@@ -220,7 +220,7 @@ public class NpcStudioClient implements ClientModInitializer {
 				// different reasons: one to show a list to choose from, the other to
 				// fill a drop-down. Asking twice would be one packet more and one
 				// state more to keep in step.
-				com.mopicmp.npcstudio.client.editor.DialogueNames.remember(payload.names());
+				com.mopicmp.npcstudio.client.editor.DialogueNames.remember(payload.graphs());
 				// A screen that asked only for the names keeps itself; anything else
 				// meant "show me the list".
 				// In the workspace the list belongs to the dialogue panel, which is

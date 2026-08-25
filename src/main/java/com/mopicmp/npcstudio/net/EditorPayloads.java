@@ -30,13 +30,46 @@ public final class EditorPayloads {
 	}
 
 	/** Server answers with the names on offer. */
-	public record Listing(List<String> names) implements CustomPacketPayload {
+	public record Listing(List<Known> graphs) implements CustomPacketPayload {
 		public static final Type<Listing> TYPE = new Type<>(NpcStudio.id("editor_listing"));
 		public static final StreamCodec<io.netty.buffer.ByteBuf, Listing> CODEC =
-			ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list(512))
-				.map(Listing::new, Listing::names);
+			Known.CODEC.apply(ByteBufCodecs.list(512)).map(Listing::new, Listing::graphs);
 
 		@Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+
+		/** Just the names, for the places that only ever wanted those. */
+		public List<String> names() {
+			return graphs.stream().map(Known::name).toList();
+		}
+	}
+
+	/**
+	 * A graph, and what it can be used as.
+	 *
+	 * <h2>Why the sort travels with the name</h2>
+	 *
+	 * Because the client has to offer a list to choose from, and offering the
+	 * wrong entries is how the choosing goes wrong. Only the server knows what is
+	 * in a graph, so only the server can say whether it is a conversation, a
+	 * brain, or capable of either — and a name on its own has already proved not
+	 * to be enough.
+	 */
+	public record Known(String name, boolean speaks, boolean waits) {
+		public static final StreamCodec<io.netty.buffer.ByteBuf, Known> CODEC =
+			StreamCodec.composite(
+				ByteBufCodecs.STRING_UTF8, Known::name,
+				ByteBufCodecs.BOOL, Known::speaks,
+				ByteBufCodecs.BOOL, Known::waits,
+				Known::new);
+
+		/** A graph with neither is an empty sketch, and may be put anywhere. */
+		public boolean fitsAsBrain() {
+			return waits || !speaks;
+		}
+
+		public boolean fitsAsConversation() {
+			return speaks || !waits;
+		}
 	}
 
 	/** Client asks to edit something, by name. Empty name means "start a new one". */

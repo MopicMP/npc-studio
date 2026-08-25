@@ -225,6 +225,23 @@ class DuelTest {
 	}
 
 	@Test
+	@DisplayName("a brain is not offered as a conversation, nor the other way round")
+	void theTwoFieldsOfferDifferentThings() {
+		// The mistake this exists to prevent has now been made twice, and both
+		// times it looked like the fighting was broken: a behaviour graph put in
+		// the conversation field leaves a character standing perfectly still,
+		// saying nothing, with nothing anywhere to point at.
+		Dialogue brain = duel();
+		assertTrue(brain.waits(), "a brain stands still on its own account");
+		assertTrue(!brain.speaks(), "and has nobody to say anything to");
+
+		Dialogue talk = com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry
+			.get("example").orElseThrow();
+		assertTrue(talk.speaks(), "a conversation speaks");
+		assertTrue(!talk.waits(), "and never parks on a timer");
+	}
+
+	@Test
 	@DisplayName("every graph that ships with the mod still loads")
 	void theBuiltInGraphsAreSound() {
 		for (String name : List.of("duel", "sentry", "doorman", "torchbearer", "example")) {

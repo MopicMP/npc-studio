@@ -70,7 +70,8 @@ public class BenchPanel extends WorkspacePanel {
 	private static final List<Group> GROUPS = List.of(
 		new Group("npc_studio.bench.looking", List.of(
 			new Deed(Icon.EYES, "npc_studio.bench.senses", "senses"),
-			new Deed(Icon.SEARCH, "npc_studio.bench.watch", "watch"))),
+			new Deed(Icon.SEARCH, "npc_studio.bench.watch", "watch"),
+			new Deed(Icon.BODY, "npc_studio.bench.brain", "brain"))),
 		new Group("npc_studio.bench.doing", List.of(
 			new Deed(Icon.MAIN_HAND, "npc_studio.bench.fire", "fire"))),
 		new Group("npc_studio.bench.memory", List.of(

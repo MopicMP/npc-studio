@@ -69,7 +69,6 @@ public class CharacterPanel extends WorkspacePanel {
 	private float scale = 1f;
 
 	private EditBox skin;
-	private EditBox brain;
 
 	/**
 	 * Whether the list of conversations is open over the panel.
@@ -85,14 +84,32 @@ public class CharacterPanel extends WorkspacePanel {
 	 * There was a command that offered the real names as you typed. Taking it away
 	 * without putting the list here was a straight loss, and it was reported as one.
 	 */
-	private boolean picking;
+	private Choosing picking = Choosing.NEITHER;
+
+	/**
+	 * Which of the two graph fields has its list open.
+	 *
+	 * <h2>Why they are the same control twice</h2>
+	 *
+	 * They were not, and that cost a test session. The conversation was a list
+	 * with real names in it and the brain was a bare box with the hint "graph
+	 * name", eight rows further down. Faced with one control that plainly works
+	 * and one that plainly does not, anybody uses the first — and a behaviour
+	 * graph put in the conversation field leaves a character standing perfectly
+	 * still, saying nothing, with nothing anywhere to point at.
+	 *
+	 * So both are lists, they look identical, and each offers only the graphs
+	 * that can actually do its job — see {@code DialogueNames.forBrain}.
+	 */
+	private enum Choosing { NEITHER, CONVERSATION, BRAIN }
 	private EditBox mainHand;
 	private EditBox offHand;
 
 	private String notice = "";
 
-	/** Where the conversation button ended up, so the list can open under it. */
+	/** Where each button ended up, so its list can open under it. */
 	private int dialogueRow;
+	private int brainRow;
 
 	/** How big the character was before a slider was dragged at it. */
 	private Float originalScale;
@@ -143,10 +160,9 @@ public class CharacterPanel extends WorkspacePanel {
 		watchful = details.watchful();
 		endless = details.endless();
 		skin = null;
-		brain = null;
 		mainHand = null;
 		offHand = null;
-		picking = false;
+		picking = Choosing.NEITHER;
 		// Only the server knows what conversations exist, so ask while the panel is
 		// being filled in rather than when somebody opens the list. A menu that
 		// appears empty and fills in a moment later is a menu people click through
@@ -202,10 +218,9 @@ public class CharacterPanel extends WorkspacePanel {
 		blank();
 		scale = 1f;
 		skin = null;
-		brain = null;
 		mainHand = null;
 		offHand = null;
-		picking = false;
+		picking = Choosing.NEITHER;
 		rebuild();
 		if (now >= 0) ClientPlayNetworking.send(new NpcPayloads.Open(now));
 	}
@@ -235,8 +250,8 @@ public class CharacterPanel extends WorkspacePanel {
 				? Component.translatable("npc_studio.character.no_dialogue").getString()
 				: dialogueText),
 			ACCENT, () -> {
-				picking = !picking;
-				touched();
+				picking = picking == Choosing.CONVERSATION
+					? Choosing.NEITHER : Choosing.CONVERSATION;
 			}));
 		y += ROW + GAP;
 
@@ -260,8 +275,14 @@ public class CharacterPanel extends WorkspacePanel {
 		y += ROW + GAP + 4;
 
 		y += LABEL;
-		brain = field(brain, PAD, y, across, brainText, text -> brainText = text,
-			"graph name");
+		brainRow = y;
+		add(new IconTextButton(PAD, y - 1, across, ROW, Icon.BODY,
+			Component.literal(brainText.isEmpty()
+				? Component.translatable("npc_studio.character.no_brain").getString()
+				: brainText),
+			0xFF9575CD, () -> {
+				picking = picking == Choosing.BRAIN ? Choosing.NEITHER : Choosing.BRAIN;
+			}));
 		y += ROW + GAP;
 
 		// Two switches on one row: they are both one-word facts about a character,
@@ -359,20 +380,32 @@ public class CharacterPanel extends WorkspacePanel {
 	private static final int MENU_EDGE = 0xFF2C333D;
 	private static final int HOVER = 0xFF232A34;
 
-	/** Every conversation that exists, with "none" first so it can be taken off. */
-	private static java.util.List<String> choices() {
+	/**
+	 * What the open list should offer, with "none" first so it can be taken off.
+	 *
+	 * Filtered by what the field is for. A brain that only talks and a
+	 * conversation that only waits are both mistakes somebody would otherwise
+	 * make in one click, and neither says anything when made.
+	 */
+	private java.util.List<String> choices() {
 		java.util.List<String> all = new ArrayList<>();
 		all.add("");
-		all.addAll(com.mopicmp.npcstudio.client.editor.DialogueNames.known());
+		all.addAll(picking == Choosing.BRAIN
+			? com.mopicmp.npcstudio.client.editor.DialogueNames.forBrain()
+			: com.mopicmp.npcstudio.client.editor.DialogueNames.forConversation());
 		return all;
+	}
+
+	private int openRow() {
+		return picking == Choosing.BRAIN ? brainRow : dialogueRow;
 	}
 
 	@Override
 	protected void over(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-		if (!picking) return;
+		if (picking == Choosing.NEITHER) return;
 		java.util.List<String> all = choices();
 		int across = width - PAD * 2;
-		int top = dialogueRow + ROW;
+		int top = openRow() + ROW;
 		// Never off the bottom of the panel. A list that runs past the edge is a
 		// list whose last entries cannot be clicked, and the ones that cannot be
 		// clicked are always the ones somebody wants.
@@ -386,9 +419,13 @@ public class CharacterPanel extends WorkspacePanel {
 				&& mouseX >= PAD && mouseX < PAD + across;
 			if (hovered) graphics.fill(PAD, at, PAD + across, at + ROW_HEIGHT, HOVER);
 			String name = all.get(i);
+			String chosen = picking == Choosing.BRAIN ? brainText : dialogueText;
 			graphics.text(font, Component.literal(name.isEmpty()
-					? Component.translatable("npc_studio.character.no_dialogue").getString() : name),
-				PAD + 4, at + 3, name.equals(dialogueText) ? ACCENT : TEXT);
+					? Component.translatable(picking == Choosing.BRAIN
+						? "npc_studio.character.no_brain" : "npc_studio.character.no_dialogue")
+						.getString()
+					: name),
+				PAD + 4, at + 3, name.equals(chosen) ? ACCENT : TEXT);
 		}
 		if (all.size() > shown) {
 			graphics.text(font, Component.literal("+" + (all.size() - shown)),
@@ -399,19 +436,20 @@ public class CharacterPanel extends WorkspacePanel {
 	@Override
 	public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event,
 			boolean doubleClick) {
-		if (picking) {
+		if (picking != Choosing.NEITHER) {
 			java.util.List<String> all = choices();
 			int across = width - PAD * 2;
-			int top = dialogueRow + ROW;
+			int top = openRow() + ROW;
 			int shown = Math.max(1, Math.min(all.size(), (height - top - PAD) / ROW_HEIGHT));
 			int row = (int) ((event.y() - top - 1) / ROW_HEIGHT);
 			if (event.x() >= PAD && event.x() < PAD + across && row >= 0 && row < shown) {
-				dialogueText = all.get(row);
+				if (picking == Choosing.BRAIN) brainText = all.get(row);
+				else dialogueText = all.get(row);
 				touched();
 			}
 			// Closed either way: a click anywhere else means "not that one", which is
 			// what clicking away from an open menu has always meant.
-			picking = false;
+			picking = Choosing.NEITHER;
 			rebuild();
 			return true;
 		}

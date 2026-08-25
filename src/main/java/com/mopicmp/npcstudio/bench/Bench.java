@@ -62,6 +62,7 @@ public final class Bench {
 
 		tell(player, switch (action) {
 			case "senses" -> senses(npc);
+			case "brain" -> brain(npc);
 			case "watch" -> watching(npc, player);
 			case "fire" -> fire(npc, player);
 			case "forget" -> forget(npc);
@@ -85,6 +86,65 @@ public final class Bench {
 		lines.add(npc.memory().isEmpty()
 			? "remembers nothing about herself"
 			: "remembers " + new java.util.TreeMap<>(npc.memory()));
+		return lines;
+	}
+
+	/**
+	 * Why her brain is doing what it is doing, or nothing.
+	 *
+	 * <h2>Why this is the readout that was missing</h2>
+	 *
+	 * A character with a brain that does nothing looks exactly like a character
+	 * with no brain at all, and there are five separate reasons she might be
+	 * standing there: no graph named, a name that is not registered, parked on a
+	 * condition that is false, a skill running that is itself waiting, or — the
+	 * one that cost a whole test session — a scenario looking for one of her own
+	 * kind when there is nobody else who has been given the same brain.
+	 *
+	 * The last is worth the census below on its own. From outside, "nobody else
+	 * has this brain" and "the fighting is broken" are the same two characters
+	 * standing still, and only one of them is a bug.
+	 */
+	private static List<String> brain(NpcEntity npc) {
+		List<String> lines = new ArrayList<>();
+		if (npc.brainId().isEmpty()) {
+			return List.of("No brain. Put a graph in the brain field on the character panel.");
+		}
+		var graph = com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry.get(npc.brainId())
+			.orElse(null);
+		if (graph == null) {
+			return List.of("Her brain is \"" + npc.brainId() + "\", which no longer exists.");
+		}
+
+		lines.add("brain \"" + npc.brainId() + "\"");
+		var mind = npc.mind(graph);
+		lines.add("  scenario at: " + mind.currentNode());
+		lines.add(npc.doingNow().isEmpty()
+			? "  no skill running"
+			: "  doing \"" + npc.doingNow() + "\" at " + (npc.doingState() == null
+				? "?" : npc.doingState().currentNode()) + ", about " + npc.doingAt());
+		if (!graph.segments().isEmpty()) {
+			lines.add("  skills: " + String.join(", ", graph.segments().keySet()));
+		}
+
+		// The census. Everybody else near enough to matter, and what they are
+		// running — because "kin" means somebody with the same brain, and the
+		// commonest way for a fight not to start is that nobody else has one.
+		var near = npc.getBoundingBox().inflate(com.mopicmp.npcstudio.brain.Marks.WITHIN);
+		var others = npc.level().getEntitiesOfClass(NpcEntity.class, near).stream()
+			.filter(other -> other != npc && other.isAlive()).toList();
+		if (others.isEmpty()) {
+			lines.add("nobody else within " + (int) com.mopicmp.npcstudio.brain.Marks.WITHIN
+				+ " blocks");
+			return lines;
+		}
+		for (NpcEntity other : others) {
+			String why = other.brainId().isEmpty() ? "no brain"
+				: !other.brainId().equals(npc.brainId()) ? "brain \"" + other.brainId() + "\""
+				: !npc.hasLineOfSight(other) ? "same brain, but nothing in sight of her"
+				: "SAME BRAIN, in sight — this one is kin";
+			lines.add("  " + Math.round(npc.distanceTo(other)) + " blocks: " + why);
+		}
 		return lines;
 	}
 

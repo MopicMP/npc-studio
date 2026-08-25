@@ -43,7 +43,15 @@ public final class DialogueEditing {
 	/** Sends the list of dialogues so the player can pick one. */
 	public static void browse(ServerPlayer player) {
 		if (!mayEdit(player)) return;
-		ServerPlayNetworking.send(player, new EditorPayloads.Listing(DialogueRegistry.names()));
+		// With what each one can be used as. Only the server can say — the client
+		// has a name and nothing else — and a name alone has already proved not to
+		// be enough to choose with.
+		ServerPlayNetworking.send(player, new EditorPayloads.Listing(
+			DialogueRegistry.names().stream()
+				.map(name -> DialogueRegistry.get(name)
+					.map(graph -> new EditorPayloads.Known(name, graph.speaks(), graph.waits()))
+					.orElseGet(() -> new EditorPayloads.Known(name, true, true)))
+				.toList()));
 	}
 
 	public static void open(ServerPlayer player, String id) {
