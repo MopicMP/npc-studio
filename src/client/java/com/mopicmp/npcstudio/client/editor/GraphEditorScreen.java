@@ -242,6 +242,9 @@ public class GraphEditorScreen extends Screen {
 			case Node.Branch _ -> 0xFFFFCA28;
 			case Node.Act _ -> 0xFFFF8A65;
 			case Node.End _ -> 0xFF78909C;
+			// The two that wait on something other than a person. Grey-blue, near
+			// enough to `end` to read as "nothing is happening here".
+			case Node.Every _, Node.Until _ -> 0xFF90A4AE;
 		};
 	}
 
@@ -253,6 +256,8 @@ public class GraphEditorScreen extends Screen {
 			case Node.Branch _ -> "branch";
 			case Node.Act _ -> "act";
 			case Node.End _ -> "end";
+			case Node.Every _ -> "every";
+			case Node.Until _ -> "until";
 		};
 	}
 
@@ -274,6 +279,9 @@ public class GraphEditorScreen extends Screen {
 				rows.add("otherwise");
 				yield List.copyOf(rows);
 			}
+			// What it is standing there for, which is the whole content of both.
+			case Node.Every every -> List.of(every.ticks() + " ticks");
+			case Node.Until _ -> List.of("until");
 		};
 	}
 
@@ -608,6 +616,8 @@ public class GraphEditorScreen extends Screen {
 				yield new Node.Branch(branch.id(), arms, toId);
 			}
 			case Node.End end -> end;
+			case Node.Every every -> new Node.Every(every.id(), every.ticks(), toId);
+			case Node.Until until -> new Node.Until(until.id(), until.condition(), toId);
 		});
 	}
 

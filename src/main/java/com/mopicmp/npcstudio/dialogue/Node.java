@@ -3,25 +3,39 @@ package com.mopicmp.npcstudio.dialogue;
 import java.util.List;
 
 /**
- * One step of a dialogue.
+ * One step of a graph.
  *
- * Six kinds, and the split is by what the engine has to do, not by what the
- * writer is saying. `Line` and `Choice` wait for the player; the rest run
- * through in one go. That difference is the whole reason the engine can promise
- * a dialogue never hangs: a cycle is only fatal if it contains no node that
- * waits, and that is a property of the graph the validator can check.
+ * The split is by what the engine has to do, not by what the writer is saying.
+ * Some kinds stop and wait; the rest run through in one go. That difference is
+ * the whole reason the engine can promise a graph never hangs: a cycle is only
+ * fatal if it contains no node that waits, and that is a property of the graph
+ * the validator can check.
+ *
+ * <h2>Four of these were never about talking</h2>
+ *
+ * `Set`, `Branch`, `Act` and `End` are assignment, branching, doing and
+ * returning. They are a programming language that happened to be written for
+ * conversations, and calling the file a dialogue engine hid that for a while.
+ * `Line` and `Choice` are the two that are really about a conversation, and what
+ * they have in common with the rest is only that they wait.
+ *
+ * So what turns this into a language for behaviour is not new machinery. It is
+ * admitting that <em>waiting for the player</em> is one reason to wait among
+ * several — see {@link Every} and {@link Until}.
  */
 public sealed interface Node {
 
 	String id();
 
 	/**
-	 * True when the engine stops here and waits for the player.
+	 * True when the engine stops here rather than running on.
 	 *
-	 * The validator relies on this to tell a loop that is a conversation going
-	 * round from a loop that is a freeze.
+	 * Was called {@code waitsForPlayer}, which was true of every node that
+	 * answered yes right up until it was not. The validator relies on this to
+	 * tell a loop that is a conversation going round from a loop that is a
+	 * freeze, and that reasoning holds whatever the graph is waiting for.
 	 */
-	boolean waitsForPlayer();
+	boolean waits();
 
 	/**
 	 * A spoken line.
@@ -34,7 +48,7 @@ public sealed interface Node {
 	 */
 	record Line(String id, String speaker, String text, Presentation mode,
 			String animation, String next) implements Node {
-		@Override public boolean waitsForPlayer() { return true; }
+		@Override public boolean waits() { return true; }
 	}
 
 	/**
@@ -62,27 +76,62 @@ public sealed interface Node {
 			this(id, "", prompt, Presentation.FULLSCREEN, options);
 		}
 
-		@Override public boolean waitsForPlayer() { return true; }
+		@Override public boolean waits() { return true; }
 	}
 
 	/** Writes a variable, then moves on. */
 	record Set(String id, String variable, Scope scope, Value value, String next) implements Node {
-		@Override public boolean waitsForPlayer() { return false; }
+		@Override public boolean waits() { return false; }
 	}
 
 	/** Takes the first branch whose condition holds, otherwise `otherwise`. */
 	record Branch(String id, List<Arm> arms, String otherwise) implements Node {
-		@Override public boolean waitsForPlayer() { return false; }
+		@Override public boolean waits() { return false; }
 	}
 
 	/** Does something to the world, then moves on. */
 	record Act(String id, Effect effect, String next) implements Node {
-		@Override public boolean waitsForPlayer() { return false; }
+		@Override public boolean waits() { return false; }
 	}
 
 	/** The conversation is over. */
 	record End(String id) implements Node {
-		@Override public boolean waitsForPlayer() { return false; }
+		@Override public boolean waits() { return false; }
+	}
+
+	/**
+	 * Stands here for a while, then moves on.
+	 *
+	 * The timer, and the reason a behaviour graph does not need a loop construct:
+	 * a graph that ends by leading back to its own start is a character who goes
+	 * on living, and this is what stops that from being a frozen server. You
+	 * decided the occasion belongs to whoever places the node, and this is the
+	 * cheapest occasion there is.
+	 *
+	 * @param ticks how long to stand here; nought means until the next tick
+	 */
+	record Every(String id, int ticks, String next) implements Node {
+		@Override public boolean waits() { return true; }
+	}
+
+	/**
+	 * Stands here until something is true.
+	 *
+	 * <h2>Why there is no event node, and no event bus</h2>
+	 *
+	 * Because an event is a question you ask often. A graph that waits for a
+	 * player to come within ten blocks and one that subscribes to a
+	 * somebody-came-close event do the same thing, except that the second needs
+	 * an event to be invented, published, subscribed and — the part that actually
+	 * bites — unsubscribed when the character dies mid-wait.
+	 *
+	 * The cost is that the condition is tested every tick. That cost is visible
+	 * in the graph, which is exactly where you wanted it: a character who watches
+	 * for something expensive is a character somebody can see watching for
+	 * something expensive.
+	 */
+	record Until(String id, Condition condition, String next) implements Node {
+		@Override public boolean waits() { return true; }
 	}
 
 	/** One option of a {@link Choice}. */
@@ -107,6 +156,8 @@ public sealed interface Node {
 				out.add(branch.otherwise());
 				yield List.copyOf(out);
 			}
+			case Every every -> List.of(every.next());
+			case Until until -> List.of(until.next());
 			case End _ -> List.of();
 		};
 	}

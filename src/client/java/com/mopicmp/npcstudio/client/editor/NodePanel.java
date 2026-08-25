@@ -511,6 +511,8 @@ public class NodePanel {
 			case Node.Branch branch -> new Node.Branch(id, branch.arms(), branch.otherwise());
 			case Node.Act act -> new Node.Act(id, act.effect(), act.next());
 			case Node.End _ -> new Node.End(id);
+			case Node.Every every -> new Node.Every(id, every.ticks(), every.next());
+			case Node.Until until -> new Node.Until(id, until.condition(), until.next());
 		};
 	}
 
@@ -525,7 +527,25 @@ public class NodePanel {
 						? new Node.Option(o.label(), o.colour(), o.condition(), to)
 						: o)
 					.toList());
-			default -> node;
+			// Every other kind that points somewhere. These fell through a `default`
+			// before, which meant renaming a node quietly broke every `set`, `act`
+			// and `branch` wired to it — the wire stayed pointing at a name that no
+			// longer existed, and the graph only failed later, when somebody walked
+			// down that path.
+			case Node.Set set -> set.next().equals(from)
+				? new Node.Set(set.id(), set.variable(), set.scope(), set.value(), to) : set;
+			case Node.Act act -> act.next().equals(from)
+				? new Node.Act(act.id(), act.effect(), to) : act;
+			case Node.Every every -> every.next().equals(from)
+				? new Node.Every(every.id(), every.ticks(), to) : every;
+			case Node.Until until -> until.next().equals(from)
+				? new Node.Until(until.id(), until.condition(), to) : until;
+			case Node.Branch branch -> new Node.Branch(branch.id(),
+				branch.arms().stream()
+					.map(arm -> arm.next().equals(from) ? new Node.Arm(arm.condition(), to) : arm)
+					.toList(),
+				branch.otherwise().equals(from) ? to : branch.otherwise());
+			case Node.End _ -> node;
 		};
 	}
 

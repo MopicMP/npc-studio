@@ -89,6 +89,32 @@ public final class DialogueRegistry {
 
 	public static void registerBuiltIn() {
 		register(example());
+		register(torchbearer());
+	}
+
+	/**
+	 * A behaviour graph, to prove there is now such a thing.
+	 *
+	 * <h2>What it is for</h2>
+	 *
+	 * The same job as {@link #example()}: something to reach for to check the
+	 * thing works at all, without writing a datapack first. It uses both of the
+	 * new occasions and nothing else, so what it demonstrates is exactly what was
+	 * built.
+	 *
+	 * She stands doing nothing until she is holding a torch, waves when she is,
+	 * then waits three seconds and looks again. Put a torch in her hand with
+	 * {@code /npc arm} and she starts; take it away and she stops. The waiting is
+	 * the point: the first is a question asked every tick, the second is a timer,
+	 * and between them they are every occasion a character needs.
+	 */
+	private static Dialogue torchbearer() {
+		return Dialogue.builder("torchbearer")
+			.start("dark")
+			.add(new Node.Until("dark", new Condition.HasItem("minecraft:torch", 1), "wave"))
+			.add(new Node.Act("wave", new Effect.PlayAnimation("wave", 40), "again"))
+			.add(new Node.Every("again", 60, "dark"))
+			.build();
 	}
 
 	/**

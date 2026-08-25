@@ -173,11 +173,28 @@ public final class DialogueValidator {
 	 *
 	 * Checked backwards from the `End` nodes: anything that cannot reach one is
 	 * a conversation the player can enter and never leave properly.
+	 *
+	 * <h2>Unless it is not a conversation</h2>
+	 *
+	 * A behaviour graph has no end and should not have one — a character goes on
+	 * living, and the graph that runs her is a loop by nature. This rule was
+	 * written when every graph was something a player stood in front of, and it
+	 * would now forbid half the programs the language can express.
+	 *
+	 * So a graph that stands still on its own account is let through. What made
+	 * "no end" fatal was a player trapped in a box with no way out, and a graph
+	 * that waits has already handed control back: the world carries on around a
+	 * character who is standing there, which is not a trap but a Tuesday.
+	 *
+	 * A conversation with neither an end nor a wait is still refused, which is
+	 * the case the rule was really about.
 	 */
 	private static void checkEveryPathEnds(Dialogue dialogue, List<Problem> found) {
 		Set<String> canEnd = new HashSet<>();
 		for (Node node : dialogue.nodes().values()) {
 			if (node instanceof Node.End) canEnd.add(node.id());
+			// Standing still is a way out of a graph, for whoever is running it.
+			if (node instanceof Node.Every || node instanceof Node.Until) canEnd.add(node.id());
 		}
 		if (canEnd.isEmpty()) {
 			found.add(new Problem(Severity.ERROR, null, "the dialogue never ends: there is no end node"));
@@ -223,7 +240,7 @@ public final class DialogueValidator {
 		Set<String> done = new HashSet<>();
 
 		for (Node node : dialogue.nodes().values()) {
-			if (node.waitsForPlayer() || done.contains(node.id())) continue;
+			if (node.waits() || done.contains(node.id())) continue;
 			List<String> cycle = findCycle(dialogue, node.id(), visiting, done);
 			if (cycle != null) {
 				found.add(new Problem(Severity.ERROR, cycle.get(0),
@@ -245,7 +262,7 @@ public final class DialogueValidator {
 		if (done.contains(id)) return null;
 
 		Node node = dialogue.node(id);
-		if (node == null || node.waitsForPlayer()) return null;
+		if (node == null || node.waits()) return null;
 
 		visiting.add(id);
 		for (String exit : node.exits()) {

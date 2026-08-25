@@ -80,6 +80,13 @@ public final class NpcCommands {
 			.then(Commands.literal("endless")
 				.then(Commands.literal("on").executes(context -> endless(context, true)))
 				.then(Commands.literal("off").executes(context -> endless(context, false))))
+			.then(Commands.literal("brain")
+				.executes(context -> brain(context, null))
+				.then(Commands.literal("off").executes(context -> brain(context, "")))
+				.then(Commands.argument("id", StringArgumentType.greedyString())
+					.suggests((context, builder) -> SharedSuggestionProvider.suggest(
+						DialogueRegistry.names(), builder))
+					.executes(context -> brain(context, StringArgumentType.getString(context, "id")))))
 			.then(Commands.literal("shoot")
 				.executes(context -> shoot(context, com.mopicmp.npcstudio.foe.Draw.longEnoughFor(0.95f)))
 				.then(Commands.argument("draw", IntegerArgumentType.integer(1, 200))
@@ -329,6 +336,47 @@ public final class NpcCommands {
 			return 0;
 		}
 		DialogueRuntime.choose(source.getPlayerOrException(), npc, option);
+		return 1;
+	}
+
+	/**
+	 * Gives the nearest NPC a graph to live by, takes it away, or says which.
+	 *
+	 * <h2>Why this is the same registry as dialogues</h2>
+	 *
+	 * Because it is the same language, and pretending otherwise would have meant
+	 * two of everything: two loaders, two editors, two sets of node kinds that
+	 * drift apart until a condition means one thing in a conversation and another
+	 * in a brain. A graph is a graph; what differs is who is running it and what
+	 * they can serve.
+	 *
+	 * Which is why the failures are worth naming: a conversation cannot wait, and
+	 * a brain cannot speak. Both refuse loudly rather than half-working.
+	 */
+	private static int brain(CommandContext<CommandSourceStack> context, String wanted)
+			throws CommandSyntaxException {
+		CommandSourceStack source = context.getSource();
+		NpcEntity npc = nearest(source);
+		if (npc == null) {
+			source.sendFailure(Component.literal("No NPC within 8 blocks."));
+			return 0;
+		}
+		if (wanted == null) {
+			String has = npc.brainId();
+			source.sendSuccess(() -> Component.literal(has.isEmpty()
+				? "She has no brain — she only reacts. Known graphs: "
+					+ String.join(", ", DialogueRegistry.names())
+				: "Her brain is \"" + has + "\"."), false);
+			return 1;
+		}
+		if (!wanted.isEmpty() && DialogueRegistry.get(wanted).isEmpty()) {
+			source.sendFailure(Component.literal("No graph called \"" + wanted + "\". Known: "
+				+ String.join(", ", DialogueRegistry.names())));
+			return 0;
+		}
+		npc.setBrainId(wanted);
+		source.sendSuccess(() -> Component.literal(wanted.isEmpty()
+			? "Brain off." : "She now lives by \"" + wanted + "\"."), true);
 		return 1;
 	}
 

@@ -650,6 +650,72 @@ public class NpcEntity extends Avatar {
 		return walk;
 	}
 
+	// ----------------------------------------------------------------- the brain
+
+	/**
+	 * Which graph runs this character, or empty for none.
+	 *
+	 * Saved, because it is authorship: somebody chose this brain for this
+	 * character and it must survive a reload. Not synced — the client has no use
+	 * for it, and everything it produces arrives as an animation or a face, which
+	 * are synced already.
+	 */
+	private String brainId = "";
+
+	public String brainId() {
+		return brainId;
+	}
+
+	public void setBrainId(String id) {
+		brainId = id == null ? "" : id;
+		mind = null;
+		waiting = 0;
+	}
+
+	/**
+	 * Where she has got to in her graph, and what she has learnt.
+	 *
+	 * <h2>Not saved, on purpose, and only for now</h2>
+	 *
+	 * A character who resumes mid-thought after a server restart is a nicety; a
+	 * character who resumes at a node that no longer exists because the graph was
+	 * edited in between is a bug report. Until graphs stop changing under people,
+	 * beginning again on load is both simpler and more predictable — and it is
+	 * what she does after any other interruption anyway.
+	 *
+	 * What this does mean is that variables a behaviour graph sets do not yet
+	 * outlive a restart. That is the next step's problem: the scope it wants is
+	 * CHARACTER, which does not exist yet either.
+	 */
+	private com.mopicmp.npcstudio.dialogue.DialogueState mind;
+
+	/** Her place in the graph, started from the beginning if she has none. */
+	public com.mopicmp.npcstudio.dialogue.DialogueState mind(
+			com.mopicmp.npcstudio.dialogue.Dialogue graph) {
+		if (mind == null) {
+			mind = com.mopicmp.npcstudio.dialogue.DialogueState.start(graph, java.util.Map.of());
+		}
+		return mind;
+	}
+
+	public void remember(com.mopicmp.npcstudio.dialogue.DialogueState now) {
+		mind = now;
+	}
+
+	/** Ticks left before the graph is worth asking again. */
+	private int waiting;
+
+	public void waitFor(int ticks) {
+		waiting = Math.max(ticks, 0);
+	}
+
+	/** Counts a tick off the wait and says whether there is still one to serve. */
+	public boolean stillWaiting() {
+		if (waiting <= 0) return false;
+		waiting--;
+		return true;
+	}
+
 	// ---------------------------------------------------------------- the weapon
 
 	private final com.mopicmp.npcstudio.foe.Draw draw = new com.mopicmp.npcstudio.foe.Draw();
@@ -844,6 +910,7 @@ public class NpcEntity extends Avatar {
 			refreshFace();
 			keepWatch();
 			workTheWeapon();
+			com.mopicmp.npcstudio.brain.Brain.tick(this);
 		}
 	}
 
@@ -1199,6 +1266,7 @@ public class NpcEntity extends Avatar {
 		// The hands themselves are already saved by LivingEntity, which keeps
 		// equipment for everybody. Only the mark on the quiver is ours.
 		output.putBoolean("Endless", endless);
+		output.putString("Brain", brainId);
 	}
 
 	@Override
@@ -1224,6 +1292,7 @@ public class NpcEntity extends Avatar {
 		// in every world so far and is the answer they all want.
 		setWatchful(input.getBooleanOr("Watchful", false));
 		endless = input.getBooleanOr("Endless", false);
+		setBrainId(input.getStringOr("Brain", ""));
 		wardrobe.clear();
 		int outfits = input.getIntOr("Outfits", 0);
 		for (int i = 0; i < outfits; i++) {

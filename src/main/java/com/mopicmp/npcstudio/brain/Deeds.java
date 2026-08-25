@@ -1,0 +1,46 @@
+package com.mopicmp.npcstudio.brain;
+
+import com.mopicmp.npcstudio.NpcStudio;
+import com.mopicmp.npcstudio.dialogue.Effect;
+import com.mopicmp.npcstudio.entity.NpcEntity;
+
+/**
+ * Carrying out what a behaviour graph decided.
+ *
+ * <h2>The split this makes visible</h2>
+ *
+ * Half the effects the language already has need a player: give an item, take
+ * one, run a command as somebody. The other half are about the character alone:
+ * play this animation, wear this face.
+ *
+ * A conversation always has both, so the distinction never had to be drawn. A
+ * character standing in an empty room has only the second, and the ones that
+ * need a player are not merely unimplemented here — they are meaningless, and
+ * saying so out loud is better than doing nothing quietly.
+ *
+ * This is also where the verbs of the third step will land: walk there, look at
+ * that, crouch, fire. They are all this shape — the graph decided, and something
+ * already written in java does it.
+ */
+public final class Deeds {
+
+	private Deeds() { }
+
+	public static void doTo(Effect effect, NpcEntity npc) {
+		switch (effect) {
+			case Effect.PlayAnimation(String animation, int ticks) -> npc.playGesture(animation, ticks);
+			case Effect.Express(String expression, int ticks) -> npc.express(expression, ticks);
+			case Effect.PlaySound(String sound, float volume, float pitch) ->
+				NpcStudio.LOGGER.warn("A graph asked for the sound \"{}\"; sounds are not wired up yet.",
+					sound);
+			case Effect.GiveItem _, Effect.TakeItem _, Effect.RunCommand _,
+					Effect.PlaceStructure _ ->
+				// Not "not done yet". There is no player in the room, and these three
+				// are all about one. A graph that wants them is a graph that should
+				// have been hung on a conversation.
+				NpcStudio.LOGGER.warn(
+					"A behaviour graph asked for {}, which only means something to a player.",
+					effect.getClass().getSimpleName());
+		}
+	}
+}

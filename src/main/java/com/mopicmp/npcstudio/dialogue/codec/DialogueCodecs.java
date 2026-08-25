@@ -236,6 +236,8 @@ public final class DialogueCodecs {
 			case Node.Branch _ -> "branch";
 			case Node.Act _ -> "act";
 			case Node.End _ -> "end";
+			case Node.Every _ -> "every";
+			case Node.Until _ -> "until";
 		};
 	}
 
@@ -275,6 +277,19 @@ public final class DialogueCodecs {
 				Codec.STRING.fieldOf("next").forGetter(Node.Act::next)
 			).apply(instance, Node.Act::new));
 			case "end" -> Codec.STRING.fieldOf("id").xmap(Node.End::new, Node.End::id);
+			case "every" -> RecordCodecBuilder.<Node.Every>mapCodec(instance -> instance.group(
+				Codec.STRING.fieldOf("id").forGetter(Node.Every::id),
+				// No default. How long to stand still is the whole content of this
+				// node, and a graph that forgot to say is a graph whose author meant
+				// something they did not write.
+				Codec.INT.fieldOf("ticks").forGetter(Node.Every::ticks),
+				Codec.STRING.fieldOf("next").forGetter(Node.Every::next)
+			).apply(instance, Node.Every::new));
+			case "until" -> RecordCodecBuilder.<Node.Until>mapCodec(instance -> instance.group(
+				Codec.STRING.fieldOf("id").forGetter(Node.Until::id),
+				CONDITION.fieldOf("condition").forGetter(Node.Until::condition),
+				Codec.STRING.fieldOf("next").forGetter(Node.Until::next)
+			).apply(instance, Node.Until::new));
 			default -> MapCodec.unit(new Node.End("?"))
 				.validate(_ -> com.mojang.serialization.DataResult.error(() ->
 					"unknown node type \"" + type + "\""));

@@ -173,6 +173,21 @@ public final class DialogueRuntime {
 				store.clearBookmark(player.getUUID(), npc.getUUID());
 				DialogueDisplay.hide(player);
 			}
+			// A graph may stand still and wait — that is what behaviour graphs do
+			// all day. A conversation cannot: there is a player on the other side
+			// of it looking at a box, and nothing here is going to come back and
+			// wake it. So it is refused where it can be seen and read, rather than
+			// leaving somebody staring at a screen that will never change.
+			case DialogueEngine.Screen.Waiting _ -> {
+				store.clearBookmark(player.getUUID(), npc.getUUID());
+				NpcStudio.LOGGER.error(
+					"Dialogue \"{}\" waits at \"{}\" — a conversation cannot wait, "
+						+ "only a behaviour graph can.", dialogue.id(), step.state().currentNode());
+				player.sendSystemMessage(Component.literal(
+					"That conversation waits for something; it has been reset.")
+					.withStyle(ChatFormatting.RED));
+				DialogueDisplay.hide(player);
+			}
 		}
 	}
 

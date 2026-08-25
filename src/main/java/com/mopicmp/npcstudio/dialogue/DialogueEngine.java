@@ -36,9 +36,17 @@ public final class DialogueEngine {
 
 	private DialogueEngine() { }
 
-	/** What the player did. */
+	/** What woke the graph. */
 	public sealed interface Input {
-		/** Opening the dialogue, or coming back to the bookmark. */
+		/**
+		 * Carry on from the bookmark without moving it.
+		 *
+		 * For a conversation this is opening it, or coming back to it. For a
+		 * behaviour graph it is every single tick: the character is standing at
+		 * some node, and the question each tick is whether anything has changed
+		 * enough to let her move on. Both are the same act — resume — which is
+		 * why there is no separate input for a tick.
+		 */
 		record Begin() implements Input { }
 
 		/** Moving past a line. */
@@ -56,6 +64,14 @@ public final class DialogueEngine {
 
 		/** The conversation ended; nothing more to show. */
 		record Finished() implements Screen { }
+
+		/**
+		 * Nobody is being shown anything: the graph is standing still on purpose.
+		 *
+		 * @param ticks how long there is no point asking again. Nought means ask
+		 *              next tick — the graph is watching for something.
+		 */
+		record Waiting(int ticks) implements Screen { }
 
 		/**
 		 * One option as the player sees it.
@@ -142,6 +158,26 @@ public final class DialogueEngine {
 				}
 				case Node.End _ -> {
 					return new Step(now, new Screen.Finished(), List.copyOf(effects));
+				}
+				// The bookmark is moved past the wait before parking, which is what
+				// keeps a timer from needing any state of its own — coming back is
+				// simply carrying on. The price is that a world saved mid-wait
+				// resumes without serving out the remainder, and that is the right
+				// trade: nobody should be able to tell, and the alternative is a
+				// second kind of bookmark to save and get wrong.
+				case Node.Every every -> {
+					now = now.at(every.next());
+					return new Step(now, new Screen.Waiting(Math.max(every.ticks(), 0)),
+						List.copyOf(effects));
+				}
+				// Unlike the timer, this one stays where it is: the bookmark is the
+				// question, and it is asked again on every entry until it holds.
+				case Node.Until until -> {
+					if (until.condition().test(now, world)) {
+						now = now.at(until.next());
+						continue;
+					}
+					return new Step(now, new Screen.Waiting(0), List.copyOf(effects));
 				}
 				case Node.Line line -> {
 					// No length: a line's animation lasts as long as the line does, and
