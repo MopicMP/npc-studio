@@ -80,6 +80,8 @@ public final class NpcCommands {
 			.then(Commands.literal("endless")
 				.then(Commands.literal("on").executes(context -> endless(context, true)))
 				.then(Commands.literal("off").executes(context -> endless(context, false))))
+			.then(Commands.literal("senses")
+				.executes(NpcCommands::senses))
 			.then(Commands.literal("brain")
 				.executes(context -> brain(context, null))
 				.then(Commands.literal("off").executes(context -> brain(context, "")))
@@ -336,6 +338,46 @@ public final class NpcCommands {
 			return 0;
 		}
 		DialogueRuntime.choose(source.getPlayerOrException(), npc, option);
+		return 1;
+	}
+
+	/**
+	 * Every reading a graph could ask for, and what she remembers.
+	 *
+	 * <h2>Why this exists at all</h2>
+	 *
+	 * Because a graph that reads the world is invisible from outside twice over.
+	 * A character standing still may be waiting on a condition that is false, or
+	 * on one that is false because the reading behind it is not what anybody
+	 * thought — and from the outside those are the same character standing still.
+	 *
+	 * Every round trip so far has been spent working that sort of thing out by
+	 * watching a body. This is the cheapest possible way not to.
+	 */
+	private static int senses(CommandContext<CommandSourceStack> context)
+			throws CommandSyntaxException {
+		CommandSourceStack source = context.getSource();
+		NpcEntity npc = nearest(source);
+		if (npc == null) {
+			source.sendFailure(Component.literal("No NPC within 8 blocks."));
+			return 0;
+		}
+		for (String name : com.mopicmp.npcstudio.dialogue.Sense.KNOWN) {
+			var value = com.mopicmp.npcstudio.brain.Senses.of(npc, name);
+			String shown = switch (value) {
+				// Rounded, because these are read at a glance while walking backwards
+				// and "0.6183" is not legible where "0.62" is.
+				case com.mopicmp.npcstudio.dialogue.Value.Num(double d) ->
+					String.format(java.util.Locale.ROOT, "%.2f", d);
+				case com.mopicmp.npcstudio.dialogue.Value.Text(String t) -> t;
+				case com.mopicmp.npcstudio.dialogue.Value.Flag(boolean f) -> f ? "yes" : "no";
+			};
+			source.sendSuccess(() -> Component.literal("  " + name + " = " + shown), false);
+		}
+		var memory = npc.memory();
+		source.sendSuccess(() -> Component.literal(memory.isEmpty()
+			? "she remembers nothing about herself"
+			: "remembers: " + new java.util.TreeMap<>(memory)), false);
 		return 1;
 	}
 

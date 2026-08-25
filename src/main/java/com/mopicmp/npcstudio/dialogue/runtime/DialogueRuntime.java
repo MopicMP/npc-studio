@@ -62,7 +62,7 @@ public final class DialogueRuntime {
 
 		DialogueEngine.Input input;
 		if (state == null) {
-			state = fresh(store, player, dialogue);
+			state = fresh(store, player, npc, dialogue);
 			input = new DialogueEngine.Input.Begin();
 		} else if (dialogue.node(state.currentNode()) instanceof Node.Line
 				&& DialogueDisplay.isShowing(player, npc)) {
@@ -108,15 +108,18 @@ public final class DialogueRuntime {
 		return new DialogueState(node,
 			store.varsOf(player.getUUID()),
 			store.worldVars(),
+			npc.memory(),
 			store.visitedBy(player.getUUID()),
 			dialogue.variableTypes());
 	}
 
 	/** A fresh conversation still starts with everything the player already knows. */
-	private static DialogueState fresh(DialogueSaveData store, ServerPlayer player, Dialogue dialogue) {
+	private static DialogueState fresh(DialogueSaveData store, ServerPlayer player,
+			NpcEntity npc, Dialogue dialogue) {
 		return new DialogueState(dialogue.start(),
 			store.varsOf(player.getUUID()),
 			store.worldVars(),
+			npc.memory(),
 			store.visitedBy(player.getUUID()),
 			dialogue.variableTypes());
 	}
@@ -126,7 +129,7 @@ public final class DialogueRuntime {
 		DialogueSaveData store = DialogueSaveData.of(player.level());
 		DialogueEngine.Step step;
 		try {
-			step = DialogueEngine.step(dialogue, state, input, worldFor(player));
+			step = DialogueEngine.step(dialogue, state, input, worldFor(player, npc));
 		} catch (DialogueEngine.DialogueFault fault) {
 			// A broken dialogue must not take the player down with it. The bookmark
 			// is dropped so a second click starts cleanly instead of hitting the
@@ -147,6 +150,10 @@ public final class DialogueRuntime {
 		// case where it matters: what a conversation taught must outlive it.
 		store.remember(player.getUUID(), step.state().playerVars(),
 			step.state().visited(), step.state().worldVars());
+		// And what the conversation taught the character about herself, which lives
+		// on her rather than in the world's book — twenty guards sharing one script
+		// each remember their own half of it.
+		npc.rememberOnly(step.state().characterVars());
 
 		switch (step.screen()) {
 			case DialogueEngine.Screen.Line line -> {
@@ -192,15 +199,33 @@ public final class DialogueRuntime {
 	}
 
 
-	/** The only questions a condition may ask about the world. */
-	private static Condition.World worldFor(ServerPlayer player) {
-		return (itemId, count) -> {
-			Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(itemId));
-			int found = 0;
-			for (ItemStack stack : player.getInventory()) {
-				if (stack.is(item)) found += stack.getCount();
+	/**
+	 * The questions a condition may ask during a conversation.
+	 *
+	 * {@code hasItem} is about the player's pockets, because a conversation is
+	 * about the player — the same question means her own hands when a behaviour
+	 * graph asks it, and both readings are right for whoever is asking.
+	 *
+	 * The senses are the NPC's, and come free: the machinery was built for
+	 * behaviour, and a conversation that can ask whether the guard is already
+	 * alert is worth having for nothing.
+	 */
+	private static Condition.World worldFor(ServerPlayer player, NpcEntity npc) {
+		return new Condition.World() {
+			@Override
+			public boolean hasItem(String itemId, int count) {
+				Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(itemId));
+				int found = 0;
+				for (ItemStack stack : player.getInventory()) {
+					if (stack.is(item)) found += stack.getCount();
+				}
+				return found >= count;
 			}
-			return found >= count;
+
+			@Override
+			public com.mopicmp.npcstudio.dialogue.Value sense(String name) {
+				return com.mopicmp.npcstudio.brain.Senses.of(npc, name);
+			}
 		};
 	}
 

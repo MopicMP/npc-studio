@@ -13,6 +13,7 @@ import com.mopicmp.npcstudio.dialogue.Effect;
 import com.mopicmp.npcstudio.dialogue.Node;
 import com.mopicmp.npcstudio.dialogue.Presentation;
 import com.mopicmp.npcstudio.dialogue.Scope;
+import com.mopicmp.npcstudio.dialogue.Sense;
 import com.mopicmp.npcstudio.dialogue.Value;
 
 import net.minecraft.resources.Identifier;
@@ -90,6 +91,51 @@ public final class DialogueRegistry {
 	public static void registerBuiltIn() {
 		register(example());
 		register(torchbearer());
+		register(doorman());
+	}
+
+	/**
+	 * A behaviour graph that perceives and remembers.
+	 *
+	 * <h2>What it demonstrates, and why in this order</h2>
+	 *
+	 * She waits until somebody is within four blocks, then greets them — once.
+	 * After that she nods instead, for as long as that person stays; when they
+	 * walk away past eight blocks she forgets, and the next arrival is a stranger
+	 * again.
+	 *
+	 * Every piece of the step is in that sentence. {@code player.distance} is a
+	 * reading she cannot write. {@code greeted} is a variable of her own that
+	 * outlives a restart. And the forgetting is the part worth watching: without
+	 * it she would greet the first person who ever came near and nod at everybody
+	 * afterwards, for ever, which is exactly what a character with memory and no
+	 * way to let go of it does.
+	 *
+	 * The hysteresis is deliberate too — greet at four, forget at eight. Standing
+	 * on the line at a single threshold makes her greet, forget, greet, forget as
+	 * you shift your weight.
+	 */
+	private static Dialogue doorman() {
+		return Dialogue.builder("doorman")
+			.variable("greeted", "flag")
+			.start("waiting")
+			.add(new Node.Until("waiting",
+				new Condition.Compare(Sense.PLAYER_DISTANCE, Scope.SENSE,
+					Condition.Op.LT, Value.of(4)), "known?"))
+			.add(new Node.Branch("known?", List.of(new Node.Arm(
+				new Condition.Compare("greeted", Scope.CHARACTER, Condition.Op.EQ, Value.of(true)),
+				"nod")), "greet"))
+			.add(new Node.Act("greet", new Effect.PlayAnimation("wave", 40), "learn"))
+			.add(new Node.Set("learn", "greeted", Scope.CHARACTER, Value.of(true), "settle"))
+			.add(new Node.Act("nod", new Effect.PlayAnimation("nod", 30), "settle"))
+			// Long enough that she is not waving continuously at somebody standing
+			// in front of her, short enough that she notices them leaving.
+			.add(new Node.Every("settle", 40, "gone?"))
+			.add(new Node.Until("gone?",
+				new Condition.Compare(Sense.PLAYER_DISTANCE, Scope.SENSE,
+					Condition.Op.GT, Value.of(8)), "forget"))
+			.add(new Node.Set("forget", "greeted", Scope.CHARACTER, Value.of(false), "waiting"))
+			.build();
 	}
 
 	/**

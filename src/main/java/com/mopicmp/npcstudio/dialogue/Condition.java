@@ -45,6 +45,23 @@ public sealed interface Condition {
 	 */
 	interface World {
 		boolean hasItem(String item, int count);
+
+		/**
+		 * What a character perceives, by name — see {@link Scope#SENSE}.
+		 *
+		 * Defaulted rather than abstract, and not out of politeness to the callers
+		 * that already exist: a world with nobody in it genuinely has no senses.
+		 * A dialogue being tested from a unit test is such a world, and answering
+		 * "no" to every reading is the honest answer there, not a stub.
+		 *
+		 * Never null. An unknown name reads as false, for the same reason an
+		 * unwritten variable does: a graph asking about something that is not
+		 * there is a mistake for the validator to catch before it runs, not
+		 * something to crash a character over.
+		 */
+		default Value sense(String name) {
+			return new Value.Flag(false);
+		}
 	}
 
 	default boolean test(DialogueState state, World world) {
@@ -56,7 +73,8 @@ public sealed interface Condition {
 			case Visited(String node) -> state.visited().contains(node);
 			case HasItem(String item, int count) -> world.hasItem(item, count);
 			case Compare(String name, Scope scope, Op op, Value wanted) -> {
-				Value actual = state.get(name, scope);
+				// A reading is asked of the world; everything else is remembered.
+				Value actual = scope == Scope.SENSE ? world.sense(name) : state.get(name, scope);
 				var order = actual.compareTo(wanted);
 				// Types disagree: the comparison has no answer. Equality is still
 				// meaningful — a number is never equal to a piece of text — but an

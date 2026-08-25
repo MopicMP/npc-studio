@@ -180,11 +180,10 @@ public class NodePanel {
 
 				labels.add(new Label("belongs to", x, y - 10));
 				add.accept(new FlatButton(x, y, fieldWidth, 18,
-					Component.literal(set.scope() == Scope.PLAYER ? "the player" : "the world"),
+					Component.literal(nameOf(set.scope())),
 					0xFF66BB6A, () -> {
 						Node.Set now = current(Node.Set.class);
-						put(new Node.Set(now.id(), now.variable(),
-							now.scope() == Scope.PLAYER ? Scope.WORLD : Scope.PLAYER,
+						put(new Node.Set(now.id(), now.variable(), nextWritable(now.scope()),
 							now.value(), now.next()));
 						screen.refreshPanel();
 					}));
@@ -500,6 +499,43 @@ public class NodePanel {
 		state.replace(index, renamed(node, to));
 		if (state.start().equals(from)) state.start(to);
 		screen.renamed(from, to);
+	}
+
+	/**
+	 * Who a variable belongs to, in words rather than in enum names.
+	 *
+	 * A sense is here for completeness only — it cannot be reached from the button
+	 * below, because a sense cannot be written. Leaving it out of this switch
+	 * instead would mean a graph that somehow held one showed as "the world", which
+	 * is the more dangerous kind of wrong: it reads as correct.
+	 */
+	private static String nameOf(Scope scope) {
+		return switch (scope) {
+			case PLAYER -> "the player";
+			case WORLD -> "the world";
+			case CHARACTER -> "this character";
+			case SENSE -> "what she senses (cannot be set)";
+		};
+	}
+
+	/**
+	 * The next scope a `set` node may write to, cycling.
+	 *
+	 * <h2>Why this is not a two-way toggle any more</h2>
+	 *
+	 * It was, when there were two scopes, and it was written as "player, else
+	 * world". A third scope turned that into a quiet corruption: a node belonging
+	 * to the character read as "the world" — because it was not PLAYER — and one
+	 * click moved it to PLAYER, changing which box the graph writes to without
+	 * anybody having asked for it.
+	 */
+	private static Scope nextWritable(Scope scope) {
+		return switch (scope) {
+			case PLAYER -> Scope.WORLD;
+			case WORLD -> Scope.CHARACTER;
+			// Including the way out of a scope that should never have got here.
+			case CHARACTER, SENSE -> Scope.PLAYER;
+		};
 	}
 
 	private static Node renamed(Node node, String id) {

@@ -107,7 +107,18 @@ public final class DialogueValidator {
 			switch (node) {
 				case Node.Choice choice -> choice.options().forEach(o -> o.condition().collectVariables(uses));
 				case Node.Branch branch -> branch.arms().forEach(a -> a.condition().collectVariables(uses));
+				// A question a character stands and waits on is as much a condition as
+				// one on a branch, and was missed here at first — a typo inside `until`
+				// meant a character waiting for something that could never come true,
+				// which from outside is a character doing nothing at all.
+				case Node.Until until -> until.condition().collectVariables(uses);
 				case Node.Set set -> {
+					if (set.scope() == Scope.SENSE) {
+						found.add(new Problem(Severity.ERROR, node.id(),
+							"writes to \"" + set.variable() + "\", which is something she "
+								+ "perceives rather than something she can be told"));
+						break;
+					}
 					String type = declared.get(set.variable());
 					if (type == null) {
 						found.add(new Problem(Severity.ERROR, node.id(),
@@ -122,6 +133,22 @@ public final class DialogueValidator {
 			}
 
 			for (Condition.VariableUse use : uses) {
+				// A reading is not declared by the graph — it is offered by the
+				// character, and the list of them is fixed. So the two checks are the
+				// same shape against a different book.
+				if (use.scope() == Scope.SENSE) {
+					String kind = Sense.typeOf(use.name());
+					if (kind == null) {
+						found.add(new Problem(Severity.ERROR, node.id(),
+							"asks about \"" + use.name() + "\", which is not something she can "
+								+ "sense. Known: " + String.join(", ", Sense.KNOWN)));
+					} else if (!kind.equals(use.comparedWith().typeName())) {
+						found.add(new Problem(Severity.ERROR, node.id(),
+							"compares \"" + use.name() + "\" (" + kind + ") against a "
+								+ use.comparedWith().typeName() + " — that can never match"));
+					}
+					continue;
+				}
 				String type = declared.get(use.name());
 				if (type == null) {
 					found.add(new Problem(Severity.ERROR, node.id(),

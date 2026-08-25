@@ -234,6 +234,7 @@ class DialogueEngineTest {
 				atChoice.state().currentNode(),
 				atChoice.state().playerVars(),
 				atChoice.state().worldVars(),
+				atChoice.state().characterVars(),
 				atChoice.state().visited(),
 				d.variableTypes());
 
@@ -295,7 +296,7 @@ class DialogueEngineTest {
 		@Test
 		@DisplayName("comparing different types is false rather than a crash")
 		void mismatchedTypesDoNotThrow() {
-			var state = new DialogueState("n", Map.of("gold", Value.of(10)), Map.of(), Set.of(),
+			var state = new DialogueState("n", Map.of("gold", Value.of(10)), Map.of(), Map.of(), Set.of(),
 				Map.of("gold", "number"));
 
 			var wrong = new Condition.Compare("gold", Scope.PLAYER, Condition.Op.GT, Value.of("many"));
@@ -309,7 +310,7 @@ class DialogueEngineTest {
 		@Test
 		@DisplayName("and, or and not combine as expected")
 		void logicWorks() {
-			var state = new DialogueState("n", Map.of("gold", Value.of(10)), Map.of(), Set.of("shop"),
+			var state = new DialogueState("n", Map.of("gold", Value.of(10)), Map.of(), Map.of(), Set.of("shop"),
 				Map.of("gold", "number"));
 
 			var rich = new Condition.Compare("gold", Scope.PLAYER, Condition.Op.GE, Value.of(5));

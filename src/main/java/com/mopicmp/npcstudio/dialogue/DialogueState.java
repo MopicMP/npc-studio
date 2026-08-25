@@ -25,24 +25,42 @@ public final class DialogueState {
 	private final String currentNode;
 	private final Map<String, Value> playerVars;
 	private final Map<String, Value> worldVars;
+	private final Map<String, Value> characterVars;
 	private final Set<String> visited;
 	private final Map<String, String> declaredTypes;
 
 	public DialogueState(String currentNode,
 			Map<String, Value> playerVars,
 			Map<String, Value> worldVars,
+			Map<String, Value> characterVars,
 			Set<String> visited,
 			Map<String, String> declaredTypes) {
 		this.currentNode = currentNode;
 		this.playerVars = Map.copyOf(playerVars);
 		this.worldVars = Map.copyOf(worldVars);
+		this.characterVars = Map.copyOf(characterVars);
 		this.visited = Set.copyOf(visited);
 		this.declaredTypes = Map.copyOf(declaredTypes);
 	}
 
-	/** A fresh bookmark at the start of a dialogue. */
+	/** A fresh bookmark at the start of a dialogue, with nothing remembered. */
 	public static DialogueState start(Dialogue dialogue, Map<String, Value> worldVars) {
-		return new DialogueState(dialogue.start(), Map.of(), worldVars, Set.of(), dialogue.variableTypes());
+		return start(dialogue, worldVars, Map.of());
+	}
+
+	/**
+	 * A fresh bookmark for a character who already knows things.
+	 *
+	 * The two are separate because they are forgotten at different moments: where
+	 * she had got to is dropped whenever she is interrupted, and what she learnt
+	 * is not. A character who begins her graph again but still knows she has
+	 * already raised the alarm is behaving correctly; one who forgets both every
+	 * time she is disturbed raises it for ever.
+	 */
+	public static DialogueState start(Dialogue dialogue, Map<String, Value> worldVars,
+			Map<String, Value> characterVars) {
+		return new DialogueState(dialogue.start(), Map.of(), worldVars, characterVars,
+			Set.of(), dialogue.variableTypes());
 	}
 
 	public String currentNode() { return currentNode; }
@@ -62,28 +80,56 @@ public final class DialogueState {
 	 * runtime. The validator is where an *undeclared* name is caught.
 	 */
 	public Value get(String name, Scope scope) {
-		Map<String, Value> from = scope == Scope.PLAYER ? playerVars : worldVars;
+		Map<String, Value> from = switch (scope) {
+			case PLAYER -> playerVars;
+			case WORLD -> worldVars;
+			case CHARACTER -> characterVars;
+			// Nothing is stored for a reading — it is asked of the world, by
+			// Condition.test, which never gets this far with one. Reaching here means
+			// somebody read a sense off the state, and the empty map is the honest
+			// answer: there is nothing here to read.
+			case SENSE -> Map.of();
+		};
 		Value found = from.get(name);
 		if (found != null) return found;
 		String type = declaredTypes.get(name);
 		return type == null ? new Value.Flag(false) : Value.defaultFor(type);
 	}
 
+	public Map<String, Value> characterVars() { return characterVars; }
+
 	public DialogueState at(String node) {
-		return new DialogueState(node, playerVars, worldVars, visited, declaredTypes);
+		return new DialogueState(node, playerVars, worldVars, characterVars, visited, declaredTypes);
 	}
 
 	public DialogueState withVisited(String node) {
 		Set<String> next = new HashSet<>(visited);
 		next.add(node);
-		return new DialogueState(currentNode, playerVars, worldVars, next, declaredTypes);
+		return new DialogueState(currentNode, playerVars, worldVars, characterVars, next, declaredTypes);
 	}
 
+	/**
+	 * Writes a variable.
+	 *
+	 * A sense is refused here rather than silently dropped: it is the last line of
+	 * a defence the validator already mounts, and a graph that got this far while
+	 * assigning to what a character feels is a graph nobody checked.
+	 */
 	public DialogueState with(String name, Scope scope, Value value) {
+		if (scope == Scope.SENSE) {
+			throw new IllegalArgumentException(
+				"\"" + name + "\" is something she perceives, not something she can be told");
+		}
 		Map<String, Value> player = new HashMap<>(playerVars);
 		Map<String, Value> world = new HashMap<>(worldVars);
-		(scope == Scope.PLAYER ? player : world).put(name, value);
-		return new DialogueState(currentNode, player, world, visited, declaredTypes);
+		Map<String, Value> character = new HashMap<>(characterVars);
+		switch (scope) {
+			case PLAYER -> player.put(name, value);
+			case WORLD -> world.put(name, value);
+			case CHARACTER -> character.put(name, value);
+			case SENSE -> throw new AssertionError();
+		}
+		return new DialogueState(currentNode, player, world, character, visited, declaredTypes);
 	}
 
 	@Override
@@ -91,6 +137,7 @@ public final class DialogueState {
 		return "DialogueState[at=" + currentNode
 			+ ", player=" + new java.util.TreeMap<>(playerVars)
 			+ ", world=" + new java.util.TreeMap<>(worldVars)
+			+ ", character=" + new java.util.TreeMap<>(characterVars)
 			+ ", visited=" + Collections.unmodifiableSet(new java.util.TreeSet<>(visited)) + "]";
 	}
 }

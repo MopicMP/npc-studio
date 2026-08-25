@@ -689,17 +689,58 @@ public class NpcEntity extends Avatar {
 	 */
 	private com.mopicmp.npcstudio.dialogue.DialogueState mind;
 
+	/**
+	 * What she knows about herself, which is a different thing and does survive.
+	 *
+	 * The two are forgotten at different moments and that is the whole reason they
+	 * are apart. Where she had got to is dropped whenever she is interrupted —
+	 * being interrupted is ordinary, and a graph edited in between would leave her
+	 * standing at a node that no longer exists. What she learnt is not dropped: a
+	 * character who begins her rounds again but still knows she has raised the
+	 * alarm is behaving correctly, and one who forgets raises it for ever.
+	 */
+	private java.util.Map<String, com.mopicmp.npcstudio.dialogue.Value> memory = java.util.Map.of();
+
+	private static final com.mojang.serialization.Codec<
+			java.util.Map<String, com.mopicmp.npcstudio.dialogue.Value>> MEMORY_CODEC =
+		com.mojang.serialization.Codec.unboundedMap(
+			com.mojang.serialization.Codec.STRING,
+			com.mopicmp.npcstudio.dialogue.codec.DialogueCodecs.VALUE);
+
+	public java.util.Map<String, com.mopicmp.npcstudio.dialogue.Value> memory() {
+		return memory;
+	}
+
 	/** Her place in the graph, started from the beginning if she has none. */
 	public com.mopicmp.npcstudio.dialogue.DialogueState mind(
 			com.mopicmp.npcstudio.dialogue.Dialogue graph) {
 		if (mind == null) {
-			mind = com.mopicmp.npcstudio.dialogue.DialogueState.start(graph, java.util.Map.of());
+			mind = com.mopicmp.npcstudio.dialogue.DialogueState.start(
+				graph, java.util.Map.of(), memory);
 		}
 		return mind;
 	}
 
+	/**
+	 * Keeps the bookmark, and keeps what was learnt somewhere it will outlive it.
+	 *
+	 * Both come out of the same value, which is why this is one call: forgetting to
+	 * write one of them back is a bug that shows up as a character who cannot
+	 * learn, hours later, in somebody else's world.
+	 */
 	public void remember(com.mopicmp.npcstudio.dialogue.DialogueState now) {
 		mind = now;
+		memory = now.characterVars();
+	}
+
+	/** What a conversation taught her, kept by the same rule as the rest. */
+	public void rememberOnly(
+			java.util.Map<String, com.mopicmp.npcstudio.dialogue.Value> learnt) {
+		memory = java.util.Map.copyOf(learnt);
+		// Her train of thought is now built on something that has changed under it.
+		// Starting the graph again is cheap and correct; carrying on with a stale
+		// copy of what she knows is neither.
+		mind = null;
 	}
 
 	/** Ticks left before the graph is worth asking again. */
@@ -1267,6 +1308,10 @@ public class NpcEntity extends Avatar {
 		// equipment for everybody. Only the mark on the quiver is ours.
 		output.putBoolean("Endless", endless);
 		output.putString("Brain", brainId);
+		// What she has learnt about herself. Not the bookmark — see `memory`.
+		if (!memory.isEmpty()) {
+			output.store("Memory", MEMORY_CODEC, memory);
+		}
 	}
 
 	@Override
@@ -1293,6 +1338,7 @@ public class NpcEntity extends Avatar {
 		setWatchful(input.getBooleanOr("Watchful", false));
 		endless = input.getBooleanOr("Endless", false);
 		setBrainId(input.getStringOr("Brain", ""));
+		memory = input.read("Memory", MEMORY_CODEC).orElse(java.util.Map.of());
 		wardrobe.clear();
 		int outfits = input.getIntOr("Outfits", 0);
 		for (int i = 0; i < outfits; i++) {

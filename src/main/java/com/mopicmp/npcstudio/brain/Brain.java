@@ -130,7 +130,7 @@ public final class Brain {
 	}
 
 	/**
-	 * The only questions a character may ask about the world — for now, one.
+	 * The only questions a character may ask about the world.
 	 *
 	 * <h2>Why the same question means something different here</h2>
 	 *
@@ -139,19 +139,29 @@ public final class Brain {
 	 * about, and the honest reading of "do you have one" is her own hands.
 	 *
 	 * That is not a compromise, it is the shape of the thing: a condition is a
-	 * question asked of whoever the graph is about. The window widens in the next
-	 * step — where is the target, how far, can she see it — and this is the first
-	 * pane of it.
+	 * question asked of whoever the graph is about.
+	 *
+	 * The rest of the window is {@link Senses}, which is a different sort of
+	 * question: not what she has but what she perceives. Those are read-only and
+	 * live in their own scope — see {@link com.mopicmp.npcstudio.dialogue.Scope#SENSE}.
 	 */
 	public static Condition.World worldFor(NpcEntity npc) {
-		return (itemId, count) -> {
-			Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(itemId));
-			int found = 0;
-			for (InteractionHand hand : InteractionHand.values()) {
-				ItemStack stack = npc.getItemInHand(hand);
-				if (stack.is(item)) found += stack.getCount();
+		return new Condition.World() {
+			@Override
+			public boolean hasItem(String itemId, int count) {
+				Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(itemId));
+				int found = 0;
+				for (InteractionHand hand : InteractionHand.values()) {
+					ItemStack stack = npc.getItemInHand(hand);
+					if (stack.is(item)) found += stack.getCount();
+				}
+				return found >= count;
 			}
-			return found >= count;
+
+			@Override
+			public com.mopicmp.npcstudio.dialogue.Value sense(String name) {
+				return Senses.of(npc, name);
+			}
 		};
 	}
 }
