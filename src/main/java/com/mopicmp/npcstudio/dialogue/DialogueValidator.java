@@ -178,6 +178,7 @@ public final class DialogueValidator {
 				case Effect.WalkTo(String at, float _) -> at;
 				case Effect.LookAt(String at) -> at;
 				case Effect.Fire(String at) -> at;
+				case Effect.Strike(String at) -> at;
 				default -> null;
 			};
 			if (mark == null || Mark.known(mark)) continue;

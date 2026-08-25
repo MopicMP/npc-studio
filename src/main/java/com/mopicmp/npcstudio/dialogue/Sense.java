@@ -80,9 +80,15 @@ public final class Sense {
 	/** How far the nearest living player is. */
 	public static final String PLAYER_DISTANCE = "player.distance";
 
+	/** Whether another character running the same graph is in sight. */
+	public static final String KIN = "kin";
+
+	/** And how far off, or a thousand when there is none. */
+	public static final String KIN_DISTANCE = "kin.distance";
+
 	public static final List<String> KNOWN = List.of(
 		ALARM, MOOD, LEAD, LEAD_STRENGTH, LEAD_URGENCY, LEAD_SEEN, LEAD_DISTANCE,
-		WALKING, ARMED, WEAPON, HAND, PLAYER_DISTANCE);
+		WALKING, ARMED, WEAPON, HAND, PLAYER_DISTANCE, KIN, KIN_DISTANCE);
 
 	/**
 	 * A distance meaning "nobody" or "nothing".
@@ -108,9 +114,10 @@ public final class Sense {
 	 */
 	public static String typeOf(String name) {
 		return switch (name) {
-			case ALARM, LEAD_STRENGTH, LEAD_URGENCY, LEAD_DISTANCE, PLAYER_DISTANCE -> "number";
+			case ALARM, LEAD_STRENGTH, LEAD_URGENCY, LEAD_DISTANCE, PLAYER_DISTANCE,
+				KIN_DISTANCE -> "number";
 			case MOOD, WEAPON, HAND -> "text";
-			case LEAD, LEAD_SEEN, WALKING, ARMED -> "flag";
+			case LEAD, LEAD_SEEN, WALKING, ARMED, KIN -> "flag";
 			default -> null;
 		};
 	}

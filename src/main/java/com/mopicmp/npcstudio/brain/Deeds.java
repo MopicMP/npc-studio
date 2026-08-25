@@ -42,6 +42,7 @@ public final class Deeds {
 			}
 			case Effect.Halt _ -> npc.halt();
 			case Effect.LookAt(String mark) -> npc.lookAt(mark);
+			case Effect.Strike(String mark) -> npc.strikeAt(mark);
 			case Effect.Fire(String mark) -> {
 				// How long to hold it is the weapon's business rather than the
 				// author's. A graph that had to name a number of ticks would be a

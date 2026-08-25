@@ -4,6 +4,7 @@ import com.mopicmp.npcstudio.dialogue.Mark;
 import com.mopicmp.npcstudio.entity.NpcEntity;
 import com.mopicmp.npcstudio.foe.Lead;
 
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
@@ -26,6 +27,52 @@ public final class Marks {
 
 	private Marks() { }
 
+	/**
+	 * As far as one character can be from another and still be found.
+	 *
+	 * Generous, because this is not eyesight - a graph asking about kin is asking
+	 * who else is about, and the deciding about range is the graph's own.
+	 */
+	public static final double WITHIN = 32.0;
+
+	/**
+	 * The living thing a mark names, or null when it names a place or nothing.
+	 *
+	 * Needed because you cannot hit a coordinate. A lead is a guess at a place
+	 * even when it came from seeing somebody, so it deliberately answers null:
+	 * striking at where you thought somebody was is not a thing to build on.
+	 */
+	public static LivingEntity creature(NpcEntity npc, String mark) {
+		return switch (mark) {
+			case Mark.PLAYER -> nearest(npc);
+			case Mark.KIN -> kin(npc);
+			default -> null;
+		};
+	}
+
+	/**
+	 * The nearest other character running the same graph, in sight.
+	 *
+	 * Line of sight is required, so two of them either side of a wall do not
+	 * fight through it. Everything else about the choosing - how close is close
+	 * enough, whether to approach - belongs to the graph.
+	 */
+	public static NpcEntity kin(NpcEntity npc) {
+		if (npc.brainId().isEmpty()) return null;
+		NpcEntity best = null;
+		double closest = WITHIN * WITHIN;
+		var near = npc.getBoundingBox().inflate(WITHIN);
+		for (NpcEntity other : npc.level().getEntitiesOfClass(NpcEntity.class, near)) {
+			if (other == npc || !other.isAlive()) continue;
+			if (!npc.brainId().equals(other.brainId())) continue;
+			double away = npc.distanceToSqr(other);
+			if (away >= closest || !npc.hasLineOfSight(other)) continue;
+			closest = away;
+			best = other;
+		}
+		return best;
+	}
+
 	/** Where to walk to, or null when the mark names nothing at the moment. */
 	public static Vec3 feet(NpcEntity npc, String mark) {
 		return switch (mark) {
@@ -37,6 +84,10 @@ public final class Marks {
 				Player player = nearest(npc);
 				yield player == null ? null : player.position();
 			}
+			case Mark.KIN -> {
+				NpcEntity other = kin(npc);
+				yield other == null ? null : other.position();
+			}
 			case Mark.POST -> npc.post();
 			default -> null;
 		};
@@ -44,10 +95,8 @@ public final class Marks {
 
 	/** Where to look, which is a face when there is one. */
 	public static Vec3 eyes(NpcEntity npc, String mark) {
-		if (Mark.PLAYER.equals(mark)) {
-			Player player = nearest(npc);
-			return player == null ? null : player.getEyePosition();
-		}
+		LivingEntity somebody = creature(npc, mark);
+		if (somebody != null) return somebody.getEyePosition();
 		// A lead is a guess at a place rather than a creature, and it has already
 		// been levelled to her own eye height by the watching — looking at the
 		// ground under a noise is not what anybody means by looking at it.

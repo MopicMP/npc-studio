@@ -361,6 +361,8 @@ public class NodePanel {
 				y = markButton(x, y, width, "look at", mark, add, Effect.LookAt::new);
 			case Effect.Fire(String mark) ->
 				y = markButton(x, y, width, "shoot at", mark, add, Effect.Fire::new);
+			case Effect.Strike(String mark) ->
+				y = markButton(x, y, width, "swing at", mark, add, Effect.Strike::new);
 			case Effect.Halt _ -> {
 				// Nothing to fill in. Said out loud rather than left blank, because an
 				// empty form reads as one that failed to load.
@@ -394,6 +396,7 @@ public class NodePanel {
 		return switch (mark) {
 			case com.mopicmp.npcstudio.dialogue.Mark.LEAD -> "what she has noticed";
 			case com.mopicmp.npcstudio.dialogue.Mark.PLAYER -> "the nearest player";
+			case com.mopicmp.npcstudio.dialogue.Mark.KIN -> "another with the same brain";
 			case com.mopicmp.npcstudio.dialogue.Mark.POST -> "where she was posted";
 			case com.mopicmp.npcstudio.dialogue.Mark.NOTHING -> "nothing";
 			default -> mark;
@@ -476,6 +479,7 @@ public class NodePanel {
 			case Effect.Halt _ -> "stop walking";
 			case Effect.LookAt _ -> "look at something";
 			case Effect.Fire _ -> "shoot at something";
+			case Effect.Strike _ -> "swing at something";
 		};
 	}
 
@@ -494,7 +498,8 @@ public class NodePanel {
 			case Effect.WalkTo _ -> new Effect.Halt();
 			case Effect.Halt _ -> new Effect.LookAt(com.mopicmp.npcstudio.dialogue.Mark.PLAYER);
 			case Effect.LookAt _ -> new Effect.Fire(com.mopicmp.npcstudio.dialogue.Mark.PLAYER);
-			case Effect.Fire _ -> new Effect.PlayAnimation("wave",
+			case Effect.Fire _ -> new Effect.Strike(com.mopicmp.npcstudio.dialogue.Mark.KIN);
+			case Effect.Strike _ -> new Effect.PlayAnimation("wave",
 				com.mopicmp.npcstudio.client.entity.NpcGestures.lengthOf("wave"));
 		};
 	}

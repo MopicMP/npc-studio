@@ -94,6 +94,85 @@ public final class DialogueRegistry {
 		register(torchbearer());
 		register(doorman());
 		register(sentry());
+		register(duel());
+	}
+
+	/**
+	 * Two characters with this graph will fight each other.
+	 *
+	 * <h2>What it is for</h2>
+	 *
+	 * Put it on two of them, stand back. It is the shortest thing that exercises
+	 * everything built so far at once: finding somebody, deciding what to do about
+	 * them, walking, turning, shooting and hitting — all of it in nodes.
+	 *
+	 * <h2>Same graph means "the same sort of character", not "a friend"</h2>
+	 *
+	 * {@link Mark#KIN} finds the nearest other character running the same graph.
+	 * Whether that makes them a comrade or an opponent is the graph's own
+	 * business, and this one has taken a view. A patrol graph using the same mark
+	 * would keep formation with them instead.
+	 *
+	 * It is also why this is a duel and not a massacre: a third character with a
+	 * different brain is not kin, and nobody here has any interest in her.
+	 *
+	 * <h2>What she does about it</h2>
+	 *
+	 * With a bow and something to shoot, and the other one more than five blocks
+	 * off, she shoots. Within reach, she swings. In between, she closes the
+	 * distance at a run. Whatever happens, she waits about half a second and looks
+	 * again, which is what stops the whole thing being decided in one tick.
+	 *
+	 * <b>Empty hands still work.</b> Nothing in it requires a weapon: two unarmed
+	 * characters walk up to each other and punch, because a bare fist is a real
+	 * attack in this game and she now has the attack damage to make one. That
+	 * matters for a first test — nothing has to be given out for something to
+	 * happen.
+	 *
+	 * <h2>Where it stops short, honestly</h2>
+	 *
+	 * A gun from a datapack reads as {@code swung} and would want the swing rather
+	 * than the trigger, and whether swinging at empty air sets one off has not
+	 * been tested. So this checks for {@code drawn} — a bow, a crossbow's cousin,
+	 * a trident — and everything else falls through to closing and hitting.
+	 */
+	private static Dialogue duel() {
+		return Dialogue.builder("duel")
+			.start("find")
+			// Nothing at all until there is somebody. Standing here costs one
+			// question a tick, which is what looking for somebody costs.
+			.add(new Node.Until("find",
+				new Condition.Compare(Sense.KIN, Scope.SENSE, Condition.Op.EQ, Value.of(true)),
+				"decide"))
+			.add(new Node.Branch("decide", List.of(
+				// Shooting, but only from far enough away that it is the sensible
+				// thing. A bow at arm's length is a club held by the wrong end.
+				new Node.Arm(new Condition.All(List.of(
+					new Condition.Compare(Sense.WEAPON, Scope.SENSE,
+						Condition.Op.EQ, Value.of("drawn")),
+					new Condition.Compare(Sense.KIN_DISTANCE, Scope.SENSE,
+						Condition.Op.GT, Value.of(5)))), "aim"),
+				// Close enough to hit. Under the reach rather than at it, so she is
+				// not swinging from the exact edge and missing every time.
+				new Node.Arm(new Condition.Compare(Sense.KIN_DISTANCE, Scope.SENSE,
+					Condition.Op.LT, Value.of(2.5)), "stop")),
+				"close"))
+
+			.add(new Node.Act("aim", new Effect.LookAt(Mark.KIN), "shoot"))
+			.add(new Node.Act("shoot", new Effect.Fire(Mark.KIN), "again"))
+
+			// Stopping first, or she walks through the person she is hitting and
+			// they shuffle across the floor together.
+			.add(new Node.Act("stop", new Effect.Halt(), "face"))
+			.add(new Node.Act("face", new Effect.LookAt(Mark.KIN), "hit"))
+			.add(new Node.Act("hit", new Effect.Strike(Mark.KIN), "again"))
+
+			.add(new Node.Act("close", new Effect.WalkTo(Mark.KIN, 1f), "again"))
+
+			// Half a second. Long enough that the whole fight is not decided in one
+			// tick, short enough that she notices the other one moving.
+			.add(new Node.Every("again", 10, "find"))
+			.build();
 	}
 
 	/**

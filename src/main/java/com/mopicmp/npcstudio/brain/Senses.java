@@ -86,6 +86,14 @@ public final class Senses {
 			// first wants to know, and what makes one testable by walking up to her.
 			case Sense.PLAYER_DISTANCE -> new Value.Num(nearestPlayer(npc));
 
+			// Somebody else running the same graph. Whether that makes them a
+			// comrade or an opponent is the graph's own business — see Mark.KIN.
+			case Sense.KIN -> new Value.Flag(Marks.kin(npc) != null);
+			case Sense.KIN_DISTANCE -> {
+				var other = Marks.kin(npc);
+				yield new Value.Num(other == null ? Sense.OUT_OF_MIND : npc.distanceTo(other));
+			}
+
 			default -> new Value.Flag(false);
 		};
 	}

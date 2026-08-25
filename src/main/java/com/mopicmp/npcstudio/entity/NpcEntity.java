@@ -315,6 +315,13 @@ public class NpcEntity extends Avatar {
 			// does that is going to look at what made a noise. An NPC with no reason
 			// to go anywhere still stands exactly where it was put.
 			.add(Attributes.MOVEMENT_SPEED, 0.23)
+			// What a bare fist is worth, and how far she can reach. Both are the
+			// player's own numbers, because this is a player-shaped body and the
+			// weapon in its hand adds to the first exactly as it does for anybody.
+			// Without them a character holding a sword swings it and nothing at all
+			// happens, which is not a thing anyone would think to look for.
+			.add(Attributes.ATTACK_DAMAGE, 1.0)
+			.add(Attributes.ENTITY_INTERACTION_RANGE, 3.0)
 			.add(Attributes.STEP_HEIGHT, 0.6)
 			// The game's own scale, not one of ours. It carries the hitbox, the eye
 			// height, how far the character can reach and how big it is drawn — all
@@ -532,6 +539,20 @@ public class NpcEntity extends Avatar {
 	public boolean walkTo(Vec3 wanted, float pace) {
 		if (wanted == null) return false;
 		wantedPace = Math.clamp(pace, 0f, 1f);
+
+		// Ordered somewhere she is already going. This is not an optimisation, it
+		// is the same bug as before wearing new clothes: rebuilding a route starts
+		// the walk at its first waypoint, which is usually behind her, so she turns
+		// round, comes back, and sets off again. It was reported once already as
+		// "runs, stops, runs, stops", when a fresh guess at a noise arrived every
+		// few ticks.
+		//
+		// A graph chasing somebody re-orders the walk constantly and by design, so
+		// without this the fault would return the moment two characters chased each
+		// other — and it would look like the pathfinder being wrong rather than
+		// like being asked too often.
+		if (!wantsToGoElsewhere(wanted)) return true;
+
 		headingFor = wanted;
 		var route = routeTo(wanted);
 		walk.follow(route);
@@ -943,6 +964,40 @@ public class NpcEntity extends Avatar {
 	 * somebody after the shot is gone.
 	 */
 	private String aimingAt = "";
+
+	/**
+	 * Swings at somebody, and hurts them if they are close enough.
+	 *
+	 * <h2>The swing is not conditional on the hit</h2>
+	 *
+	 * A character who only moves her arm when the blow lands stands perfectly
+	 * still while failing to reach you, which reads as being ignored rather than
+	 * as being fought. So the arm moves either way, and the damage is the part
+	 * that depends on reach.
+	 *
+	 * Nothing here limits how often. The graph decides rhythm, and the game's own
+	 * invulnerability after a hit means asking too often gets the same result as
+	 * asking sensibly — the alternative would be a second opinion about timing,
+	 * kept in java, disagreeing with the one in the graph.
+	 *
+	 * @return whether the blow landed, for a readout: from outside, out of reach
+	 *         and out of damage look identical
+	 */
+	public boolean strikeAt(String mark) {
+		var target = com.mopicmp.npcstudio.brain.Marks.creature(this, mark);
+		if (target == null) return false;
+
+		turnBodily(target.getEyePosition(), AIM_RATE);
+		swing(InteractionHand.MAIN_HAND);
+
+		double reach = getAttributeValue(Attributes.ENTITY_INTERACTION_RANGE);
+		// From the edges rather than centre to centre, so that two broad characters
+		// can reach each other and a scaled-up one reaches further, which is what
+		// the size already means everywhere else.
+		if (distanceTo(target) > reach + getBbWidth() / 2 + target.getBbWidth() / 2) return false;
+		if (!(level() instanceof net.minecraft.server.level.ServerLevel server)) return false;
+		return doHurtTarget(server, target);
+	}
 
 	/** Orders a shot at a mark, drawn for as long as the weapon is worth. */
 	public void fireAt(String mark, int drawFor) {

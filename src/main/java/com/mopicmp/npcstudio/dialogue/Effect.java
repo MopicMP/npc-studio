@@ -124,4 +124,21 @@ public sealed interface Effect {
 	 * already answered by it; this only says at whom.
 	 */
 	record Fire(String mark) implements Effect { }
+
+	/**
+	 * Swing at a {@link Mark}, and hurt it if it is within reach.
+	 *
+	 * <h2>Why the swing happens whether or not it lands</h2>
+	 *
+	 * Because a miss is a thing that happened. A character who only moves her arm
+	 * when the blow connects is a character who stands perfectly still while
+	 * failing to reach you, which reads as being ignored rather than as being
+	 * fought.
+	 *
+	 * How often to swing is not here. The graph says, with a timer, the same way
+	 * it says everything else about rhythm - and the game's own invulnerability
+	 * after a hit means a graph that asks too often gets the same result as one
+	 * that asks sensibly, rather than a blender.
+	 */
+	record Strike(String mark) implements Effect { }
 }

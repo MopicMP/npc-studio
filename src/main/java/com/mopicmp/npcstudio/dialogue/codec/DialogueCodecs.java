@@ -161,6 +161,7 @@ public final class DialogueCodecs {
 			case Effect.Halt _ -> "halt";
 			case Effect.LookAt _ -> "look_at";
 			case Effect.Fire _ -> "fire";
+			case Effect.Strike _ -> "strike";
 		};
 	}
 
@@ -213,6 +214,8 @@ public final class DialogueCodecs {
 				.xmap(Effect.LookAt::new, Effect.LookAt::mark);
 			case "fire" -> Codec.STRING.fieldOf("mark")
 				.xmap(Effect.Fire::new, Effect.Fire::mark);
+			case "strike" -> Codec.STRING.fieldOf("mark")
+				.xmap(Effect.Strike::new, Effect.Strike::mark);
 			default -> MapCodec.unit(new Effect.PlayAnimation("none", 0))
 				.validate(_ -> com.mojang.serialization.DataResult.error(() ->
 					"unknown effect type \"" + type + "\""));
