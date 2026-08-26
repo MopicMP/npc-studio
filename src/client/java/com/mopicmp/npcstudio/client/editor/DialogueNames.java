@@ -44,4 +44,27 @@ public final class DialogueNames {
 			.filter(com.mopicmp.npcstudio.net.EditorPayloads.Known::fitsOnACharacter)
 			.map(com.mopicmp.npcstudio.net.EditorPayloads.Known::name).toList();
 	}
+
+	/**
+	 * Every skill anything here can be called into, as a call would name it.
+	 *
+	 * A skill of this document is named plainly; one of anybody else's carries the
+	 * document it lives in — {@code fighting:fight} — which is how a call reaches
+	 * across, and how a library of skills is usable at all.
+	 *
+	 * Offered rather than typed, on purpose. A skill named by typing is a skill
+	 * misspelt sooner or later, and a call to a skill that is not there leaves a
+	 * character standing perfectly still — which from outside is indistinguishable
+	 * from a fight that never started. That has now happened twice for two
+	 * different reasons, and both times the cure was a list instead of a box.
+	 */
+	public static List<String> skillsFor(String thisDocument, Iterable<String> own) {
+		List<String> all = new java.util.ArrayList<>();
+		for (String skill : own) all.add(skill);
+		for (var graph : known) {
+			if (graph.name().equals(thisDocument)) continue;
+			for (String skill : graph.skills()) all.add(graph.name() + ":" + skill);
+		}
+		return List.copyOf(all);
+	}
 }

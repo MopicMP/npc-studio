@@ -54,12 +54,16 @@ public final class EditorPayloads {
 	 * brain, or capable of either — and a name on its own has already proved not
 	 * to be enough.
 	 */
-	public record Known(String name, boolean speaks, boolean waits) {
+	public record Known(String name, boolean speaks, boolean waits, List<String> skills) {
 		public static final StreamCodec<io.netty.buffer.ByteBuf, Known> CODEC =
 			StreamCodec.composite(
 				ByteBufCodecs.STRING_UTF8, Known::name,
 				ByteBufCodecs.BOOL, Known::speaks,
 				ByteBufCodecs.BOOL, Known::waits,
+				// What this document can be called into. Sent because the editor has
+				// to be able to offer them: a skill named by typing is a skill misspelt,
+				// and a misspelt call is a character standing perfectly still.
+				ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list(64)), Known::skills,
 				Known::new);
 
 		/**

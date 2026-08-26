@@ -223,17 +223,16 @@
   "npc_studio.bench.watch": "на что направлено внимание",
   "npc_studio.bench.fire": "выстрелить в меня",
   "npc_studio.bench.forget": "забыть всё",
-  "npc_studio.character.brain": "мозг (граф поведения)",
   "npc_studio.character.watchful": "наблюдает",
   "npc_studio.character.watchful.what": "Замечает людей, звуки и выстрелы, поворачивается посмотреть",
   "npc_studio.character.endless": "патроны не кончаются",
   "npc_studio.character.endless.what": "Никогда не тратит то, чем стреляет",
   "npc_studio.character.no_dialogue": "— без разговора —",
   "npc_studio.graph.brain": "умения мозга",
+  "npc_studio.graph.call": "вызвать умение",
   "npc_studio.graph.brain.title": "что она умеет делать",
   "npc_studio.graph.brain.pick": "сначала выбери узел, потом назови его умением",
   "npc_studio.graph.brain.make": "+ сделать выбранный узел умением",
   "npc_studio.bench.brain": "почему мозг бездействует",
-  "npc_studio.character.no_brain": "— без мозга —",
   "npc_studio.bench.shipped": "забыть копию этого мира"
 }

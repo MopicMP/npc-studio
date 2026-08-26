@@ -141,6 +141,12 @@ public class GraphEditorScreen extends Screen {
 				0xFF78909C, () -> add("end")),
 			new Spec(Icon.PLAY, Component.translatable("npc_studio.graph.action"),
 				0xFFFF8A65, () -> add("animation")),
+			// Calling a skill. It had no way of being made here at all, which meant
+			// the one thing a brain is for could only be reached by editing a file —
+			// and the call I wrote by hand named its skill as text, which is the
+			// blind box this editor keeps having to unlearn.
+			new Spec(Icon.BODY, Component.translatable("npc_studio.graph.call"),
+				0xFF9575CD, () -> add("do")),
 			new Spec(Icon.RESET, Component.translatable("npc_studio.graph.rearrange"),
 				0xFFFFCA28, () -> { x.clear(); layout(); }),
 			new Spec(Icon.BROWSE, Component.translatable("npc_studio.graph.dialogues"),
@@ -314,6 +320,12 @@ public class GraphEditorScreen extends Screen {
 			case "animation" -> new Node.Act(id,
 				new com.mopicmp.npcstudio.dialogue.Effect.PlayAnimation("wave",
 					com.mopicmp.npcstudio.client.entity.NpcGestures.lengthOf("wave")), id);
+			// Made pointing at the first skill there is rather than at nothing. A new
+			// node whose skill is blank is one more thing that looks finished and does
+			// nothing, and the panel's picker cannot show what an empty name means.
+			case "do" -> new Node.Do(id, firstSkill(), com.mopicmp.npcstudio.dialogue.Mark.TARGET,
+				java.util.Map.of(), id);
+			case "stop" -> new Node.Stop(id, firstSkill(), id);
 			default -> new Node.End(id);
 		});
 		// Dropped where the person is looking rather than at the end of a column,
@@ -321,6 +333,12 @@ public class GraphEditorScreen extends Screen {
 		x.put(id, -panX + (width - panelWidth()) / 2 - BOX_WIDTH / 2);
 		y.put(id, -panY + height / 2);
 		select(state.nodes().size() - 1);
+	}
+
+	/** Something for a new call to point at, or nothing if there is nothing. */
+	private String firstSkill() {
+		var all = DialogueNames.skillsFor(state.id(), state.segments().keySet());
+		return all.isEmpty() ? "" : all.get(0);
 	}
 
 	private void select(int index) {

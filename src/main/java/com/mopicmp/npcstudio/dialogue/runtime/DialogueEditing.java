@@ -49,8 +49,9 @@ public final class DialogueEditing {
 		ServerPlayNetworking.send(player, new EditorPayloads.Listing(
 			DialogueRegistry.names().stream()
 				.map(name -> DialogueRegistry.get(name)
-					.map(graph -> new EditorPayloads.Known(name, graph.speaks(), graph.waits()))
-					.orElseGet(() -> new EditorPayloads.Known(name, true, true)))
+					.map(graph -> new EditorPayloads.Known(name, graph.speaks(), graph.waits(),
+						List.copyOf(graph.segments().keySet())))
+					.orElseGet(() -> new EditorPayloads.Known(name, true, true, List.of())))
 				.toList()));
 	}
 

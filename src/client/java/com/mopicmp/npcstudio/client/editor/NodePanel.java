@@ -200,10 +200,56 @@ public class NodePanel {
 					}, add));
 				y += ROW;
 			}
+			case Node.Do call -> {
+				// Both fields are pickers, and that is the whole point of them. A skill
+				// named by typing is a skill misspelt sooner or later, and a call to a
+				// skill that is not there leaves a character standing perfectly still —
+				// which from outside is a fight that never started. Twice now.
+				labels.add(new Label("which skill", x, y - 10));
+				add.accept(new FlatButton(x, y, fieldWidth, 18,
+					Component.literal(call.segment().isEmpty() ? "—" : call.segment()),
+					0xFF9575CD, () -> {
+						Node.Do now = current(Node.Do.class);
+						put(new Node.Do(now.id(), nextSkill(now.segment()), now.target(),
+							now.with(), now.next()));
+						screen.refreshPanel();
+					}));
+				y += ROW;
+
+				labels.add(new Label("about whom", x, y - 10));
+				add.accept(new FlatButton(x, y, fieldWidth, 18,
+					Component.literal(markName(call.target())), 0xFF66BB6A, () -> {
+						Node.Do now = current(Node.Do.class);
+						put(new Node.Do(now.id(), now.segment(), nextMark(now.target()),
+							now.with(), now.next()));
+						screen.refreshPanel();
+					}));
+				y += ROW;
+
+				if (!call.with().isEmpty()) {
+					labels.add(new Label("also told: " + String.join(", ", call.with().keySet()),
+						x, y));
+					y += 12;
+				}
+			}
+			case Node.Stop stop -> {
+				// The same list, because a stop that does not name exactly what the call
+				// named cancels nothing at all — and says nothing about having failed.
+				labels.add(new Label("stop which skill", x, y - 10));
+				add.accept(new FlatButton(x, y, fieldWidth, 18,
+					Component.literal(stop.segment().isEmpty() ? "—" : stop.segment()),
+					0xFF9575CD, () -> {
+						Node.Stop now = current(Node.Stop.class);
+						put(new Node.Stop(now.id(), nextSkill(now.segment()), now.next()));
+						screen.refreshPanel();
+					}));
+				y += ROW;
+			}
 			default -> {
-				// `branch` is the one left. Its arms are conditions, and a condition
-				// editor is a bigger piece of work than a panel — until it exists,
-				// saying so is better than an empty box that looks broken.
+				// `branch`, `every` and `until` are what is left. All three are built
+				// out of conditions, and a condition editor is a bigger piece of work
+				// than a panel — until it exists, saying so is better than an empty box
+				// that looks broken.
 				labels.add(new Label("conditions are file-only for now", x, y));
 			}
 		}
@@ -554,6 +600,25 @@ public class NodePanel {
 	private void put(Node node) {
 		state.replace(index, node);
 	}
+
+	/**
+	 * The next skill round the list of every skill anything can be called into.
+	 *
+	 * A button that cycles rather than a menu that opens, matching how the scope
+	 * and the effect are already chosen here. The list is this document's own
+	 * skills followed by everybody else's, each carrying the document it lives in.
+	 *
+	 * An empty list leaves the name alone, which is honest: there is nothing to
+	 * offer, and blanking what somebody already typed would be a worse answer than
+	 * doing nothing.
+	 */
+	private String nextSkill(String now) {
+		java.util.List<String> all = DialogueNames.skillsFor(state.id(), state.segments().keySet());
+		if (all.isEmpty()) return now;
+		int at = all.indexOf(now);
+		return all.get((at + 1) % all.size());
+	}
+
 
 	private static Node.Line withSpeaker(Node.Line line, String speaker) {
 		return new Node.Line(line.id(), speaker, line.text(), line.mode(), line.animation(), line.next());

@@ -45,7 +45,6 @@
   "npc_studio.character.dialogue": "dialogue",
   "npc_studio.character.main_hand": "main hand",
   "npc_studio.character.off_hand": "off hand",
-  "npc_studio.character.brain": "brain (behaviour graph)",
   "npc_studio.character.watchful": "watchful",
   "npc_studio.character.watchful.what": "Notices people, sounds and shots, and turns to look",
   "npc_studio.character.endless": "endless ammo",
@@ -230,10 +229,10 @@
   "npc_studio.camera.frameViewport": "frame: the viewport",
   "npc_studio.character.no_dialogue": "— no conversation —",
   "npc_studio.graph.brain": "skills of the brain",
+  "npc_studio.graph.call": "call a skill",
   "npc_studio.graph.brain.title": "what she knows how to do",
   "npc_studio.graph.brain.pick": "pick a node first, then name it a skill",
   "npc_studio.graph.brain.make": "+ make the selected node a skill",
   "npc_studio.bench.brain": "why her brain is idle",
-  "npc_studio.character.no_brain": "— no brain —",
   "npc_studio.bench.shipped": "forget this world's copy"
 }
