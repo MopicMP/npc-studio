@@ -35,6 +35,14 @@ class DuelTest {
 		return com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry.get("duel").orElseThrow();
 	}
 
+	/** The library the scenario calls into. A brain, said properly. */
+	private static Dialogue fighting() {
+		return com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry.get("fighting").orElseThrow();
+	}
+
+	/** What a call names when it reaches across documents. */
+	private static final String FIGHT = "fighting:fight";
+
 	private static Condition.World feeling(Map<String, Value> readings) {
 		return new Condition.World() {
 			@Override public boolean hasItem(String item, int count) { return false; }
@@ -46,6 +54,11 @@ class DuelTest {
 
 	private static DialogueEngine.Step resume(DialogueState state, Condition.World world) {
 		return DialogueEngine.step(duel(), state, new DialogueEngine.Input.Begin(), world);
+	}
+
+	/** The skill is stepped against the document it lives in, not against its caller. */
+	private static DialogueEngine.Step inTheFight(DialogueState state, Condition.World world) {
+		return DialogueEngine.step(fighting(), state, new DialogueEngine.Input.Begin(), world);
 	}
 
 	// ---------------------------------------------------------------- the scenario
@@ -72,7 +85,8 @@ class DuelTest {
 			"the scenario does nothing with the body itself — it delegates");
 		assertEquals(1, step.calls().size(), "one call: " + step.calls());
 		DialogueEngine.Call call = step.calls().get(0);
-		assertEquals("fight", call.segment());
+		assertEquals(FIGHT, call.segment(),
+			"named across documents: the fighting is a library, not part of this graph");
 		assertEquals(Mark.KIN, call.target(), "who is the scenario's own contribution");
 		assertTrue(call.start());
 	}
@@ -90,7 +104,8 @@ class DuelTest {
 
 		DialogueEngine.Step ended = resume(began.state(), NOBODY);
 		assertEquals(1, ended.calls().size());
-		assertEquals("fight", ended.calls().get(0).segment());
+		assertEquals(FIGHT, ended.calls().get(0).segment(),
+			"a stop must name exactly what the call named, or it cancels nothing");
 		assertTrue(!ended.calls().get(0).start(), "and this one is a cancellation");
 	}
 
@@ -101,9 +116,9 @@ class DuelTest {
 		// kin, it would fight the nearest of its own kind no matter who it was
 		// called about — and it would go on passing this test's other cases while
 		// being useless for a guard, a brawl or a bodyguard.
-		Dialogue graph = duel();
+		Dialogue graph = fighting();
 		String fight = graph.segment("fight");
-		assertTrue(fight != null, "the document has no segment called fight");
+		assertTrue(fight != null, "the library has no segment called fight");
 
 		for (String id : reachable(graph, fight)) {
 			String text = graph.node(id).toString();
@@ -138,13 +153,13 @@ class DuelTest {
 
 	/** The skill, started the way a call starts it. */
 	private static DialogueState begun() {
-		Dialogue graph = duel();
+		Dialogue graph = fighting();
 		return DialogueState.beginning(graph, graph.segment("fight"),
 			Map.of(), Map.of(), Map.of());
 	}
 
 	private static List<Effect> whatSheDoes(Condition.World world) {
-		return resume(begun(), world).effects();
+		return inTheFight(begun(), world).effects();
 	}
 
 	@Test
@@ -199,7 +214,7 @@ class DuelTest {
 	@Test
 	@DisplayName("the fight is not settled in one tick")
 	void thereIsAPauseBetweenBlows() {
-		var screen = resume(begun(), fighting(2, "melee")).screen();
+		var screen = inTheFight(begun(), fighting(2, "melee")).screen();
 		assertTrue(screen instanceof DialogueEngine.Screen.Waiting w && w.ticks() > 0,
 			"she should be standing off for a moment, not looping: " + screen);
 	}
@@ -209,12 +224,72 @@ class DuelTest {
 	@Test
 	@DisplayName("what a call hands in is read back, and cannot be written over")
 	void givenIsReadOnly() {
-		DialogueState told = DialogueState.beginning(duel(), duel().segment("fight"),
+		DialogueState told = DialogueState.beginning(fighting(), fighting().segment("fight"),
 			Map.of(), Map.of(), Map.of("keep", new Value.Num(5)));
 
 		assertEquals(new Value.Num(5), told.get("keep", Scope.GIVEN));
 		org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
 			() -> told.with("keep", Scope.GIVEN, new Value.Num(1)));
+	}
+
+	// -------------------------------------------------------------- the library
+
+	@Test
+	@DisplayName("the fighting is a library: it has skills and no way in of its own")
+	void aLibraryHasNoBeginning()  {
+		Dialogue book = fighting();
+		assertTrue(book.start() == null || book.start().isEmpty(),
+			"a library nobody carries has nowhere to start: " + book.start());
+		assertTrue(!book.segments().isEmpty(), "and it is nothing at all without skills");
+	}
+
+	@Test
+	@DisplayName("a library is not offered as something a character could be given")
+	void aLibraryIsNotAGraphForACharacter() {
+		// The whole point of the split. A character carries a dialogue; a brain is
+		// what that dialogue calls. Handing somebody a library would put them back
+		// in the position that cost a session — a name in a field, and a character
+		// standing perfectly still with nothing anywhere saying why.
+		assertTrue(fighting().start() == null || fighting().start().isEmpty());
+		assertTrue(duel().start() != null && !duel().start().isEmpty(),
+			"and the scenario, which is what you do give somebody, has one");
+	}
+
+	@Test
+	@DisplayName("every skill any shipped graph calls for actually exists")
+	void nothingCallsIntoThinAir() {
+		// The failure this stops is silent: a call naming a skill that is not there
+		// leaves a character standing still, and from outside that is identical to a
+		// fight that has not started. It has now been that twice — once from a lost
+		// set of segments, once from a name in the wrong field — so it is a test.
+		var registry = com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry.class;
+		for (String name : com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry.names()) {
+			Dialogue graph = com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry
+				.get(name).orElseThrow();
+			for (Node node : graph.nodes().values()) {
+				String called = switch (node) {
+					case Node.Do call -> call.segment();
+					case Node.Stop stop -> stop.segment();
+					default -> null;
+				};
+				if (called == null) continue;
+
+				int colon = called.indexOf(':');
+				Dialogue book = graph;
+				if (colon >= 0) {
+					book = com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry
+						.get(called.substring(0, colon)).orElse(null);
+					assertTrue(book != null,
+						name + "/" + node.id() + " calls into \"" + called.substring(0, colon)
+							+ "\", which is not a graph that exists");
+				}
+				String skill = colon < 0 ? called : called.substring(colon + 1);
+				assertTrue(book.segment(skill) != null,
+					name + "/" + node.id() + " calls \"" + called + "\", and \"" + book.id()
+						+ "\" has no such skill — it has " + book.segments().keySet());
+			}
+		}
+		assertTrue(registry != null);
 	}
 
 	@Test
@@ -225,15 +300,15 @@ class DuelTest {
 	}
 
 	@Test
-	@DisplayName("a brain is not offered as a conversation, nor the other way round")
-	void theTwoFieldsOfferDifferentThings() {
-		// The mistake this exists to prevent has now been made twice, and both
-		// times it looked like the fighting was broken: a behaviour graph put in
-		// the conversation field leaves a character standing perfectly still,
-		// saying nothing, with nothing anywhere to point at.
-		Dialogue brain = duel();
-		assertTrue(brain.waits(), "a brain stands still on its own account");
-		assertTrue(!brain.speaks(), "and has nobody to say anything to");
+	@DisplayName("a graph that acts and one that talks are still told apart")
+	void actingAndTalkingAreDifferent() {
+		// This used to be about two fields on a character, and the mistake it named
+		// had been made twice. There is one field now, so the danger it guarded is
+		// gone — but the distinction underneath is still true and still worth
+		// keeping, because it is what lets an editor say what a document is.
+		Dialogue acts = duel();
+		assertTrue(acts.waits(), "a scenario stands still on its own account");
+		assertTrue(!acts.speaks(), "and has nobody to say anything to");
 
 		Dialogue talk = com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry
 			.get("example").orElseThrow();
@@ -244,7 +319,8 @@ class DuelTest {
 	@Test
 	@DisplayName("every graph that ships with the mod still loads")
 	void theBuiltInGraphsAreSound() {
-		for (String name : List.of("duel", "sentry", "doorman", "torchbearer", "example")) {
+		for (String name : List.of("duel", "fighting", "sentry", "doorman", "torchbearer",
+				"example")) {
 			Dialogue graph = com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry.get(name)
 				.orElseThrow(() -> new AssertionError(name + " was refused: it would not load"));
 			assertTrue(DialogueValidator.validate(graph).ok(),

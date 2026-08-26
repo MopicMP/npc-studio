@@ -63,23 +63,35 @@ public final class Brain {
 	 * stops the skill and then takes it.
 	 */
 	public static void tick(NpcEntity npc) {
-		if (npc.brainId().isEmpty()) return;
+		if (npc.graphId().isEmpty()) return;
 
-		Dialogue graph = DialogueRegistry.get(npc.brainId()).orElse(null);
+		Dialogue graph = DialogueRegistry.get(npc.graphId()).orElse(null);
 		if (graph != null) {
 			if (!npc.stillWaiting()) run(npc, graph, false);
 			// Asked even while the scenario is standing on a timer. A skill that only
 			// got a turn when its caller did would be a fight that happens in bursts
 			// of one tick every three seconds.
-			if (!npc.doingNow().isEmpty() && !npc.skillStillWaiting()) run(npc, graph, true);
+			//
+			// Stepped against the document the skill actually came out of, which is
+			// not always hers: a skill called out of a library lives in the library.
+			if (!npc.doingNow().isEmpty() && !npc.skillStillWaiting()) {
+				Dialogue book = whereTheSkillLives(npc, graph);
+				if (book != null) run(npc, book, true);
+			}
 			return;
 		}
 		if (npc.stillWaiting()) return;
 		// Named a graph that is not there. Said once and then forgotten, because
 		// this runs twenty times a second and a missing graph would otherwise fill
 		// the log faster than anybody could read the first line.
-		NpcStudio.LOGGER.error("NPC has no graph called \"{}\"; its brain is off.", npc.brainId());
-		npc.setBrainId("");
+		//
+		// The name is left alone. It used to be cleared here, back when it named a
+		// second document nobody else wanted; now it names the character's only one,
+		// and erasing somebody's assignment because a pack has not finished loading
+		// is a way to lose authorship rather than a way to recover.
+		NpcStudio.LOGGER.error("NPC has no graph called \"{}\"; it stands still.", npc.graphId());
+		npc.brainTrouble("no graph called \"" + npc.graphId() + "\"");
+		npc.waitFor(100);
 	}
 
 	/**
@@ -103,7 +115,11 @@ public final class Brain {
 				// goes off rather than throwing every tick for the rest of the world's
 				// life, and the reason goes where it can be read.
 				NpcStudio.LOGGER.error("Graph \"{}\" failed: {}", graph.id(), fault.getMessage());
-				npc.setBrainId("");
+				npc.brainTrouble("graph failed: " + fault.getMessage());
+				// Parked rather than unassigned. The document is the character's only
+				// one now, so throwing it away to stop an exception would be curing a
+				// broken graph by deleting the author's work.
+				npc.waitFor(100);
 				return;
 			}
 
@@ -140,16 +156,33 @@ public final class Brain {
 					npc.waitFor(1);
 					return;
 				}
-				// A behaviour graph is nobody's conversation. This is the mirror of
-				// the refusal on the other side, where a dialogue that waits is
-				// turned away for the same reason: each runtime can serve some of
-				// the language, and saying which is kinder than half-working.
+				// She has reached something that needs a person, and there is not one.
+				// So she stops here and waits, which is the whole of what a character
+				// with a conversation and nothing else to do should be seen doing.
+				//
+				// This used to be an error that switched the brain off, and that was
+				// right while a brain was a second document chosen on purpose to run
+				// by itself — speaking in one was a mistake. Now there is one document
+				// and most of them are conversations, so speaking is the ordinary
+				// case: an NPC who says "hello" would have logged an error twenty
+				// times a second for standing in a field.
+				//
+				// The conversation itself is not this bookmark. It runs from `start`
+				// on its own, kept per player and per character, so two people can be
+				// mid-sentence with her at once and neither is this.
 				case DialogueEngine.Screen.Line _, DialogueEngine.Screen.Choice _ -> {
-					NpcStudio.LOGGER.error(
-						"Graph \"{}\" speaks at \"{}\" — a behaviour graph has nobody to "
-							+ "speak to. Use it as a dialogue instead.",
-						graph.id(), mind.currentNode());
-					npc.setBrainId("");
+					if (skill) {
+						// A skill is different, and here the old refusal still holds. It
+						// was called by something that is not a person and cannot answer,
+						// so it would wait for ever with nobody able to say why.
+						NpcStudio.LOGGER.error(
+							"Skill \"{}\" in \"{}\" speaks at \"{}\" — a skill has nobody to "
+								+ "speak to.", npc.doingNow(), graph.id(), mind.currentNode());
+						npc.brainTrouble("skill \"" + npc.doingNow() + "\" tries to speak");
+						npc.stopDoing();
+						return;
+					}
+					npc.waitFor(100);
 					return;
 				}
 			}
@@ -161,6 +194,24 @@ public final class Brain {
 		// see a character thinking in slow motion, which is the correct complaint.
 		NpcStudio.LOGGER.warn("Graph \"{}\" went round {} times in one tick.", graph.id(), ROUNDS);
 		npc.waitFor(20);
+	}
+
+	/**
+	 * The document holding the nodes of the skill she is running.
+	 *
+	 * Hers unless the call named somebody else's. A library that has been deleted
+	 * while a character was mid-skill puts the skill down rather than stepping her
+	 * through a graph that is not the one she started in.
+	 */
+	private static Dialogue whereTheSkillLives(NpcEntity npc, Dialogue own) {
+		if (npc.doingIn().isEmpty()) return own;
+		Dialogue book = DialogueRegistry.get(npc.doingIn()).orElse(null);
+		if (book != null) return book;
+		NpcStudio.LOGGER.error("Skill \"{}\" came out of \"{}\", which is gone.",
+			npc.doingNow(), npc.doingIn());
+		npc.brainTrouble("library \"" + npc.doingIn() + "\" is gone");
+		npc.stopDoing();
+		return null;
 	}
 
 	/**
@@ -178,18 +229,39 @@ public final class Brain {
 		}
 		if (call.segment().equals(npc.doingNow())) return;
 
-		String at = graph.segment(call.segment());
+		// A name may point into another document — "duel:fight" — which is what
+		// makes a library of skills a thing that exists. A brain is exactly that: a
+		// document written to hold skills, that no character carries, and that
+		// dialogues call into.
+		int colon = call.segment().indexOf(':');
+		String from = colon < 0 ? "" : call.segment().substring(0, colon);
+		String named = colon < 0 ? call.segment() : call.segment().substring(colon + 1);
+
+		Dialogue book = graph;
+		if (!from.isEmpty()) {
+			book = DialogueRegistry.get(from).orElse(null);
+			if (book == null) {
+				npc.brainTrouble("there is no graph called \"" + from + "\"");
+				NpcStudio.LOGGER.error("Graph \"{}\" calls into \"{}\", which does not exist.",
+					graph.id(), from);
+				return;
+			}
+		}
+
+		String at = book.segment(named);
 		if (at == null) {
-			String said = "\"" + graph.id() + "\" has no skill called \"" + call.segment() + "\"";
-			if (graph.segments().isEmpty()) said += " — it has none at all";
+			String said = "\"" + book.id() + "\" has no skill called \"" + named + "\"";
+			if (book.segments().isEmpty()) said += " — it has none at all";
 			npc.brainTrouble(said);
 			NpcStudio.LOGGER.error("Graph \"{}\" has no segment called \"{}\".",
-				graph.id(), call.segment());
+				book.id(), named);
 			return;
 		}
 		npc.brainTrouble("");
-		npc.beginDoing(call.segment(), call.target(),
-			DialogueState.beginning(graph, at, java.util.Map.of(), npc.memory(), call.with()));
+		// Remembered by the whole name, so that stopping it says the same thing the
+		// call did and a scenario cannot cancel a skill it did not start.
+		npc.beginDoing(call.segment(), from, call.target(),
+			DialogueState.beginning(book, at, java.util.Map.of(), npc.memory(), call.with()));
 	}
 
 	/**

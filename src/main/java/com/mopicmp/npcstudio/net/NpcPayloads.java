@@ -160,7 +160,7 @@ public final class NpcPayloads {
 	 * hand, as item identifiers.
 	 */
 	public record Details(int entityId, String skin, String dialogue, List<String> animations,
-			List<String> held, float scale, String brain, boolean watchful, boolean endless)
+			List<String> held, float scale, boolean watchful, boolean endless)
 			implements CustomPacketPayload {
 
 		public static final Type<Details> TYPE = new Type<>(NpcStudio.id("npc_details"));
@@ -172,11 +172,14 @@ public final class NpcPayloads {
 				ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list(8)), Details::animations,
 				ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list(2)), Details::held,
 				ByteBufCodecs.FLOAT, Details::scale,
-				// What she does when nobody is talking to her. These three arrived as
+				// What she does when nobody is talking to her. These arrived as
 				// commands, which was a mistake: they are settings of one character,
 				// the same as which skin she wears, and a command is not where a
 				// character's settings live.
-				ByteBufCodecs.STRING_UTF8, Details::brain,
+				//
+				// A brain used to travel here too. It does not any more, because a
+				// character does not have one: a brain is a library of skills, and the
+				// only thing that calls a skill is the dialogue above.
 				ByteBufCodecs.BOOL, Details::watchful,
 				ByteBufCodecs.BOOL, Details::endless,
 				Details::new);
@@ -267,7 +270,7 @@ public final class NpcPayloads {
 
 	/** Client sends the edited NPC back. Same shape, on purpose. */
 	public record Apply(int entityId, String skin, String dialogue, List<String> animations,
-			List<String> held, float scale, String brain, boolean watchful, boolean endless)
+			List<String> held, float scale, boolean watchful, boolean endless)
 			implements CustomPacketPayload {
 
 		public static final Type<Apply> TYPE = new Type<>(NpcStudio.id("npc_apply"));
@@ -279,7 +282,6 @@ public final class NpcPayloads {
 				ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list(8)), Apply::animations,
 				ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list(2)), Apply::held,
 				ByteBufCodecs.FLOAT, Apply::scale,
-				ByteBufCodecs.STRING_UTF8, Apply::brain,
 				ByteBufCodecs.BOOL, Apply::watchful,
 				ByteBufCodecs.BOOL, Apply::endless,
 				Apply::new);

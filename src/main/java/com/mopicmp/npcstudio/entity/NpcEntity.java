@@ -443,7 +443,7 @@ public class NpcEntity extends Avatar {
 		//
 		// It is also the measure of step D: when the reflex has been written as a
 		// graph that ships with the mod, everything below goes.
-		if (!brainId.isEmpty()) return;
+		if (!graphId().isEmpty()) return;
 
 		goAndLook();
 
@@ -808,26 +808,54 @@ public class NpcEntity extends Avatar {
 	// ----------------------------------------------------------------- the brain
 
 	/**
-	 * Which graph runs this character, or empty for none.
+	 * Which graph runs this character.
 	 *
-	 * Saved, because it is authorship: somebody chose this brain for this
-	 * character and it must survive a reload. Not synced — the client has no use
-	 * for it, and everything it produces arrives as an animation or a face, which
-	 * are synced already.
+	 * <h2>There used to be two of these, and that was the mistake</h2>
+	 *
+	 * A character carried a dialogue <em>and</em> a brain, chosen separately, and
+	 * that is not what a brain is. A brain is a <b>library of skills</b>, and the
+	 * only place a skill is ever called from is a dialogue. So a character has one
+	 * document and it is the dialogue; a brain is something that document uses.
+	 *
+	 * The two-field version was wrong in a way that cost a session: {@code duel}
+	 * went into the brain field, which nothing was designed to make work, and the
+	 * fix I made — giving both fields the same tidy dropdown — kept the wrong shape
+	 * and made it comfortable. Removing the field is the fix.
+	 *
+	 * So this is {@link #dialogueId()}, and there is no second answer.
 	 */
-	private String brainId = "";
-
-	public String brainId() {
-		return brainId;
+	public String graphId() {
+		return dialogueId();
 	}
 
-	public void setBrainId(String id) {
-		brainId = id == null ? "" : id;
+	/**
+	 * What became of a brain this character was carrying before the two merged.
+	 *
+	 * Empty for everybody who never had one. Kept and said out loud rather than
+	 * quietly dropped: a world already holds characters with {@code duel} in the
+	 * old field, and deleting it silently would leave them standing with nothing
+	 * anywhere saying why.
+	 *
+	 * That is the third time this family of bug has come up — the lost
+	 * {@code segments}, the gesture that never restarts, and this — which is why
+	 * it is a field and not a comment.
+	 */
+	private String movedBrain = "";
+
+	public String movedBrain() {
+		return movedBrain;
+	}
+
+	/**
+	 * Puts down whatever she was in the middle of.
+	 *
+	 * Called whenever the document under her changes. Her place in it is
+	 * meaningless afterwards, and a skill outlives its caller even less: it would
+	 * leave a character fighting to instructions nobody can now read.
+	 */
+	public void forgetWhereSheWas() {
 		mind = null;
 		waiting = 0;
-		// A skill belongs to the brain that started it. Keeping it running across a
-		// change of brain would leave a character fighting to instructions nobody
-		// can now read.
 		stopDoing();
 	}
 
@@ -922,8 +950,29 @@ public class NpcEntity extends Avatar {
 	private String doingAt = com.mopicmp.npcstudio.dialogue.Mark.NOTHING;
 	private int doingWait;
 
+	/**
+	 * Which document the running skill's nodes live in.
+	 *
+	 * Usually her own, and not always: a skill may be called out of a library — a
+	 * document written to hold skills and nothing else, which is what a brain
+	 * actually is. Its nodes are not in her graph, so stepping them against her
+	 * graph would look up node names that are not there and stop with an
+	 * unhelpful complaint about a graph that is perfectly fine.
+	 *
+	 * Kept beside the bookmark rather than worked out from the segment's name each
+	 * tick, because the two must not be able to disagree: a bookmark into one
+	 * document and a document chosen freshly from a name is how a skill ends up
+	 * being read out of the wrong book halfway through.
+	 */
+	private String doingIn = "";
+
 	public String doingNow() {
 		return doingNow;
+	}
+
+	/** Which document the running skill came out of, or empty for her own. */
+	public String doingIn() {
+		return doingIn;
 	}
 
 	/**
@@ -976,10 +1025,16 @@ public class NpcEntity extends Avatar {
 		doingState = now;
 	}
 
-	/** Sets a skill running, from its named way in, told these things. */
-	public void beginDoing(String segment, String at,
+	/**
+	 * Sets a skill running, from its named way in, told these things.
+	 *
+	 * @param in which document its nodes are in, or empty for her own — see
+	 *           {@link #doingIn()}
+	 */
+	public void beginDoing(String segment, String in, String at,
 			com.mopicmp.npcstudio.dialogue.DialogueState from) {
 		doingNow = segment;
+		doingIn = in == null ? "" : in;
 		doingAt = at == null ? com.mopicmp.npcstudio.dialogue.Mark.NOTHING : at;
 		doingState = from;
 		doingWait = 0;
@@ -994,6 +1049,7 @@ public class NpcEntity extends Avatar {
 	 */
 	public void stopDoing() {
 		doingNow = "";
+		doingIn = "";
 		doingState = null;
 		doingAt = com.mopicmp.npcstudio.dialogue.Mark.NOTHING;
 		doingWait = 0;
@@ -1660,7 +1716,15 @@ public class NpcEntity extends Avatar {
 	}
 
 	public void setDialogueId(String id) {
-		entityData.set(DATA_DIALOGUE, id == null ? "" : id);
+		String now = id == null ? "" : id;
+		if (now.equals(dialogueId())) return;
+		entityData.set(DATA_DIALOGUE, now);
+		// The document under her has changed, so where she had got to in it is not a
+		// place any more. Guarded by the comparison above, because this is also
+		// called on every load and on every save of an unrelated field, and a
+		// character whose bookmark is reset twenty times a second never gets past
+		// her first node.
+		forgetWhereSheWas();
 	}
 
 	/**
@@ -1738,7 +1802,11 @@ public class NpcEntity extends Avatar {
 		// The hands themselves are already saved by LivingEntity, which keeps
 		// equipment for everybody. Only the mark on the quiver is ours.
 		output.putBoolean("Endless", endless);
-		output.putString("Brain", brainId);
+		// "Brain" is deliberately not written back. It was the second document a
+		// character used to carry, it is read on load and turned into a dialogue,
+		// and writing it again would keep resurrecting a field that no longer means
+		// anything. What was carried over is remembered in `movedBrain` so that the
+		// bench can say so out loud, once, to whoever comes looking.
 		// What she has learnt about herself. Not the bookmark — see `memory`.
 		if (!memory.isEmpty()) {
 			output.store("Memory", MEMORY_CODEC, memory);
@@ -1768,7 +1836,19 @@ public class NpcEntity extends Avatar {
 		// in every world so far and is the answer they all want.
 		setWatchful(input.getBooleanOr("Watchful", false));
 		endless = input.getBooleanOr("Endless", false);
-		setBrainId(input.getStringOr("Brain", ""));
+		// A character saved when brains were a second field of their own. The graph
+		// she was given is the graph she keeps — it moves into the one document a
+		// character now has, rather than being dropped on the floor.
+		//
+		// A dialogue already set wins, because somebody chose it later and under the
+		// arrangement that still exists. Either way what happened is remembered, so
+		// that "she used to have a brain and now runs this" is a sentence somebody
+		// can read rather than a difference they have to work out.
+		String was = input.getStringOr("Brain", "");
+		if (!was.isEmpty()) {
+			movedBrain = was;
+			if (dialogueId().isEmpty()) setDialogueId(was);
+		}
 		memory = input.read("Memory", MEMORY_CODEC).orElse(java.util.Map.of());
 		wardrobe.clear();
 		int outfits = input.getIntOr("Outfits", 0);

@@ -61,7 +61,6 @@ public class CharacterPanel extends WorkspacePanel {
 	 * she wears: it belongs to this one character, it is authorship, and a command
 	 * is a place to try something rather than a place for a setting to live.
 	 */
-	private String brainText = "";
 	private boolean watchful;
 	private boolean endless;
 	private final List<String> animations = new ArrayList<>();
@@ -87,29 +86,28 @@ public class CharacterPanel extends WorkspacePanel {
 	private Choosing picking = Choosing.NEITHER;
 
 	/**
-	 * Which of the two graph fields has its list open.
+	 * Whether the graph list is open.
 	 *
-	 * <h2>Why they are the same control twice</h2>
+	 * <h2>There used to be two of these</h2>
 	 *
-	 * They were not, and that cost a test session. The conversation was a list
-	 * with real names in it and the brain was a bare box with the hint "graph
-	 * name", eight rows further down. Faced with one control that plainly works
-	 * and one that plainly does not, anybody uses the first — and a behaviour
-	 * graph put in the conversation field leaves a character standing perfectly
-	 * still, saying nothing, with nothing anywhere to point at.
+	 * A conversation and a brain, chosen separately, and the pair cost a test
+	 * session twice over. First because they did not look alike — one was a list
+	 * of real names and the other a bare box eight rows down, so everything went
+	 * into the first. Then, after I made them identical lists, because the
+	 * question they answered was still wrong: a character does not have a brain.
 	 *
-	 * So both are lists, they look identical, and each offers only the graphs
-	 * that can actually do its job — see {@code DialogueNames.forBrain}.
+	 * A brain is a library of skills and the only thing that calls a skill is a
+	 * dialogue. So there is one field, and choosing wrongly between two is no
+	 * longer something anybody can do here.
 	 */
-	private enum Choosing { NEITHER, CONVERSATION, BRAIN }
+	private enum Choosing { NEITHER, CONVERSATION }
 	private EditBox mainHand;
 	private EditBox offHand;
 
 	private String notice = "";
 
-	/** Where each button ended up, so its list can open under it. */
+	/** Where the button ended up, so its list can open under it. */
 	private int dialogueRow;
-	private int brainRow;
 
 	/** How big the character was before a slider was dragged at it. */
 	private Float originalScale;
@@ -156,7 +154,6 @@ public class CharacterPanel extends WorkspacePanel {
 			held.set(i, details.held().get(i));
 		}
 		scale = details.scale() <= 0 ? 1f : details.scale();
-		brainText = details.brain();
 		watchful = details.watchful();
 		endless = details.endless();
 		skin = null;
@@ -274,17 +271,6 @@ public class CharacterPanel extends WorkspacePanel {
 			"minecraft:shield");
 		y += ROW + GAP + 4;
 
-		y += LABEL;
-		brainRow = y;
-		add(new IconTextButton(PAD, y - 1, across, ROW, Icon.BODY,
-			Component.literal(brainText.isEmpty()
-				? Component.translatable("npc_studio.character.no_brain").getString()
-				: brainText),
-			0xFF9575CD, () -> {
-				picking = picking == Choosing.BRAIN ? Choosing.NEITHER : Choosing.BRAIN;
-			}));
-		y += ROW + GAP;
-
 		// Two switches on one row: they are both one-word facts about a character,
 		// and a full-width track for a yes-or-no reads as a slider somebody forgot
 		// to finish.
@@ -362,7 +348,6 @@ public class CharacterPanel extends WorkspacePanel {
 		}
 		y = label(graphics, "npc_studio.character.main_hand", y);
 		y = label(graphics, "npc_studio.character.off_hand", y);
-		y = label(graphics, "npc_studio.character.brain", y);
 		// The one row with two things on it, so it is written out rather than
 		// going through the helper that assumes one label to a row.
 		graphics.text(font, Component.translatable("npc_studio.character.watchful"),
@@ -383,21 +368,20 @@ public class CharacterPanel extends WorkspacePanel {
 	/**
 	 * What the open list should offer, with "none" first so it can be taken off.
 	 *
-	 * Filtered by what the field is for. A brain that only talks and a
-	 * conversation that only waits are both mistakes somebody would otherwise
-	 * make in one click, and neither says anything when made.
+	 * Everything that can be given to a character, which is everything with a
+	 * beginning. A library of skills has none — there is nowhere for it to start —
+	 * and offering one here would be offering the mistake this field was just
+	 * rebuilt to remove.
 	 */
 	private java.util.List<String> choices() {
 		java.util.List<String> all = new ArrayList<>();
 		all.add("");
-		all.addAll(picking == Choosing.BRAIN
-			? com.mopicmp.npcstudio.client.editor.DialogueNames.forBrain()
-			: com.mopicmp.npcstudio.client.editor.DialogueNames.forConversation());
+		all.addAll(com.mopicmp.npcstudio.client.editor.DialogueNames.forCharacter());
 		return all;
 	}
 
 	private int openRow() {
-		return picking == Choosing.BRAIN ? brainRow : dialogueRow;
+		return dialogueRow;
 	}
 
 	@Override
@@ -419,13 +403,10 @@ public class CharacterPanel extends WorkspacePanel {
 				&& mouseX >= PAD && mouseX < PAD + across;
 			if (hovered) graphics.fill(PAD, at, PAD + across, at + ROW_HEIGHT, HOVER);
 			String name = all.get(i);
-			String chosen = picking == Choosing.BRAIN ? brainText : dialogueText;
 			graphics.text(font, Component.literal(name.isEmpty()
-					? Component.translatable(picking == Choosing.BRAIN
-						? "npc_studio.character.no_brain" : "npc_studio.character.no_dialogue")
-						.getString()
+					? Component.translatable("npc_studio.character.no_dialogue").getString()
 					: name),
-				PAD + 4, at + 3, name.equals(chosen) ? ACCENT : TEXT);
+				PAD + 4, at + 3, name.equals(dialogueText) ? ACCENT : TEXT);
 		}
 		if (all.size() > shown) {
 			graphics.text(font, Component.literal("+" + (all.size() - shown)),
@@ -443,8 +424,7 @@ public class CharacterPanel extends WorkspacePanel {
 			int shown = Math.max(1, Math.min(all.size(), (height - top - PAD) / ROW_HEIGHT));
 			int row = (int) ((event.y() - top - 1) / ROW_HEIGHT);
 			if (event.x() >= PAD && event.x() < PAD + across && row >= 0 && row < shown) {
-				if (picking == Choosing.BRAIN) brainText = all.get(row);
-				else dialogueText = all.get(row);
+				dialogueText = all.get(row);
 				touched();
 			}
 			// Closed either way: a click anywhere else means "not that one", which is
@@ -499,7 +479,7 @@ public class CharacterPanel extends WorkspacePanel {
 		if (about < 0) return;
 		ClientPlayNetworking.send(
 			new NpcPayloads.Apply(about, skinText, dialogueText, animations, held, scale,
-				brainText, watchful, endless));
+				watchful, endless));
 		// Saved is the new starting point, so closing afterwards must not put the
 		// old size back.
 		originalScale = null;

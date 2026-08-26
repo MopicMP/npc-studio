@@ -108,6 +108,33 @@ public record Dialogue(
 		return nodes.get(id);
 	}
 
+	/**
+	 * Whether this document is one a character can be given.
+	 *
+	 * <h2>Why this is a method and not a comparison against null</h2>
+	 *
+	 * Because "no start" arrives written two ways — {@code null} from a document
+	 * built in code, an empty string from one that has been through a file — and
+	 * every place that checks only one of them is wrong for the other half of the
+	 * documents in the world. That is not hypothetical: the first library the
+	 * validator saw was refused with the message "no path from here ever reaches an
+	 * end" pointing at a node whose name was the empty string, because one check
+	 * asked {@code == null} and the empty start walked straight past it.
+	 */
+	public boolean hasStart() {
+		return start != null && !start.isEmpty();
+	}
+
+	/**
+	 * A document with no beginning: a set of named skills for others to call.
+	 *
+	 * This is what a brain is. Nobody carries one — a character carries a dialogue
+	 * — and that dialogue calls in here by name.
+	 */
+	public boolean isLibrary() {
+		return !hasStart();
+	}
+
 	public static Builder builder(String id) {
 		return new Builder(id);
 	}
@@ -116,6 +143,7 @@ public record Dialogue(
 	public static final class Builder {
 		private final String id;
 		private String start;
+		private boolean library;
 		private final Map<String, Node> nodes = new LinkedHashMap<>();
 		private final Map<String, String> variables = new LinkedHashMap<>();
 		private final Map<String, String> segments = new LinkedHashMap<>();
@@ -130,6 +158,16 @@ public record Dialogue(
 
 		public Builder start(String node) { this.start = node; return this; }
 
+		/**
+		 * Says this document has no beginning, because it is a set of skills.
+		 *
+		 * Said rather than inferred from "no start was given", because {@link #add}
+		 * takes the first node as the start when nobody has said otherwise — which
+		 * is right for everything somebody is writing as a graph, and would quietly
+		 * turn a library into a graph whose first skill runs by itself.
+		 */
+		public Builder library() { this.library = true; return this; }
+
 		public Builder variable(String name, String type) {
 			// Fail here rather than at validation: a type that does not exist is a
 			// mistake in the caller, not in the dialogue being described.
@@ -140,12 +178,12 @@ public record Dialogue(
 
 		public Builder add(Node node) {
 			nodes.put(node.id(), node);
-			if (start == null) start = node.id();
+			if (start == null && !library) start = node.id();
 			return this;
 		}
 
 		public Dialogue build() {
-			return new Dialogue(id, CURRENT_FORMAT, start, nodes, variables, segments);
+			return new Dialogue(id, CURRENT_FORMAT, library ? "" : start, nodes, variables, segments);
 		}
 	}
 }

@@ -108,25 +108,39 @@ public final class Bench {
 	 */
 	private static List<String> brain(NpcEntity npc) {
 		List<String> lines = new ArrayList<>();
-		if (npc.brainId().isEmpty()) {
-			return List.of("No brain. Put a graph in the brain field on the character panel.");
+		// Said first, and only to somebody who had one. A character carried a brain
+		// as a second field until this version; it has been folded into the one
+		// document she has, and saying nothing about that would be the third silent
+		// loss in a row.
+		if (!npc.movedBrain().isEmpty()) {
+			lines.add("she used to carry a separate brain, \"" + npc.movedBrain() + "\"");
+			lines.add("  a character has one graph now, and it is the dialogue below");
 		}
-		var graph = com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry.get(npc.brainId())
+		if (npc.graphId().isEmpty()) {
+			lines.add("No graph. Put one in the dialogue field on the character panel.");
+			return lines;
+		}
+		var graph = com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry.get(npc.graphId())
 			.orElse(null);
 		if (graph == null) {
-			return List.of("Her brain is \"" + npc.brainId() + "\", which no longer exists.");
+			lines.add("Her graph is \"" + npc.graphId() + "\", which no longer exists.");
+			return lines;
 		}
 
 		// Which copy. The world's own wins silently over the one that ships with
 		// the mod, and that is right for a deliberate edit and wrong for a damaged
 		// one — and the two are indistinguishable without being told.
 		boolean ownCopy = com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry
-			.worldOwn(npc.brainId()).isPresent();
-		lines.add("brain \"" + npc.brainId() + "\""
+			.worldOwn(npc.graphId()).isPresent();
+		lines.add("graph \"" + npc.graphId() + "\""
 			+ (ownCopy ? " (this world's own copy)" : " (built in)"));
 
 		var mind = npc.mind(graph);
-		lines.add("  scenario at: " + mind.currentNode());
+		// Her own bookmark, the one that runs whether or not anybody is here. A
+		// conversation is not this: that one is kept per player and per character,
+		// so two people can be mid-sentence with her and neither of them is the
+		// thread below.
+		lines.add("  her own thread at: " + mind.currentNode());
 		lines.add(npc.doingNow().isEmpty()
 			? "  no skill running"
 			: "  doing \"" + npc.doingNow() + "\" at " + (npc.doingState() == null
@@ -145,7 +159,7 @@ public final class Bench {
 
 		if (ownCopy) {
 			var built = com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry
-				.shipped(npc.brainId()).orElse(null);
+				.shipped(npc.graphId()).orElse(null);
 			if (built != null && !built.segments().isEmpty() && graph.segments().isEmpty()) {
 				lines.add("  the built-in one has skills and this copy has none —");
 				lines.add("  press \"forget this world's copy\" below.");
@@ -164,10 +178,10 @@ public final class Bench {
 			return lines;
 		}
 		for (NpcEntity other : others) {
-			String why = other.brainId().isEmpty() ? "no brain"
-				: !other.brainId().equals(npc.brainId()) ? "brain \"" + other.brainId() + "\""
-				: !npc.hasLineOfSight(other) ? "same brain, but nothing in sight of her"
-				: "SAME BRAIN, in sight — this one is kin";
+			String why = other.graphId().isEmpty() ? "no graph"
+				: !other.graphId().equals(npc.graphId()) ? "graph \"" + other.graphId() + "\""
+				: !npc.hasLineOfSight(other) ? "same graph, but nothing in sight of her"
+				: "SAME GRAPH, in sight — this one is kin";
 			lines.add("  " + Math.round(npc.distanceTo(other)) + " blocks: " + why);
 		}
 		return lines;
@@ -308,8 +322,8 @@ public final class Bench {
 	 * experiment.
 	 */
 	private static List<String> shipped(NpcEntity npc) {
-		if (npc.brainId().isEmpty()) return List.of("She has no brain to reset.");
-		String id = npc.brainId();
+		if (npc.graphId().isEmpty()) return List.of("She has no graph to reset.");
+		String id = npc.graphId();
 		if (com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry.worldOwn(id).isEmpty()) {
 			return List.of("\"" + id + "\" is already the built-in one.");
 		}
@@ -322,7 +336,9 @@ public final class Bench {
 		}
 		com.mopicmp.npcstudio.dialogue.runtime.WorldDialogues.of(level).remove(id);
 		// Her train of thought was built on the copy that has just gone.
-		npc.setBrainId(id);
+		// Same document, fresh start: forgetting the world's copy leaves her holding
+		// a bookmark into a graph that has just been replaced under her.
+		npc.forgetWhereSheWas();
 		return List.of("Forgot this world's copy of \"" + id + "\".",
 			"She is on the built-in one now.");
 	}

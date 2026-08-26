@@ -43,7 +43,7 @@ class RoundTripTest {
 
 	/** Every graph that ships with the mod, which is what a person will open first. */
 	private static List<String> shipped() {
-		return List.of("duel", "sentry", "doorman", "torchbearer", "example");
+		return List.of("duel", "fighting", "sentry", "doorman", "torchbearer", "example");
 	}
 
 	@Test
@@ -125,8 +125,11 @@ class RoundTripTest {
 	void theTestItselfWouldHaveCaught() {
 		// Proof that the check above is not vacuous: the exact damage that
 		// happened, done on purpose, has to fail the comparison.
-		Dialogue whole = DialogueRegistry.get("duel").orElseThrow();
-		assertTrue(!whole.segments().isEmpty(), "duel has no skills to lose");
+		// The library, because that is where skills live now. The scenario that calls
+		// into it has none of its own, so testing it here would be testing that
+		// nothing survives nothing.
+		Dialogue whole = DialogueRegistry.get("fighting").orElseThrow();
+		assertTrue(!whole.segments().isEmpty(), "fighting has no skills to lose");
 
 		Dialogue stripped = new Dialogue(whole.id(), whole.formatVersion(), whole.start(),
 			whole.nodes(), whole.variableTypes());
@@ -139,7 +142,7 @@ class RoundTripTest {
 	void skillsAreInTheFile() {
 		// Belt and braces, and it reads as documentation: a graph's skills are a
 		// field of the file, so anybody looking at one by hand can see them.
-		Dialogue duel = DialogueRegistry.get("duel").orElseThrow();
+		Dialogue duel = DialogueRegistry.get("fighting").orElseThrow();
 		String json = DialogueCodecs.DIALOGUE.encodeStart(JsonOps.INSTANCE, duel)
 			.getOrThrow(AssertionError::new).toString();
 

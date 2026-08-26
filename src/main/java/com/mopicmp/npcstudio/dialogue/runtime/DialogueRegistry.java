@@ -117,6 +117,7 @@ public final class DialogueRegistry {
 		register(torchbearer());
 		register(doorman());
 		register(sentry());
+		register(fighting());
 		register(duel());
 	}
 
@@ -156,22 +157,52 @@ public final class DialogueRegistry {
 	 */
 	private static Dialogue duel() {
 		return Dialogue.builder("duel")
-			// ------------------------------------------------ the scenario
 			.start("watch")
 			.add(new Node.Until("watch",
 				new Condition.Compare(Sense.KIN, Scope.SENSE, Condition.Op.EQ, Value.of(true)),
 				"engage"))
 			// Naming who. Everything the fighting does about "who" comes from here.
-			.add(new Node.Do("engage", "fight", Mark.KIN, "holding"))
+			.add(new Node.Do("engage", "fighting:fight", Mark.KIN, "holding"))
 			// And the scenario's own job while it runs: notice when there is nobody
 			// left to fight. This is the turn a waiting call would have taken away.
 			.add(new Node.Until("holding",
 				new Condition.Not(
 					new Condition.Compare(Sense.KIN, Scope.SENSE, Condition.Op.EQ, Value.of(true))),
 				"break"))
-			.add(new Node.Stop("break", "fight", "watch"))
+			.add(new Node.Stop("break", "fighting:fight", "watch"))
+			.build();
+	}
 
-			// -------------------------------------------------- the skill
+	/**
+	 * How to fight, and nothing about who.
+	 *
+	 * <h2>A library, not a character's graph</h2>
+	 *
+	 * It has no beginning, and that is what makes it one. Nobody is given this: a
+	 * character is given a dialogue, and a dialogue calls in here by name —
+	 * {@code fighting:fight}. Which is what a brain is, said properly. It used to
+	 * be a second field on the character, and that was wrong twice over: a brain is
+	 * not something you wear, and a character with two documents has two authors.
+	 *
+	 * <h2>Why splitting it is the whole point</h2>
+	 *
+	 * The nodes below know only {@code target} — never {@code kin}, never why. Call
+	 * them with a different target and the same fighting is a brawl, a guard
+	 * turning on an intruder, or a bodyguard defending somebody, and none of those
+	 * needs the fighting rewritten.
+	 *
+	 * <b>The brain knows how; the dialogue decides what this is.</b>
+	 *
+	 * <h2>What to expect</h2>
+	 *
+	 * Empty hands work: they walk up to each other and punch. A bow makes them
+	 * shoot from a distance and close when it gets short. A datapack gun reads as
+	 * {@code swung}, which cannot be fired yet, so they close and hit with it —
+	 * which is visibly the wrong thing and honestly so.
+	 */
+	private static Dialogue fighting() {
+		return Dialogue.builder("fighting")
+			.library()
 			.segment("fight", "fight.look")
 			.add(new Node.Branch("fight.look", List.of(
 				// A bow, and far enough off that it is the sensible thing. A bow at

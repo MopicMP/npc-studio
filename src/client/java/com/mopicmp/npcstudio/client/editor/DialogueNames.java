@@ -25,28 +25,23 @@ public final class DialogueNames {
 	}
 
 	/**
-	 * The ones worth offering for a job.
+	 * The ones worth offering for a character's own field.
 	 *
-	 * <h2>Why the two lists are not the same list</h2>
+	 * <h2>Why this used to be two lists</h2>
 	 *
-	 * Because a character has two fields that both take the name of a graph, and
-	 * putting a behaviour graph in the conversation one leaves her standing
-	 * perfectly still with nothing anywhere saying why. That happened twice, and
-	 * the second time the field was already a list — it simply offered everything.
+	 * Because a character had two fields that both took the name of a graph, and
+	 * putting a behaviour graph in the conversation one left her standing perfectly
+	 * still with nothing anywhere saying why. That happened twice — the second time
+	 * the field was already a list, it simply offered everything.
 	 *
-	 * A graph that can serve either is offered in both. A sketch with neither
-	 * lines nor waiting is offered in both as well: it is not finished, and
-	 * guessing which half it will grow into would be worse than offering it.
+	 * There is one field now. A brain is a library of skills, and a library is not
+	 * something a character is given; it is something her dialogue calls. So the
+	 * question is no longer "which of the two jobs does this fit" but "can this be
+	 * carried at all", which is asked once — see {@code Known.fitsOnACharacter}.
 	 */
-	public static List<String> forBrain() {
+	public static List<String> forCharacter() {
 		return known.stream()
-			.filter(com.mopicmp.npcstudio.net.EditorPayloads.Known::fitsAsBrain)
-			.map(com.mopicmp.npcstudio.net.EditorPayloads.Known::name).toList();
-	}
-
-	public static List<String> forConversation() {
-		return known.stream()
-			.filter(com.mopicmp.npcstudio.net.EditorPayloads.Known::fitsAsConversation)
+			.filter(com.mopicmp.npcstudio.net.EditorPayloads.Known::fitsOnACharacter)
 			.map(com.mopicmp.npcstudio.net.EditorPayloads.Known::name).toList();
 	}
 }

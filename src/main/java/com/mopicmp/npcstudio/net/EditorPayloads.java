@@ -62,13 +62,25 @@ public final class EditorPayloads {
 				ByteBufCodecs.BOOL, Known::waits,
 				Known::new);
 
-		/** A graph with neither is an empty sketch, and may be put anywhere. */
-		public boolean fitsAsBrain() {
-			return waits || !speaks;
-		}
-
-		public boolean fitsAsConversation() {
-			return speaks || !waits;
+		/**
+		 * Whether this is something a character can be given.
+		 *
+		 * There used to be two of these — one for the conversation field and one for
+		 * the brain field — because a character carried two documents and putting the
+		 * wrong kind in either left her standing silently with nothing saying why.
+		 *
+		 * A character carries one document now, so the question is simply whether
+		 * this document is one that can be carried. Everything with a beginning is;
+		 * a library of skills has no beginning, which is exactly what makes it a
+		 * library rather than a character's own graph.
+		 *
+		 * Both flags are kept because both are still worth knowing about a graph —
+		 * an editor showing whether something talks is showing something true — and
+		 * because dropping a field from a packet to save four bits is how the next
+		 * thing gets lost.
+		 */
+		public boolean fitsOnACharacter() {
+			return true;
 		}
 	}
 

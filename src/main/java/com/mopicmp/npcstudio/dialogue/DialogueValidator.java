@@ -71,10 +71,37 @@ public final class DialogueValidator {
 		return new Report(List.copyOf(found));
 	}
 
+	/**
+	 * Whether there is a way in, and whether it goes anywhere.
+	 *
+	 * <h2>A document with no start is not broken</h2>
+	 *
+	 * It is a <b>library</b>: a set of named skills that other documents call into,
+	 * which is what a brain actually is. Nobody carries one — a character carries a
+	 * dialogue — so there is nowhere for it to begin and asking it to begin
+	 * somewhere would be asking it to be a different kind of thing.
+	 *
+	 * This is the second time this file has refused something for lacking a shape
+	 * it never needed. The first was the end node: a graph that waits is also a way
+	 * out, and demanding an ending turned every behaviour graph into an error.
+	 * A rule about the shape of a document is worth suspecting whenever a new use
+	 * of the same language turns up, because the language keeps being more general
+	 * than the rules written around it.
+	 */
 	private static void checkStart(Dialogue dialogue, List<Problem> found) {
-		if (dialogue.start() == null || dialogue.nodes().isEmpty()) {
-			found.add(new Problem(Severity.ERROR, null, "the dialogue has no starting node"));
-		} else if (dialogue.node(dialogue.start()) == null) {
+		if (dialogue.nodes().isEmpty()) {
+			found.add(new Problem(Severity.ERROR, null, "the graph has no nodes at all"));
+			return;
+		}
+		if (dialogue.isLibrary()) {
+			if (dialogue.segments().isEmpty()) {
+				found.add(new Problem(Severity.ERROR, null,
+					"the graph has neither a starting node nor any skills, so nothing can "
+						+ "ever run it"));
+			}
+			return;
+		}
+		if (dialogue.node(dialogue.start()) == null) {
 			found.add(new Problem(Severity.ERROR, null,
 				"the starting node \"" + dialogue.start() + "\" does not exist"));
 		}
@@ -260,7 +287,7 @@ public final class DialogueValidator {
 	 * a warning nobody reads, and the one real leftover hides among them.
 	 */
 	private static void checkReachable(Dialogue dialogue, List<Problem> found) {
-		if (dialogue.start() == null || dialogue.node(dialogue.start()) == null) return;
+		if (!dialogue.hasStart() || dialogue.node(dialogue.start()) == null) return;
 
 		Set<String> seen = new HashSet<>(reachableFrom(dialogue, dialogue.start()));
 		for (Map.Entry<String, String> way : dialogue.segments().entrySet()) {
@@ -325,7 +352,7 @@ public final class DialogueValidator {
 		}
 
 		Set<String> reachable = new HashSet<>(
-			dialogue.start() == null ? Set.of() : reachableFrom(dialogue, dialogue.start()));
+			dialogue.hasStart() ? reachableFrom(dialogue, dialogue.start()) : Set.<String>of());
 		for (String at : dialogue.segments().values()) {
 			if (dialogue.node(at) != null) reachable.addAll(reachableFrom(dialogue, at));
 		}

@@ -96,7 +96,7 @@ public final class Marks {
 	 * for one answer that cannot have changed in between.
 	 */
 	public static NpcEntity kin(NpcEntity npc) {
-		if (npc.brainId().isEmpty()) return null;
+		if (npc.graphId().isEmpty()) return null;
 		if (npc.kinKnown(npc.tickCount)) return npc.kinRemembered();
 		NpcEntity found = lookForKin(npc);
 		npc.rememberKin(npc.tickCount, found);
@@ -109,7 +109,7 @@ public final class Marks {
 		var near = npc.getBoundingBox().inflate(WITHIN);
 		for (NpcEntity other : npc.level().getEntitiesOfClass(NpcEntity.class, near)) {
 			if (other == npc || !other.isAlive()) continue;
-			if (!npc.brainId().equals(other.brainId())) continue;
+			if (!npc.graphId().equals(other.graphId())) continue;
 			double away = npc.distanceToSqr(other);
 			if (away >= closest || !npc.hasLineOfSight(other)) continue;
 			closest = away;
