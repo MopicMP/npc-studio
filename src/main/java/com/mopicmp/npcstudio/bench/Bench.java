@@ -136,6 +136,9 @@ public final class Bench {
 		// all looked exactly like one whose skills were fine.
 		lines.add("  skills: " + (graph.segments().isEmpty()
 			? "NONE" : String.join(", ", graph.segments().keySet())));
+		if (!npc.lastBlow().isEmpty()) {
+			lines.add("  last blow: " + npc.lastBlow());
+		}
 		if (!npc.brainTrouble().isEmpty()) {
 			lines.add("  REFUSED: " + npc.brainTrouble());
 		}

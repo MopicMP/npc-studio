@@ -1098,7 +1098,10 @@ public class NpcEntity extends Avatar {
 	 */
 	public boolean strikeAt(String mark) {
 		var target = com.mopicmp.npcstudio.brain.Marks.creature(this, mark);
-		if (target == null) return false;
+		if (target == null) {
+			lastBlow = "nobody to hit";
+			return false;
+		}
 
 		turnBodily(target.getEyePosition(), AIM_RATE);
 		swing(InteractionHand.MAIN_HAND);
@@ -1107,9 +1110,78 @@ public class NpcEntity extends Avatar {
 		// From the edges rather than centre to centre, so that two broad characters
 		// can reach each other and a scaled-up one reaches further, which is what
 		// the size already means everywhere else.
-		if (distanceTo(target) > reach + getBbWidth() / 2 + target.getBbWidth() / 2) return false;
+		if (distanceTo(target) > reach + getBbWidth() / 2 + target.getBbWidth() / 2) {
+			lastBlow = "swung and missed — " + Math.round(distanceTo(target))
+				+ " blocks, reach " + Math.round(reach);
+			return false;
+		}
 		if (!(level() instanceof net.minecraft.server.level.ServerLevel server)) return false;
-		return doHurtTarget(server, target);
+
+		boolean landed = hit(server, target);
+		lastBlow = landed ? "landed" : "blocked or absorbed";
+		return landed;
+	}
+
+	/**
+	 * The blow itself.
+	 *
+	 * <h2>Why this is written out rather than delegated</h2>
+	 *
+	 * Because {@code LivingEntity.doHurtTarget} does nothing. In 26.2 it is two
+	 * instructions — remember who was aimed at, return false — and the attack that
+	 * everybody means by that name lives only on {@code Mob}, which we are not.
+	 *
+	 * That is the same trap the bow set, from the same direction: a method that
+	 * exists on our class, compiles, runs, and is a stub for anything that is not
+	 * the subclass it was written for. Both times the symptom was a character
+	 * doing the motion and having no effect on the world.
+	 *
+	 * So this is {@code Mob}'s own attack, step for step, calling the same public
+	 * things it calls. Nothing about the damage is ours: the weapon says what it
+	 * does, the enchantments modify it, the game applies it. What we supply is
+	 * who and when — which is all we ever wanted to supply.
+	 *
+	 * <h2>One line here matters more than it looks</h2>
+	 *
+	 * {@code doPostAttackEffects} is what fires an enchantment hung on hitting —
+	 * which is precisely how a datapack builds a gun. A character who can strike
+	 * properly is a character who can, in principle, fire one.
+	 */
+	private boolean hit(net.minecraft.server.level.ServerLevel server,
+			net.minecraft.world.entity.LivingEntity target) {
+		float damage = (float) getAttributeValue(Attributes.ATTACK_DAMAGE);
+		net.minecraft.world.item.ItemStack weapon = getWeaponItem();
+		var source = weapon.getDamageSource(this);
+		damage = net.minecraft.world.item.enchantment.EnchantmentHelper
+			.modifyDamage(server, weapon, target, source, damage);
+		damage += weapon.getItem().getAttackDamageBonus(target, damage, source);
+
+		Vec3 was = target.getDeltaMovement();
+		boolean landed = target.hurtServer(server, source, damage);
+		if (!landed) return false;
+
+		float knock = getKnockback(target, source);
+		if (knock > 0) causeExtraKnockback(target, knock, was, source, 0f, true);
+		weapon.hurtEnemy(target, this);
+		net.minecraft.world.item.enchantment.EnchantmentHelper
+			.doPostAttackEffects(server, target, source);
+		setLastHurtMob(target);
+		playAttackSound();
+		postPiercingAttack();
+		return true;
+	}
+
+	/**
+	 * What came of the last swing, in words.
+	 *
+	 * Kept because from outside a miss, a blocked blow and a swing that does
+	 * nothing at all are the same character waving an arm — and it was the third
+	 * of those for a whole session without anything anywhere saying so.
+	 */
+	private String lastBlow = "";
+
+	public String lastBlow() {
+		return lastBlow;
 	}
 
 	/** Orders a shot at a mark, drawn for as long as the weapon is worth. */

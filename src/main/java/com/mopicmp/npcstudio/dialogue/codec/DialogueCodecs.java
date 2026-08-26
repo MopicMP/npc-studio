@@ -352,10 +352,21 @@ public final class DialogueCodecs {
 		Codec.STRING.fieldOf("start").forGetter(Dialogue::start),
 		Codec.unboundedMap(Codec.STRING, Codec.STRING).optionalFieldOf("variables", Map.of())
 			.forGetter(Dialogue::variableTypes),
+		// The named ways in, by the node each begins at. Optional, because a graph
+		// without any is the ordinary case and every file written before segments
+		// existed has none — and absent has to keep meaning that, for ever.
+		//
+		// This field was missed when segments were added, and the round-trip test
+		// found it: a graph saved to a world came back with its nodes and none of
+		// its skills. That is the same loss the editor had already caused once,
+		// one layer further down, and it would have happened again on the next
+		// save anybody made.
+		Codec.unboundedMap(Codec.STRING, Codec.STRING).optionalFieldOf("segments", Map.of())
+			.forGetter(Dialogue::segments),
 		NODE.listOf().fieldOf("nodes").forGetter(d -> List.copyOf(d.nodes().values()))
-	).apply(instance, (id, format, start, variables, nodes) -> {
+	).apply(instance, (id, format, start, variables, segments, nodes) -> {
 		java.util.LinkedHashMap<String, Node> byId = new java.util.LinkedHashMap<>();
 		for (Node node : nodes) byId.put(node.id(), node);
-		return new Dialogue(id, format, start, byId, variables);
+		return new Dialogue(id, format, start, byId, variables, segments);
 	}));
 }
