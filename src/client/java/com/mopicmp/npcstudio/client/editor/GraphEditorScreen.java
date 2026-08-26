@@ -133,20 +133,13 @@ public class GraphEditorScreen extends Screen {
 		// which is not only untidy, it is unreachable.
 		int across = width - 16 - panelWidth();
 		IconTextButton.row(8, bar, across, 20, java.util.List.of(
-			new Spec(Icon.ADD, Component.translatable("npc_studio.graph.line"),
-				0xFF4FC3F7, () -> add("line")),
-			new Spec(Icon.DIALOGUE, Component.translatable("npc_studio.graph.choice"),
-				0xFFBA68C8, () -> add("choice")),
-			new Spec(Icon.CHECK, Component.translatable("npc_studio.graph.end"),
-				0xFF78909C, () -> add("end")),
-			new Spec(Icon.PLAY, Component.translatable("npc_studio.graph.action"),
-				0xFFFF8A65, () -> add("animation")),
-			// Calling a skill. It had no way of being made here at all, which meant
-			// the one thing a brain is for could only be reached by editing a file —
-			// and the call I wrote by hand named its skill as text, which is the
-			// blind box this editor keeps having to unlearn.
-			new Spec(Icon.BODY, Component.translatable("npc_studio.graph.call"),
-				0xFF9575CD, () -> add("do")),
+			// One button and a list, rather than a button per kind. There were four,
+			// which covered four of the ten kinds the language has — and the six left
+			// out were the six that make a graph do anything: the waits, the branch,
+			// the call. A row of buttons cannot grow to ten, so it never grew at all
+			// and half the language stayed reachable only by editing json.
+			new Spec(Icon.ADD, Component.translatable("npc_studio.graph.add"),
+				0xFF4FC3F7, this::toggleAdding),
 			new Spec(Icon.RESET, Component.translatable("npc_studio.graph.rearrange"),
 				0xFFFFCA28, () -> { x.clear(); layout(); }),
 			new Spec(Icon.BROWSE, Component.translatable("npc_studio.graph.dialogues"),
@@ -326,6 +319,24 @@ public class GraphEditorScreen extends Screen {
 			case "do" -> new Node.Do(id, firstSkill(), com.mopicmp.npcstudio.dialogue.Mark.TARGET,
 				java.util.Map.of(), id);
 			case "stop" -> new Node.Stop(id, firstSkill(), id);
+			// Half a second, which is a pause rather than a stop — a fresh timer of
+			// nought ticks is a graph that spins, and the guard that catches it would
+			// be the author's first experience of the node.
+			case "every" -> new Node.Every(id, 10, id);
+			// Waiting on nothing is waiting for ever. It starts on the first reading
+			// there is, which is at least a question somebody can then change, rather
+			// than a node that is finished-looking and never moves.
+			case "until" -> new Node.Until(id,
+				new com.mopicmp.npcstudio.dialogue.Condition.Compare(
+					com.mopicmp.npcstudio.dialogue.Sense.KNOWN.get(0),
+					com.mopicmp.npcstudio.dialogue.Scope.SENSE,
+					com.mopicmp.npcstudio.dialogue.Condition.Op.EQ,
+					com.mopicmp.npcstudio.dialogue.Value.of(true)), id);
+			case "branch" -> new Node.Branch(id,
+				List.of(new Node.Arm(new com.mopicmp.npcstudio.dialogue.Condition.Always(), id)),
+				id);
+			case "set" -> new Node.Set(id, "", com.mopicmp.npcstudio.dialogue.Scope.CHARACTER,
+				com.mopicmp.npcstudio.dialogue.Value.of(true), id);
 			default -> new Node.End(id);
 		});
 		// Dropped where the person is looking rather than at the end of a column,
@@ -409,9 +420,59 @@ public class GraphEditorScreen extends Screen {
 
 	private void toggleBrain() {
 		showingBrain = !showingBrain;
+		showingAdd = false;
 	}
 
 	private static final int BRAIN_ROW = 16;
+
+	/**
+	 * The kinds of node, in the order somebody meets them.
+	 *
+	 * Talking first, because most graphs are conversations; then the two ways of
+	 * standing still, which is what turns a conversation into behaviour; then the
+	 * call, which is what a brain is for.
+	 */
+	private static final java.util.List<String> KINDS = java.util.List.of(
+		"line", "choice", "animation", "set", "branch", "every", "until", "do", "stop", "end");
+
+	private boolean showingAdd;
+
+	private void toggleAdding() {
+		showingAdd = !showingAdd;
+		showingBrain = false;
+	}
+
+	/** The list of node kinds, over the canvas, in the same manner as the skills. */
+	private void drawAdding(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+		if (!showingAdd) return;
+		int wide = 180;
+		int left = 8;
+		int top = height - 30 - KINDS.size() * BRAIN_ROW - 8;
+
+		graphics.fill(left, top, left + wide, top + KINDS.size() * BRAIN_ROW + 6, 0xF01A1F26);
+		graphics.fill(left, top, left + wide, top + 1, 0xFF2C333D);
+		for (int i = 0; i < KINDS.size(); i++) {
+			int y = top + BRAIN_ROW * i + 4;
+			boolean hovered = mouseY >= y - 2 && mouseY < y + BRAIN_ROW - 2
+				&& mouseX >= left && mouseX < left + wide;
+			if (hovered) graphics.fill(left, y - 2, left + wide, y + BRAIN_ROW - 2, 0xFF232A34);
+			graphics.text(font, Component.translatable("npc_studio.graph.kind." + KINDS.get(i)),
+				left + 6, y + 2, 0xFFECEFF1);
+		}
+	}
+
+	private boolean addingClicked(double mouseX, double mouseY) {
+		if (!showingAdd) return false;
+		int wide = 180;
+		int left = 8;
+		int top = height - 30 - KINDS.size() * BRAIN_ROW - 8;
+		int row = (int) ((mouseY - top - 4) / BRAIN_ROW);
+		showingAdd = false;
+		if (mouseX >= left && mouseX < left + wide && row >= 0 && row < KINDS.size()) {
+			add(KINDS.get(row));
+		}
+		return true;
+	}
 
 	/** Draws the skill list. Called after the nodes so it sits over them. */
 	private void drawBrain(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
@@ -589,6 +650,7 @@ public class GraphEditorScreen extends Screen {
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		// Before the buttons as well as before the canvas: an open list covers
 		// both, and a list you can click through is not a list.
+		if (addingClicked(event.x(), event.y())) return true;
 		if (brainClicked(event.x(), event.y())) return true;
 		if (super.mouseClicked(event, doubleClick)) return true;
 
@@ -787,6 +849,7 @@ public class GraphEditorScreen extends Screen {
 			panel.draw(graphics, font, width - NodePanel.WIDTH, -panelScroll, height + panelScroll);
 		}
 		drawBrain(graphics, mouseX, mouseY);
+		drawAdding(graphics, mouseX, mouseY);
 
 		super.extractRenderState(graphics, mouseX, mouseY, delta);
 	}

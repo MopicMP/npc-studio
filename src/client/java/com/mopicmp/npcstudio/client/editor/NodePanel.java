@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 import com.mopicmp.npcstudio.dialogue.Condition;
 import com.mopicmp.npcstudio.dialogue.Effect;
 import com.mopicmp.npcstudio.dialogue.Scope;
+import com.mopicmp.npcstudio.dialogue.Sense;
 import com.mopicmp.npcstudio.dialogue.Value;
 import com.mopicmp.npcstudio.dialogue.Node;
 import com.mopicmp.npcstudio.dialogue.Presentation;
@@ -245,13 +246,62 @@ public class NodePanel {
 					}));
 				y += ROW;
 			}
-			default -> {
-				// `branch`, `every` and `until` are what is left. All three are built
-				// out of conditions, and a condition editor is a bigger piece of work
-				// than a panel — until it exists, saying so is better than an empty box
-				// that looks broken.
-				labels.add(new Label("conditions are file-only for now", x, y));
+			case Node.Every every -> {
+				// No condition in this one at all — it is a number, and it had been
+				// filed with the conditions and left unreachable for that reason.
+				add.accept(field(font, x, y, fieldWidth, "wait this many ticks",
+					String.valueOf(every.ticks()), value -> {
+						Node.Every now = current(Node.Every.class);
+						put(new Node.Every(now.id(), Math.max(0, number(value, now.ticks())),
+							now.next()));
+					}, add));
+				y += ROW;
 			}
+			case Node.Until until -> {
+				labels.add(new Label("stands here until", x, y - 10));
+				y += 2;
+				y = conditionFields(font, until.condition(), x, y, fieldWidth, add,
+					made -> {
+						Node.Until now = current(Node.Until.class);
+						put(new Node.Until(now.id(), made, now.next()));
+					});
+			}
+			case Node.Branch branch -> {
+				List<Node.Arm> arms = branch.arms();
+				for (int i = 0; i < arms.size(); i++) {
+					int slot = i;
+					labels.add(new Label("go by exit " + (i + 1) + " if", x, y - 10));
+					add.accept(new FlatButton(x + fieldWidth - 18, y - 12, 18, 14,
+						Component.literal("x"), 0xFFEF5350, () -> {
+							Node.Branch was = current(Node.Branch.class);
+							List<Node.Arm> now = new java.util.ArrayList<>(was.arms());
+							now.remove(slot);
+							put(new Node.Branch(was.id(), List.copyOf(now), was.otherwise()));
+							screen.refreshPanel();
+						}));
+					y += 4;
+					y = conditionFields(font, arms.get(slot).condition(), x, y, fieldWidth, add,
+						made -> {
+							Node.Branch was = current(Node.Branch.class);
+							List<Node.Arm> now = new java.util.ArrayList<>(was.arms());
+							now.set(slot, new Node.Arm(made, now.get(slot).next()));
+							put(new Node.Branch(was.id(), List.copyOf(now), was.otherwise()));
+						});
+					y += 6;
+				}
+				add.accept(new FlatButton(x, y, 90, 18, Component.literal("+ exit"),
+					0xFF66BB6A, () -> {
+						Node.Branch was = current(Node.Branch.class);
+						List<Node.Arm> now = new java.util.ArrayList<>(was.arms());
+						// Leading where the branch already leads when nothing matched, so
+						// a fresh exit goes somewhere real rather than nowhere.
+						now.add(new Node.Arm(new Condition.Always(), was.otherwise()));
+						put(new Node.Branch(was.id(), List.copyOf(now), was.otherwise()));
+						screen.refreshPanel();
+					}));
+				y += ROW;
+			}
+			default -> labels.add(new Label("nothing to fill in", x, y));
 		}
 
 		// Where the fields ran out, so whoever is showing this panel knows whether
@@ -416,6 +466,208 @@ public class NodePanel {
 			}
 		}
 		return y;
+	}
+
+	/** How tall one line of the condition editor is. Tighter than a field row. */
+	private static final int CROW = 22;
+
+	/**
+	 * The rows a condition is made of, as widgets.
+	 *
+	 * <h2>What it refuses to show</h2>
+	 *
+	 * Anything nested deeper than a list of tests — see {@link ConditionRows}. It
+	 * says so and changes nothing, which is the whole point: showing an
+	 * approximation and then saving it would rewrite what somebody meant without a
+	 * word about it, and that is the bug this project keeps meeting.
+	 *
+	 * @param onChange handed the condition the rows now mean, whenever one changes
+	 * @return where the fields ran out
+	 */
+	private int conditionFields(Font font, Condition condition, int x, int y, int width,
+			Consumer<AbstractWidget> add, Consumer<Condition> onChange) {
+		ConditionRows rows = ConditionRows.read(condition);
+		if (rows == null) {
+			labels.add(new Label("nested deeper than this panel shows —", x, y));
+			labels.add(new Label("edit it in the file", x, y + 10));
+			return y + CROW + 4;
+		}
+
+		// The join, said in words. Only worth a button once there is something for
+		// it to join: with one test, "all of" and "any of" mean the same thing, and a
+		// control that changes nothing is a control that teaches nothing.
+		if (rows.rows().size() > 1) {
+			add.accept(new FlatButton(x, y, width, 16,
+				Component.literal(rows.all() ? "all of these" : "any of these"), 0xFF4FC3F7,
+				() -> change(condition, onChange, was -> was.joinedBy(!was.all()))));
+			y += CROW;
+		}
+
+		for (int i = 0; i < rows.rows().size(); i++) {
+			int slot = i;
+			ConditionRows.Row row = rows.rows().get(i);
+
+			// Turning a test round, what kind of test it is, and getting rid of it.
+			add.accept(new FlatButton(x, y, 18, 16, Component.literal(row.not() ? "\u00ac" : " "),
+				row.not() ? 0xFFEF5350 : 0xFF546E7A,
+				() -> change(condition, onChange, was -> was.withRow(slot,
+					new ConditionRows.Row(!was.rows().get(slot).not(),
+						was.rows().get(slot).leaf())))));
+			add.accept(new FlatButton(x + 20, y, width - 40, 16,
+				Component.literal(leafName(row.leaf())), 0xFFBA68C8,
+				() -> change(condition, onChange, was -> was.withRow(slot,
+					new ConditionRows.Row(was.rows().get(slot).not(),
+						nextLeaf(was.rows().get(slot).leaf()))))));
+			add.accept(new FlatButton(x + width - 18, y, 18, 16, Component.literal("x"),
+				0xFFEF5350, () -> change(condition, onChange, was -> was.without(slot))));
+			y += CROW;
+
+			y = leafFields(font, row.leaf(), x, y, width, add,
+				made -> change(condition, onChange, was -> was.withRow(slot,
+					new ConditionRows.Row(was.rows().get(slot).not(), made))));
+			y += 4;
+		}
+
+		add.accept(new FlatButton(x, y, 90, 16, Component.literal("+ test"), 0xFF66BB6A,
+			() -> change(condition, onChange, was -> was.plus(new ConditionRows.Row(false,
+				new Condition.Compare(Sense.KNOWN.get(0), Scope.SENSE, Condition.Op.EQ,
+					Value.of(true)))))));
+		return y + CROW;
+	}
+
+	/**
+	 * Edits the rows and hands back what they now mean.
+	 *
+	 * The rows are read again rather than closed over. A button holding the rows it
+	 * was built with would undo whatever happened in between — the stale-copy edit,
+	 * which shows up as clicks being ignored at random.
+	 */
+	private void change(Condition condition, Consumer<Condition> onChange,
+			java.util.function.UnaryOperator<ConditionRows> edit) {
+		ConditionRows rows = ConditionRows.read(condition);
+		if (rows == null) return;
+		onChange.accept(edit.apply(rows).write());
+		screen.refreshPanel();
+	}
+
+	/** What one test says, in a few words. */
+	private static String leafName(Condition leaf) {
+		return switch (leaf) {
+			case Condition.Compare compare -> compare.scope() == Scope.SENSE
+				? "what she senses" : "a variable";
+			case Condition.HasItem _ -> "the player is carrying";
+			case Condition.Visited _ -> "has already been through";
+			default -> "?";
+		};
+	}
+
+	/**
+	 * The next kind of test, keeping nothing from the last.
+	 *
+	 * The three ask about different things — a reading, an inventory, a place
+	 * somebody has been — so there is nothing to carry across. Carrying a name from
+	 * one to another would offer a sense as an item id, which reads as a mistake
+	 * somebody made rather than one the editor made for them.
+	 */
+	private static Condition nextLeaf(Condition leaf) {
+		return switch (leaf) {
+			case Condition.Compare compare when compare.scope() == Scope.SENSE ->
+				new Condition.Compare("", Scope.PLAYER, Condition.Op.EQ, Value.of(true));
+			case Condition.Compare _ -> new Condition.HasItem("minecraft:stone", 1);
+			case Condition.HasItem _ -> new Condition.Visited("");
+			default -> new Condition.Compare(Sense.KNOWN.get(0), Scope.SENSE,
+				Condition.Op.EQ, Value.of(true));
+		};
+	}
+
+	/** The fields one test needs, which differ by what it asks about. */
+	private int leafFields(Font font, Condition leaf, int x, int y, int width,
+			Consumer<AbstractWidget> add, Consumer<Condition> onChange) {
+		switch (leaf) {
+			case Condition.Compare compare -> {
+				if (compare.scope() == Scope.SENSE) {
+					// A fixed list, so it is chosen rather than typed. A sense misspelt
+					// reads false for ever, which looks exactly like a character who has
+					// decided not to act — and nothing anywhere would say otherwise.
+					add.accept(new FlatButton(x, y, width, 16,
+						Component.literal(compare.variable()), 0xFF9575CD,
+						() -> onChange.accept(new Condition.Compare(nextSense(compare.variable()),
+							Scope.SENSE, compare.op(), compare.value()))));
+					y += CROW;
+				} else {
+					add.accept(new FlatButton(x, y, width, 16,
+						Component.literal(nameOf(compare.scope())), 0xFF66BB6A,
+						() -> onChange.accept(new Condition.Compare(compare.variable(),
+							nextReadable(compare.scope()), compare.op(), compare.value()))));
+					y += CROW;
+					add.accept(field(font, x, y + 10, width, "which variable", compare.variable(),
+						value -> onChange.accept(new Condition.Compare(value, compare.scope(),
+							compare.op(), compare.value())), add));
+					y += CROW + 10;
+				}
+
+				add.accept(new FlatButton(x, y, 54, 16, Component.literal(opName(compare.op())),
+					0xFF4FC3F7, () -> onChange.accept(new Condition.Compare(compare.variable(),
+						compare.scope(), nextOp(compare.op()), compare.value()))));
+				add.accept(field(font, x + 58, y, width - 58, "value", show(compare.value()),
+					value -> onChange.accept(new Condition.Compare(compare.variable(),
+						compare.scope(), compare.op(), parse(value))), add));
+				y += CROW;
+			}
+			case Condition.HasItem(String item, int count) -> {
+				add.accept(field(font, x, y + 10, width, "which item", item,
+					value -> onChange.accept(new Condition.HasItem(value, count)), add));
+				y += CROW + 10;
+				add.accept(field(font, x, y + 10, width, "how many", String.valueOf(count),
+					value -> onChange.accept(new Condition.HasItem(item,
+						Math.max(1, number(value, count)))), add));
+				y += CROW + 10;
+			}
+			case Condition.Visited(String node) -> {
+				add.accept(field(font, x, y + 10, width, "which node", node,
+					value -> onChange.accept(new Condition.Visited(value)), add));
+				y += CROW + 10;
+			}
+			default -> labels.add(new Label("nothing to fill in", x, y));
+		}
+		return y;
+	}
+
+	private static String opName(Condition.Op op) {
+		return switch (op) {
+			case EQ -> "is";
+			case NE -> "is not";
+			case LT -> "<";
+			case LE -> "\u2264";
+			case GT -> ">";
+			case GE -> "\u2265";
+		};
+	}
+
+	private static Condition.Op nextOp(Condition.Op op) {
+		var all = Condition.Op.values();
+		return all[(op.ordinal() + 1) % all.length];
+	}
+
+	private static String nextSense(String name) {
+		int at = Sense.KNOWN.indexOf(name);
+		return Sense.KNOWN.get((at + 1) % Sense.KNOWN.size());
+	}
+
+	/**
+	 * The next scope a condition may <em>read</em>, which is not the same list.
+	 *
+	 * Writing has three; reading has five, because a sense and what a call handed in
+	 * can both be asked about and neither can be set. Sharing one list between the
+	 * two would put half the language out of reach of the editor.
+	 */
+	private static Scope nextReadable(Scope scope) {
+		return switch (scope) {
+			case PLAYER -> Scope.WORLD;
+			case WORLD -> Scope.CHARACTER;
+			case CHARACTER -> Scope.GIVEN;
+			case GIVEN, SENSE -> Scope.PLAYER;
+		};
 	}
 
 	/** A button that walks through the marks, since there are only ever a few. */
