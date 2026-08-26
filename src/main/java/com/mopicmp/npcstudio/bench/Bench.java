@@ -153,6 +153,13 @@ public final class Bench {
 		if (!npc.lastBlow().isEmpty()) {
 			lines.add("  last blow: " + npc.lastBlow());
 		}
+		// Where in the swing she is, because a blow is an interval now and "she is
+		// doing nothing" and "she is four ticks into a wind-up" are the same
+		// character standing there from outside.
+		if (npc.swinging()) {
+			lines.add("  mid-swing, " + npc.blow().into() + " ticks in — she cannot be "
+				+ "ordered anywhere until it is over");
+		}
 		if (!npc.brainTrouble().isEmpty()) {
 			lines.add("  REFUSED: " + npc.brainTrouble());
 		}

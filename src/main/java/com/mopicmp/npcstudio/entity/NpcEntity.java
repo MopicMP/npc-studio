@@ -538,6 +538,11 @@ public class NpcEntity extends Avatar {
 	 */
 	public boolean walkTo(Vec3 wanted, float pace) {
 		if (wanted == null) return false;
+		// Not while she is swinging. A strike is a step with the weight on it, and a
+		// character who walks out of her own blow is the wooden thing this whole
+		// piece of work is about — the arm carries on through an animation while the
+		// feet take her somewhere else entirely.
+		if (blow.committed()) return false;
 		wantedPace = Math.clamp(pace, 0f, 1f);
 
 		// Ordered somewhere she is already going. This is not an optimisation, it
@@ -1135,24 +1140,53 @@ public class NpcEntity extends Avatar {
 	private String aimingAt = "";
 
 	/**
-	 * Swings at somebody, and hurts them if they are close enough.
+	 * The swing she is in the middle of, as an interval rather than a moment.
 	 *
-	 * <h2>The swing is not conditional on the hit</h2>
+	 * Everything about a blow that is arithmetic lives in {@link com.mopicmp.npcstudio.foe.Blow};
+	 * this is the one copy of it that belongs to a body.
+	 */
+	private final com.mopicmp.npcstudio.foe.Blow blow = new com.mopicmp.npcstudio.foe.Blow();
+
+	/** Whom the swing in progress was aimed at, so the blade can look again. */
+	private String swingingAt = "";
+
+	/** Whether this blow has already touched somebody. */
+	private boolean blowLanded;
+
+	/** Whether she is mid-swing and may not be given other orders. */
+	public boolean swinging() {
+		return blow.committed();
+	}
+
+	public com.mopicmp.npcstudio.foe.Blow blow() {
+		return blow;
+	}
+
+	/**
+	 * Begins a swing at somebody.
 	 *
-	 * A character who only moves her arm when the blow lands stands perfectly
-	 * still while failing to reach you, which reads as being ignored rather than
-	 * as being fought. So the arm moves either way, and the damage is the part
-	 * that depends on reach.
+	 * <h2>The damage is no longer here</h2>
 	 *
-	 * Nothing here limits how often. The graph decides rhythm, and the game's own
-	 * invulnerability after a hit means asking too often gets the same result as
-	 * asking sensibly — the alternative would be a second opinion about timing,
-	 * kept in java, disagreeing with the one in the graph.
+	 * It used to be: the graph said strike, the arm waved, and the damage landed in
+	 * the same tick. Nothing was placed in time, so nothing could read as having
+	 * weight — and on eight of the animations the blade did not reach anybody until
+	 * up to half a second later, so the two were not even about the same moment.
 	 *
-	 * @return whether the blow landed, for a readout: from outside, out of reach
-	 *         and out of damage look identical
+	 * Now this starts an interval. The picture and the damage belong to one swing
+	 * because the swing decides both: which animation, from the chain, and which
+	 * tick, from that animation's own timing. See {@link com.mopicmp.npcstudio.foe.Swings}.
+	 *
+	 * <h2>She is committed once it has begun</h2>
+	 *
+	 * The graph may not call it off, walk out of it, or start another. That costs
+	 * her the rest of the swing in reaction time, and buying that is the point: a
+	 * blow that can be cancelled never had any weight to begin with.
+	 *
+	 * @return whether a swing began. Not whether it landed — nothing has landed
+	 *         yet, and {@link #lastBlow()} is where the outcome goes
 	 */
 	public boolean strikeAt(String mark) {
+		if (blow.committed()) return false;
 		var target = com.mopicmp.npcstudio.brain.Marks.creature(this, mark);
 		if (target == null) {
 			lastBlow = "nobody to hit";
@@ -1160,8 +1194,61 @@ public class NpcEntity extends Avatar {
 		}
 
 		turnBodily(target.getEyePosition(), AIM_RATE);
-		swing(InteractionHand.MAIN_HAND);
 
+		var style = com.mopicmp.npcstudio.foe.Style.forWeapon(
+			com.mopicmp.npcstudio.foe.Arms.of(getMainHandItem()));
+		int link = blow.link(style.chain().size());
+		if (!blow.begin(style.shape(link))) return false;
+
+		blowLanded = false;
+		swingingAt = mark;
+		// Vanilla's own arm swing as well, because everything hung on it — the
+		// sound, the sweep particles, a mod watching for an attack — is hung on that
+		// and not on ours.
+		swing(InteractionHand.MAIN_HAND);
+		// Held rather than given a length. An emote ends where the animator left it,
+		// and holding that last frame until the next blow or the stance replaces it
+		// is what lets the follow-through play out instead of being cut at the tick
+		// she is free to move again.
+		playGesture(style.swing(link), 0);
+		lastBlow = "swinging " + style.swing(link) + ", lands on tick "
+			+ style.timing(link).contact()
+			+ (style.timing(link).checked() ? "" : " (nobody has looked at this one)");
+		return true;
+	}
+
+	/**
+	 * One tick of the swing, and the blow itself when the blade comes round.
+	 *
+	 * <h2>Why the target is looked up again rather than held</h2>
+	 *
+	 * Because half a second passes between the order and the edge, and in half a
+	 * second somebody can step out of reach. Holding the entity would hit whoever
+	 * was there when she decided, which is the same fault as landing the damage on
+	 * the tick of the order — an answer about a moment that has gone.
+	 *
+	 * It also gives the readout something worth saying: "nothing there when the
+	 * blade came round" and "out of reach" are different failures and used to look
+	 * identical from outside.
+	 */
+	private void workTheBlow() {
+		var phase = blow.tick();
+		if (phase == com.mopicmp.npcstudio.foe.Blow.Phase.CONTACT && !blowLanded) {
+			// Once per swing, however many ticks the edge is dangerous for. The window
+			// is there so that somebody moving through the arc is caught, not so that
+			// one blow hurts three times.
+			blowLanded = land(swingingAt);
+		}
+		if (phase == com.mopicmp.npcstudio.foe.Blow.Phase.READY) swingingAt = "";
+	}
+
+	/** The blow, once the blade is actually passing through. */
+	private boolean land(String mark) {
+		var target = com.mopicmp.npcstudio.brain.Marks.creature(this, mark);
+		if (target == null) {
+			lastBlow = "nothing there when the blade came round";
+			return false;
+		}
 		double reach = getAttributeValue(Attributes.ENTITY_INTERACTION_RANGE);
 		// From the edges rather than centre to centre, so that two broad characters
 		// can reach each other and a scaled-up one reaches further, which is what
@@ -1435,6 +1522,9 @@ public class NpcEntity extends Avatar {
 			keepWatch();
 			// The doing, as against the deciding: whoever ordered the walk - a
 			// reflex or a graph - the legs move here, every tick, the same way.
+			// Before the graph, so that a graph asking whether she is free this tick
+			// gets an answer about this tick rather than the last one.
+			workTheBlow();
 			walkOn();
 			gaze();
 			workTheWeapon();
@@ -1512,6 +1602,18 @@ public class NpcEntity extends Avatar {
 	/** How many ticks the current gesture has been running, on either side. */
 	public int gestureAge() {
 		return tickCount - entityData.get(DATA_GESTURE_START);
+	}
+
+	/**
+	 * The tick the current gesture was asked for, on the server's own clock.
+	 *
+	 * Meaningless as a time on any other machine — a client counts an entity from
+	 * when it came into view — and that is fine, because nobody reads it as a time.
+	 * It is read as an <em>identity</em>: when this number changes, a new
+	 * performance was asked for, even when it is a performance of the same thing.
+	 */
+	public int gestureBegan() {
+		return entityData.get(DATA_GESTURE_START);
 	}
 
 	/**

@@ -75,12 +75,23 @@ public class ClientNpcEntity extends NpcEntity implements ClientAvatarEntity {
 		// first lookup would otherwise stick to whatever the default was.
 		refreshSkin();
 
-		// A gesture is timed from the moment it turns up here. Comparing names
-		// rather than watching one particular field, because the same gesture
-		// asked for twice should start again — it is a new performance.
-		String now = gesture();
-		if (!now.equals(gestureSeen)) {
-			gestureSeen = now;
+		// A gesture is timed from the moment it turns up here.
+		//
+		// Watching the tick the server asked on, not the name. The comment that used
+		// to be here said exactly this — "the same gesture asked for twice should
+		// start again, it is a new performance" — and the code compared names, which
+		// does the opposite: the second ask changed nothing and the first frame never
+		// came back.
+		//
+		// It is not a corner case. A chain of three blows wraps, so the third and the
+		// first are separated by a pause and then repeat; a flinch answers a second
+		// hit; a style with one swing repeats every time. In all of them the
+		// character does the movement once and then stands holding its last frame,
+		// which is the wooden thing this whole piece of work is about.
+		int began = gestureBegan();
+		if (began != gestureAskedOn || !gesture().equals(gestureSeen)) {
+			gestureAskedOn = began;
+			gestureSeen = gesture();
 			gestureSeenAt = tickCount;
 		}
 	}
@@ -145,6 +156,9 @@ public class ClientNpcEntity extends NpcEntity implements ClientAvatarEntity {
 	private int gestureSeenAt = -1;
 	private String gestureSeen = "";
 
+	/** The server's tick for the gesture we are already showing — its identity. */
+	private int gestureAskedOn = Integer.MIN_VALUE;
+
 	/** How long this client has been showing the current gesture, in ticks. */
 	public float localGestureAge(float partial) {
 		if (gestureSeenAt < 0) return 0;
@@ -165,6 +179,7 @@ public class ClientNpcEntity extends NpcEntity implements ClientAvatarEntity {
 	private float leavingFrom;
 	private int changedAt = -1;
 	private String showing = "";
+	private int showingAskedOn = Integer.MIN_VALUE;
 
 	/**
 	 * Notices that the animation has changed, and starts the change.
@@ -179,8 +194,12 @@ public class ClientNpcEntity extends NpcEntity implements ClientAvatarEntity {
 	 *
 	 * The entity has the clock and the memory, so the entity notices.
 	 */
-	public void changingTo(String animation, float age) {
-		if (animation.equals(showing)) return;
+	public void changingTo(String animation, float age, int askedOn) {
+		// The same trap as above, one layer along: a repeat of one animation is a
+		// change even though the name has not changed, and without noticing it the
+		// second performance has nothing to fade in from.
+		if (animation.equals(showing) && askedOn == showingAskedOn) return;
+		showingAskedOn = askedOn;
 		// The one going out keeps its own age, frozen where it got to. An emote is a
 		// timeline and a fading one should stay on the frame it reached rather than
 		// carrying on playing to nobody.

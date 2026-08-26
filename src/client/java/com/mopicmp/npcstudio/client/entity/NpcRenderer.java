@@ -94,7 +94,9 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 		var editing = ShapeEditing.of(npc.getId());
 		holder.npcStudio$setShape(editing != null ? editing : npc.bodyShape());
 		holder.npcStudio$setGesture(gesture, age, strength);
-		npc.changingTo(gesture, age);
+		// The tick it was asked on travels with it, so that asking twice for one
+		// animation reads as two performances rather than as nothing having happened.
+		npc.changingTo(gesture, age, npc.gestureBegan());
 		holder.npcStudio$setLeaving(npc.leavingAnimation(), npc.leavingAge(partial),
 			npc.changedBy(partial));
 		// The skin is read before anything is drawn over it. Nothing is assumed:

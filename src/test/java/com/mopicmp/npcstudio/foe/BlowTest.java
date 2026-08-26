@@ -338,6 +338,24 @@ class BlowTest {
 	}
 
 	@Test
+	@DisplayName("a chain of three is quicker than three whole films")
+	void theChainDoesNotWaitForThePicture() {
+		// The other half of what makes a fight not a slideshow. Three sword swings
+		// run for seventy-three ticks of animation between them; committing for all
+		// of it would be three and a half seconds for three blows, which reads as a
+		// character taking turns rather than fighting.
+		Style style = Style.SWORD;
+		int committed = 0;
+		int filmed = 0;
+		for (int link = 0; link < style.chain().size(); link++) {
+			committed += style.shape(link).length();
+			filmed += lengthOf(style.swing(link));
+		}
+		assertTrue(committed < filmed,
+			"she is held for " + committed + " ticks of " + filmed + " filmed");
+	}
+
+	@Test
 	@DisplayName("weight is the wind-up, not the length")
 	void weightIsTelegraph() {
 		// The thing established in the docs and never actually held to: a heavy
