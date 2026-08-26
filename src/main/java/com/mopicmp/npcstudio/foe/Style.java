@@ -3,37 +3,42 @@ package com.mopicmp.npcstudio.foe;
 import java.util.List;
 
 /**
- * How a character carries herself in a fight: a stance, a chain of blows, and
- * the timing of each.
+ * How a character carries herself in a fight: a stance and a chain of blows.
  *
- * <h2>Why these three belong together</h2>
+ * <h2>What is no longer here, and why that matters</h2>
  *
- * Because they are one decision. A stance that does not match the swings looks
- * like two animations fighting over a body; a swing whose timing does not match
- * its picture lands before the blade moves. Naming them separately would invite
- * exactly those mismatches, one setting at a time.
+ * The timing. This record used to hold a {@code Blow.Shape} — one set of numbers
+ * for the whole style — and that was wrong twice.
  *
- * <h2>Where the numbers come from</h2>
+ * Wrong about animations: a blow lands when its own picture says so.
+ * {@code spe_hand_strike1} connects on its fourth tick and
+ * {@code spe_zweihander_strike} on its thirtieth, and nothing about a fist or a
+ * greatsword predicts either. One number for a style was out by up to eleven
+ * ticks — half a second between somebody being hurt and the arm that hurt them
+ * moving.
  *
- * The animations. Every strike in the pack is between twenty-three and
- * twenty-eight ticks long, and each style's parts add up to no more than its
- * <em>shortest</em> swing — an animation that finishes while the character is
- * still committed leaves her frozen at the end of it, which looks worse than no
- * animation at all. A test reads the pack and holds this to it, because the
- * numbers below are exactly the sort of thing that drifts once somebody swaps an
- * animation.
+ * Wrong in kind: a number written into a class is a number nobody but us can
+ * change. It is asked of {@link Swings} now, which has a measured default and
+ * takes an answer from anybody who has a better one.
  *
- * <h2>What makes a heavy weapon heavy</h2>
+ * <h2>Where the chains come from</h2>
  *
- * Not a longer swing. The pack's animations are all about the same length, and
- * holding one past its end freezes it. What reads as weight is the <b>wind-up</b>
- * — twelve ticks of telegraph against a sword's eight — and the pause the graph
- * leaves between blows. Weight is how long you see it coming, not how long it
- * takes.
+ * Looked at, one frame at a time, with {@code tools/shape-look}. Two automatic
+ * measures of where a blade passes agreed on eleven strikes out of nineteen and
+ * disagreed on eight, and on the disagreements each was right about half the
+ * time — so the numbers behind these names were settled by looking rather than
+ * by choosing a formula.
  *
- * The blade is dangerous for four ticks of it. That is a fifth of a second: long
- * enough for a sweep to pass through somebody who is moving, short enough that
- * walking into a swing that has already gone by does not count.
+ * <h2>What was dropped after looking, and why</h2>
+ *
+ * {@code spe_spear_strike3} turns the character through a whole circle. A blow
+ * that spins cannot be aimed, and the graph is meanwhile holding her facing her
+ * target — two authors of one body. It is a fine showpiece and a bad third blow.
+ *
+ * {@code spe_zweihander_strike} is not the heavy chain either, for a duller
+ * reason: it is one animation where the heavy sword has three, and three
+ * different blows are worth more than one heavier-looking one. It keeps its
+ * numbers in the registry for whoever wants it.
  *
  * <h2>Chosen from the weapon, and overridable</h2>
  *
@@ -41,7 +46,7 @@ import java.util.List;
  * the item says about itself, and let the author say otherwise. A guess that
  * cannot be overruled is worse than no guess.
  */
-public record Style(String stance, List<String> chain, Blow.Shape shape) {
+public record Style(String stance, List<String> chain) {
 
 	/**
 	 * A sword, and the default for anything that swings and is not obviously
@@ -51,27 +56,35 @@ public record Style(String stance, List<String> chain, Blow.Shape shape) {
 	public static final Style SWORD = new Style(
 		"spe_fighting_stance_with_swords",
 		List.of("spe_strike_with_a_sword1", "spe_strike_with_a_sword2",
-			"spe_strike_with_a_sword3"),
-		new Blow.Shape(8, 4, 12));
+			"spe_strike_with_a_sword3"));
 
 	/** Slower everywhere, and it should look it. */
 	public static final Style HEAVY = new Style(
 		"spe_fighting_pose",
 		List.of("spe_a_blow_with_a_heavy_sword1", "spe_a_blow_with_a_heavy_sword2",
-			"spe_a_blow_with_a_heavy_sword3"),
-		new Blow.Shape(12, 5, 6));
+			"spe_a_blow_with_a_heavy_sword3"));
 
-	/** A reach weapon: a long wind-up and a short, deep thrust. */
+	/**
+	 * A reach weapon: a long draw back and a short, deep thrust.
+	 *
+	 * Two blows rather than three. The third spins, and a blow that spins cannot
+	 * be aimed at anybody.
+	 */
 	public static final Style SPEAR = new Style(
 		"spe_fighting_pose",
-		List.of("spe_spear_strike1", "spe_spear_strike2", "spe_spear_strike3"),
-		new Blow.Shape(10, 3, 10));
+		List.of("spe_spear_strike1", "spe_spear_strike2"));
 
-	/** Nothing in her hands. Quick, and it is a kick as often as a punch. */
+	/**
+	 * Nothing in her hands.
+	 *
+	 * Punches, not kicks. The kicks were here first and were the wrong choice
+	 * twice over: {@code spe_kick} barely moves a leg, and both are nearly twice
+	 * as long as a punch — so bare hands fought slower than a greatsword. The pack
+	 * has a real three-blow punching chain and nobody had looked for it.
+	 */
 	public static final Style FIST = new Style(
 		"spe_fighting_stance",
-		List.of("spe_kick", "spe_kick_out"),
-		new Blow.Shape(5, 3, 8));
+		List.of("spe_hand_strike1", "spe_hand_strike2", "spe_hand_strike3"));
 
 	/**
 	 * Something is in her hands and she is behind it rather than swinging it.
@@ -81,15 +94,11 @@ public record Style(String stance, List<String> chain, Blow.Shape shape) {
 	 * animation never ends is a character stuck mid-swing for ever.
 	 */
 	public static final Style GUARDED = new Style(
-		"spe_fighting_pose_with_shild",
-		SWORD.chain(),
-		new Blow.Shape(8, 4, 12));
+		"spe_fighting_pose_with_shild", SWORD.chain());
 
 	/** Holding something that shoots: a stance, and swings only if pressed. */
 	public static final Style RANGED = new Style(
-		"spe_fighting_pose_with_a_bow",
-		SWORD.chain(),
-		new Blow.Shape(8, 4, 12));
+		"spe_fighting_pose_with_a_bow", SWORD.chain());
 
 	/**
 	 * The style a weapon suggests.
@@ -112,5 +121,21 @@ public record Style(String stance, List<String> chain, Blow.Shape shape) {
 	/** Which animation the next blow of the chain uses. */
 	public String swing(int link) {
 		return chain.get(Math.floorMod(link, chain.size()));
+	}
+
+	/**
+	 * When that blow lands, asked rather than known.
+	 *
+	 * Every caller goes through here rather than reaching for the registry itself,
+	 * so that "which animation" and "when does it land" cannot be answered about
+	 * two different blows — which is exactly how a picture and a piece of damage
+	 * come to belong to different swings.
+	 */
+	public Swing timing(int link) {
+		return Swings.of(swing(link));
+	}
+
+	public Blow.Shape shape(int link) {
+		return timing(link).shape();
 	}
 }

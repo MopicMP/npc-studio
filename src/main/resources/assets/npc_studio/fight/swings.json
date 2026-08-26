@@ -1,0 +1,37 @@
+{
+  "_comment": [
+    "When each animation's blow lands, in ticks from its own beginning.",
+    "contact - the first tick the edge is dangerous.",
+    "through - how many ticks it stays dangerous.",
+    "cancel  - the earliest tick another blow may begin; not the end of the film.",
+    "checked - somebody has looked at the frames, rather than only measured them.",
+    "",
+    "Look with tools/shape-look: .\\frames.ps1 <animation> out.png 1 side",
+    "It draws the blade along the real arm bone, which is the line these numbers",
+    "are about - the elbow barely moves on a heavy swing while the edge crosses a",
+    "quadrant, so an arm is not an answer."
+  ],
+
+  "spe_strike_with_a_sword1": { "contact": 11, "through": 3, "cancel": 17, "checked": true },
+  "spe_strike_with_a_sword2": { "contact": 12, "through": 3, "cancel": 18, "checked": true },
+  "spe_strike_with_a_sword3": { "contact": 11, "through": 3, "cancel": 17, "checked": true },
+
+  "spe_a_blow_with_a_heavy_sword1": { "contact": 10, "through": 3, "cancel": 17, "checked": false },
+  "spe_a_blow_with_a_heavy_sword2": { "contact": 11, "through": 3, "cancel": 17, "checked": true },
+  "spe_a_blow_with_a_heavy_sword3": { "contact": 9, "through": 3, "cancel": 16, "checked": false },
+
+  "spe_zweihander_strike": { "contact": 30, "through": 4, "cancel": 38, "checked": true },
+
+  "spe_spear_strike1": { "contact": 9, "through": 3, "cancel": 15, "checked": true },
+  "spe_spear_strike2": { "contact": 6, "through": 3, "cancel": 13, "checked": false },
+
+  "spe_hand_strike1": { "contact": 4, "through": 2, "cancel": 10, "checked": true },
+  "spe_hand_strike2": { "contact": 6, "through": 2, "cancel": 12, "checked": false },
+  "spe_hand_strike3": { "contact": 5, "through": 2, "cancel": 11, "checked": true },
+
+  "spe_kick": { "contact": 10, "through": 3, "cancel": 18, "checked": false },
+  "spe_kick_out": { "contact": 15, "through": 3, "cancel": 24, "checked": false },
+  "spe_katana_strike1": { "contact": 8, "through": 3, "cancel": 15, "checked": false },
+  "spe_katana_strike3": { "contact": 2, "through": 3, "cancel": 10, "checked": false },
+  "spe_mjolnir_strike": { "contact": 17, "through": 3, "cancel": 25, "checked": false }
+}

@@ -143,32 +143,98 @@ class BlowTest {
 		// The chain forgets only while she is not swinging. Otherwise a heavy
 		// weapon — whose recovery is longer than the memory — could never chain at
 		// all, and its combination would be dead data.
-		assertTrue(Style.HEAVY.shape().recovery() < Blow.CHAIN_HOLDS
-			|| new Blow().link(3) == 0);
-
 		Blow blow = new Blow();
-		blow.begin(Style.HEAVY.shape());
-		through(blow, Style.HEAVY.shape().length());
+		blow.begin(Style.HEAVY.shape(0));
+		through(blow, Style.HEAVY.shape(0).length());
 		assertEquals(1, blow.link(3), "the heavy chain broke on its own recovery");
 	}
 
 	// ------------------------------------------------------------------ styles
 
 	@Test
-	@DisplayName("no style commits her for longer than its own shortest swing")
+	@DisplayName("no blow commits her for longer than its own picture")
 	void nothingOutlastsItsPicture() {
 		// Read out of the pack rather than written down here, because a number
 		// written down here is a number that drifts the moment somebody swaps an
 		// animation — and the symptom is a character frozen at the end of a swing,
 		// which nobody would think to blame on a constant in a test.
 		for (Style style : styles()) {
-			for (String swing : style.chain()) {
+			for (int link = 0; link < style.chain().size(); link++) {
+				String swing = style.swing(link);
 				int length = lengthOf(swing);
-				assertTrue(style.shape().length() <= length,
-					style.stance() + " commits for " + style.shape().length()
-						+ " ticks but " + swing + " lasts " + length);
+				int commits = style.shape(link).length();
+				assertTrue(commits <= length,
+					swing + " commits for " + commits + " ticks but lasts " + length);
 			}
 		}
+	}
+
+	@Test
+	@DisplayName("every blow a style can throw has been measured, not guessed at")
+	void nothingShippedIsAGuess() {
+		// The guess exists for somebody else's animation, not for ours. A style
+		// naming a swing with no numbers behind it is a blow landing on a tick
+		// nobody chose, and it would look exactly like a blow landing correctly.
+		for (Style style : styles()) {
+			for (String swing : style.chain()) {
+				assertTrue(Swings.known(swing),
+					swing + " is thrown by a built-in style and has no timing");
+			}
+		}
+	}
+
+	@Test
+	@DisplayName("the edge is dangerous inside the film, not before or after it")
+	void contactIsWithinThePicture() {
+		for (String name : Swings.names()) {
+			Swing swing = Swings.of(name);
+			int length = lengthOf(name);
+			if (length == 0) continue;
+			assertTrue(swing.contact() > 0,
+				name + " is dangerous on its very first tick, before anything has moved");
+			assertTrue(swing.contact() + swing.through() <= length,
+				name + " is still dangerous after it has finished: contact "
+					+ swing.contact() + "+" + swing.through() + " of " + length);
+			assertTrue(swing.cancel() <= length,
+				name + " holds her past its own end: cancel " + swing.cancel()
+					+ " of " + length);
+		}
+	}
+
+	@Test
+	@DisplayName("an animation nobody measured still swings, and says it was a guess")
+	void anUnknownAnimationIsAGuessAndSaysSo() {
+		// A modded pack's own strike. Refusing to swing would read as a character
+		// who decided not to fight, which is worse than landing in the middle of
+		// somebody else's animation — but it has to be findable, so it is flagged.
+		assertFalse(Swings.known("nothing_anybody_ships"));
+		assertEquals(Swings.UNKNOWN, Swings.of("nothing_anybody_ships"));
+		assertFalse(Swings.of("nothing_anybody_ships").checked());
+	}
+
+	@Test
+	@DisplayName("an override wins, and letting it go puts back what ships")
+	void anOverrideCanBeTakenBack() {
+		// The way out of a change matters as much as the change. Without it the
+		// only way back to the shipped numbers is to remember what they were.
+		String name = "spe_strike_with_a_sword1";
+		Swing was = Swings.of(name);
+		Swings.override(name, new Swing(3, 1, 9, false));
+		assertEquals(3, Swings.of(name).contact());
+		assertEquals(was, Swings.shipped(name).orElseThrow(), "the file is not touched");
+		Swings.forget(name);
+		assertEquals(was, Swings.of(name));
+	}
+
+	@Test
+	@DisplayName("she is free to swing again before the animation has finished")
+	void theCancelIsNotTheEnd() {
+		// This is what stops three blows taking four seconds. spe_zweihander_strike
+		// runs for sixty-one ticks and has finished swinging by its thirty-fifth;
+		// committing for the film rather than the blow is a slideshow.
+		Swing heavy = Swings.of("spe_zweihander_strike");
+		assertTrue(heavy.cancel() < lengthOf("spe_zweihander_strike"),
+			"it commits for the whole film: " + heavy);
 	}
 
 	@Test
@@ -264,6 +330,21 @@ class BlowTest {
 	@Test
 	@DisplayName("bare hands fight faster than a heavy sword")
 	void weightReadsInTheNumbers() {
-		assertTrue(Style.FIST.shape().length() < Style.HEAVY.shape().length());
+		// It was the other way round while the fists were kicking. A kick is nearly
+		// twice as long as a punch, so bare hands were the slowest thing in the game
+		// — which nobody would report as a bug, and everybody would feel.
+		assertTrue(Style.FIST.shape(0).length() < Style.HEAVY.shape(0).length(),
+			"fists " + Style.FIST.shape(0) + " against heavy " + Style.HEAVY.shape(0));
+	}
+
+	@Test
+	@DisplayName("weight is the wind-up, not the length")
+	void weightIsTelegraph() {
+		// The thing established in the docs and never actually held to: a heavy
+		// weapon is one you see coming. Held by the length instead, the only way to
+		// make something feel heavy is to freeze the character at the end of its
+		// own animation.
+		assertTrue(Style.HEAVY.timing(0).contact() > Style.FIST.timing(0).contact(),
+			"a heavy blow should be seen coming for longer than a punch");
 	}
 }
