@@ -46,7 +46,18 @@ import java.util.List;
  * the item says about itself, and let the author say otherwise. A guess that
  * cannot be overruled is worse than no guess.
  */
-public record Style(String stance, List<String> chain) {
+public record Style(String stance, String walk, String run, List<String> chain) {
+
+	/**
+	 * A style for somebody who moves the way she always does.
+	 *
+	 * Empty is a real answer rather than a missing one: it means "leave her walk
+	 * alone", which is right for bare hands — the pack has no unarmed fighting
+	 * walk, and putting a swordsman's gait on a boxer would be worse than nothing.
+	 */
+	public Style(String stance, List<String> chain) {
+		this(stance, "", "", chain);
+	}
 
 	/**
 	 * A sword, and the default for anything that swings and is not obviously
@@ -55,12 +66,17 @@ public record Style(String stance, List<String> chain) {
 	 */
 	public static final Style SWORD = new Style(
 		"spe_fighting_stance_with_swords",
+		// Chosen because the walk barely touches the upper body — 0.34 radians in
+		// the arm against 2.0 in the legs — so it reads as somebody carrying a
+		// weapon rather than as a second animation arguing with the stance.
+		"spe_gait_with_a_sword_on_belt", "spe_running_with_swords",
 		List.of("spe_strike_with_a_sword1", "spe_strike_with_a_sword2",
 			"spe_strike_with_a_sword3"));
 
 	/** Slower everywhere, and it should look it. */
 	public static final Style HEAVY = new Style(
 		"spe_fighting_pose",
+		"spe_gait_with_a_sword_on_belt", "spe_running_with_swords",
 		List.of("spe_a_blow_with_a_heavy_sword1", "spe_a_blow_with_a_heavy_sword2",
 			"spe_a_blow_with_a_heavy_sword3"));
 
@@ -72,6 +88,7 @@ public record Style(String stance, List<String> chain) {
 	 */
 	public static final Style SPEAR = new Style(
 		"spe_fighting_pose",
+		"spe_gait_with_a_sword_on_belt", "spe_running_with_swords",
 		List.of("spe_spear_strike1", "spe_spear_strike2"));
 
 	/**
@@ -94,11 +111,12 @@ public record Style(String stance, List<String> chain) {
 	 * animation never ends is a character stuck mid-swing for ever.
 	 */
 	public static final Style GUARDED = new Style(
-		"spe_fighting_pose_with_shild", SWORD.chain());
+		"spe_fighting_pose_with_shild", SWORD.walk(), SWORD.run(), SWORD.chain());
 
 	/** Holding something that shoots: a stance, and swings only if pressed. */
 	public static final Style RANGED = new Style(
-		"spe_fighting_pose_with_a_bow", SWORD.chain());
+		"spe_fighting_pose_with_a_bow",
+		"spe_walking_with_a_gun", "spe_running_with_gun", SWORD.chain());
 
 	/**
 	 * The style a weapon suggests.
@@ -116,6 +134,18 @@ public record Style(String stance, List<String> chain) {
 			// A gun that fires by being swung is swung, so it swings like a weapon.
 			case MELEE, SWUNG, THROWN, OTHER -> SWORD;
 		};
+	}
+
+	/**
+	 * How she carries herself while doing this, given how she is moving.
+	 *
+	 * Empty means "the way she always does", which is what an unarmed style says
+	 * and what any style says about a movement the pack has nothing for.
+	 */
+	public String carriage(boolean moving, boolean quickly) {
+		if (!moving) return stance;
+		String wanted = quickly ? run : walk;
+		return wanted.isEmpty() ? "" : wanted;
 	}
 
 	/** Which animation the next blow of the chain uses. */

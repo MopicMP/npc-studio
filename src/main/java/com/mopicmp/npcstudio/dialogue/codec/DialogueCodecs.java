@@ -160,6 +160,7 @@ public final class DialogueCodecs {
 			case Effect.Express _ -> "express";
 			case Effect.WalkTo _ -> "walk_to";
 			case Effect.Halt _ -> "halt";
+			case Effect.Guard _ -> "guard";
 			case Effect.LookAt _ -> "look_at";
 			case Effect.Fire _ -> "fire";
 			case Effect.Strike _ -> "strike";
@@ -211,6 +212,8 @@ public final class DialogueCodecs {
 				Codec.FLOAT.optionalFieldOf("pace", 0.45f).forGetter(Effect.WalkTo::pace)
 			).apply(instance, Effect.WalkTo::new));
 			case "halt" -> MapCodec.unit(new Effect.Halt());
+			case "guard" -> Codec.BOOL.fieldOf("up")
+				.xmap(Effect.Guard::new, Effect.Guard::up);
 			case "look_at" -> Codec.STRING.fieldOf("mark")
 				.xmap(Effect.LookAt::new, Effect.LookAt::mark);
 			case "fire" -> Codec.STRING.fieldOf("mark")

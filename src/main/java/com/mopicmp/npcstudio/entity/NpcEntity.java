@@ -180,6 +180,16 @@ public class NpcEntity extends Avatar {
 		}
 	}
 
+	/**
+	 * Whether she is squared up for a fight.
+	 *
+	 * Synched, because it changes how she is drawn and drawing happens on the other
+	 * side. Everything it produces — the stance, the walk — is worked out from it
+	 * there rather than sent, so this is one bit for a whole manner of moving.
+	 */
+	private static final EntityDataAccessor<Boolean> DATA_GUARD =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.BOOLEAN);
+
 	private static final EntityDataAccessor<Integer> DATA_GESTURE_START =
 		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.INT);
 
@@ -338,6 +348,7 @@ public class NpcEntity extends Avatar {
 		builder.define(DATA_DIALOGUE, "");
 		builder.define(DATA_GESTURE, "");
 		builder.define(DATA_GESTURE_START, 0);
+		builder.define(DATA_GUARD, false);
 		builder.define(DATA_GESTURE_TICKS, 0);
 		builder.define(DATA_EXPRESSION, "");
 		builder.define(DATA_EXPRESSION_START, 0);
@@ -1150,6 +1161,20 @@ public class NpcEntity extends Avatar {
 	/** Whom the swing in progress was aimed at, so the blade can look again. */
 	private String swingingAt = "";
 
+	/**
+	 * The animation this swing put on, so that it can be taken off again.
+	 *
+	 * Taken off at the end of the blow rather than left holding its last frame.
+	 * Holding was right while there was nothing to go back to; with a stance to
+	 * return to it is the difference between a fighter between blows and a
+	 * photograph of one.
+	 *
+	 * Only if it is still hers. Anything else that has since asked for an animation
+	 * outranks a swing that is over, and clearing somebody else's gesture would be
+	 * the wrong kind of tidy.
+	 */
+	private String swingShowing = "";
+
 	/** Whether this blow has already touched somebody. */
 	private boolean blowLanded;
 
@@ -1202,6 +1227,7 @@ public class NpcEntity extends Avatar {
 
 		blowLanded = false;
 		swingingAt = mark;
+		swingShowing = style.swing(link);
 		// Vanilla's own arm swing as well, because everything hung on it — the
 		// sound, the sweep particles, a mod watching for an attack — is hung on that
 		// and not on ours.
@@ -1239,7 +1265,16 @@ public class NpcEntity extends Avatar {
 			// one blow hurts three times.
 			blowLanded = land(swingingAt);
 		}
-		if (phase == com.mopicmp.npcstudio.foe.Blow.Phase.READY) swingingAt = "";
+		if (phase == com.mopicmp.npcstudio.foe.Blow.Phase.READY) {
+			swingingAt = "";
+			// And the body is handed back, so whatever she does between blows can be
+			// seen. Guarded by the name, because by now somebody else may have asked
+			// for something and a swing that is over does not outrank them.
+			if (!swingShowing.isEmpty()) {
+				if (swingShowing.equals(gesture())) playGesture("", 0);
+				swingShowing = "";
+			}
+		}
 	}
 
 	/** The blow, once the blade is actually passing through. */
@@ -1478,6 +1513,36 @@ public class NpcEntity extends Avatar {
 	 * has to remember to set, so an NPC pushed along by a route or by a piston
 	 * animates without anyone arranging it.
 	 */
+	/** Whether she is carrying herself as somebody expecting a fight. */
+	public boolean guarding() {
+		return entityData.get(DATA_GUARD);
+	}
+
+	/**
+	 * Squares her up, or lets her stand easy.
+	 *
+	 * Only the graph says this. Java has no business deciding that somebody is on
+	 * guard — a character can be armed and relaxed or unarmed and squaring up, and
+	 * guessing from the weapon would make both impossible to write.
+	 */
+	public void guard(boolean up) {
+		entityData.set(DATA_GUARD, up);
+	}
+
+	/**
+	 * The manner she moves in while on guard, from whatever is in her hands.
+	 *
+	 * Empty for a movement the pack has nothing for — bare hands have no fighting
+	 * walk — and empty means "the way she always moves", which is a better answer
+	 * than a swordsman's gait on a boxer.
+	 */
+	private String carriage(boolean moving, boolean quickly) {
+		if (!guarding()) return "";
+		return com.mopicmp.npcstudio.foe.Style
+			.forWeapon(com.mopicmp.npcstudio.foe.Arms.of(getMainHandItem()))
+			.carriage(moving, quickly);
+	}
+
 	public String restingAnimation() {
 		// Standing still is decided by standing still, not by the ground flag. A
 		// client's copy of an entity is not run through the physics the server
@@ -1489,8 +1554,19 @@ public class NpcEntity extends Avatar {
 		if (falling > 0.08 && !onGround()) return motionAnimation(Motion.JUMP);
 		// Squared, because comparing squared lengths avoids a square root and the
 		// threshold is arbitrary anyway. Roughly a brisk walk.
-		if (speed > 0.02) return motionAnimation(Motion.RUN);
-		if (speed > 0.0005) return motionAnimation(Motion.WALK);
+		boolean moving = speed > 0.0005;
+		boolean quickly = speed > 0.02;
+
+		// On guard wins over the four animations somebody chose for this character,
+		// and only while she is on guard. That is the whole of the second half of the
+		// wooden fight: a blow with phases still reads as nothing if the character
+		// between blows stands the way she stands in a queue and closes the distance
+		// the way she walks to a shop.
+		String guarded = carriage(moving, quickly);
+		if (!guarded.isEmpty()) return guarded;
+
+		if (quickly) return motionAnimation(Motion.RUN);
+		if (moving) return motionAnimation(Motion.WALK);
 		return motionAnimation(Motion.IDLE);
 	}
 

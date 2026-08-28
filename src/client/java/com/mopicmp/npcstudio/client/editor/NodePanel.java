@@ -464,6 +464,17 @@ public class NodePanel {
 				// empty form reads as one that failed to load.
 				labels.add(new Label("she stops where she is", x, y - 10));
 			}
+			case Effect.Guard(boolean up) -> {
+				labels.add(new Label("carries herself as", x, y - 10));
+				add.accept(new FlatButton(x, y, width, 18,
+					Component.literal(up ? "somebody expecting a fight" : "usual"),
+					0xFF9575CD, () -> {
+						Node.Act now = current(Node.Act.class);
+						put(new Node.Act(now.id(), new Effect.Guard(!up), now.next()));
+						screen.refreshPanel();
+					}));
+				y += ROW;
+			}
 		}
 		return y;
 	}
@@ -778,6 +789,7 @@ public class NodePanel {
 			case Effect.LookAt _ -> "look at something";
 			case Effect.Fire _ -> "shoot at something";
 			case Effect.Strike _ -> "swing at something";
+			case Effect.Guard _ -> "square up, or stand easy";
 		};
 	}
 
@@ -797,7 +809,8 @@ public class NodePanel {
 			case Effect.Halt _ -> new Effect.LookAt(com.mopicmp.npcstudio.dialogue.Mark.PLAYER);
 			case Effect.LookAt _ -> new Effect.Fire(com.mopicmp.npcstudio.dialogue.Mark.PLAYER);
 			case Effect.Fire _ -> new Effect.Strike(com.mopicmp.npcstudio.dialogue.Mark.KIN);
-			case Effect.Strike _ -> new Effect.PlayAnimation("wave",
+			case Effect.Strike _ -> new Effect.Guard(true);
+			case Effect.Guard _ -> new Effect.PlayAnimation("wave",
 				com.mopicmp.npcstudio.client.entity.NpcGestures.lengthOf("wave"));
 		};
 	}

@@ -169,7 +169,12 @@ public final class DialogueRegistry {
 				new Condition.Not(
 					new Condition.Compare(Sense.KIN, Scope.SENSE, Condition.Op.EQ, Value.of(true))),
 				"break"))
-			.add(new Node.Stop("break", "fighting:fight", "watch"))
+			.add(new Node.Stop("break", "fighting:fight", "fight.over"))
+			// Standing easy again. A skill that is stopped cannot put its own guard
+			// down — stopping it is not something it gets told about — so whoever
+			// stopped it says so. That is the same bargain as the walk: an order goes
+			// out, and undoing it is the caller's own business.
+			.add(new Node.Act("fight.over", new Effect.Guard(false), "watch"))
 			.build();
 	}
 
@@ -203,7 +208,13 @@ public final class DialogueRegistry {
 	private static Dialogue fighting() {
 		return Dialogue.builder("fighting")
 			.library()
-			.segment("fight", "fight.look")
+			.segment("fight", "fight.on")
+
+			// On guard for as long as this skill runs. It is the other half of the
+			// wooden fight: phases in a blow read as nothing while the character
+			// between blows stands the way she stands in a queue.
+			.add(new Node.Act("fight.on", new Effect.Guard(true), "fight.look"))
+
 			.add(new Node.Branch("fight.look", List.of(
 				// A bow, and far enough off that it is the sensible thing. A bow at
 				// arm's length is a club held by the wrong end.
@@ -215,23 +226,45 @@ public final class DialogueRegistry {
 				// Close enough to hit. Under the reach rather than at it, so she is
 				// not swinging from the exact edge and missing every time.
 				new Node.Arm(new Condition.Compare(Sense.TARGET_DISTANCE, Scope.SENSE,
-					Condition.Op.LT, Value.of(2.5)), "fight.stop")),
-				"fight.close"))
+					Condition.Op.LT, Value.of(2.8)), "fight.stop"),
+				// Near, and closing at a walk. Running the last few blocks is what
+				// made two of them orbit each other: the walk goes to within one and
+				// a half blocks, which is inside the distance at which the game
+				// pushes two bodies apart, so each shoved the other and set off
+				// again. A fighter closes the last stride, she does not charge it.
+				new Node.Arm(new Condition.Compare(Sense.TARGET_DISTANCE, Scope.SENSE,
+					Condition.Op.LT, Value.of(7)), "fight.walk")),
+				"fight.run"))
 
 			.add(new Node.Act("fight.aim", new Effect.LookAt(Mark.TARGET), "fight.shoot"))
-			.add(new Node.Act("fight.shoot", new Effect.Fire(Mark.TARGET), "fight.again"))
+			.add(new Node.Act("fight.shoot", new Effect.Fire(Mark.TARGET), "fight.rest"))
 
 			// Stopping first, or she walks through the person she is hitting and the
 			// two of them shuffle across the floor together.
 			.add(new Node.Act("fight.stop", new Effect.Halt(), "fight.face"))
 			.add(new Node.Act("fight.face", new Effect.LookAt(Mark.TARGET), "fight.hit"))
-			.add(new Node.Act("fight.hit", new Effect.Strike(Mark.TARGET), "fight.again"))
+			.add(new Node.Act("fight.hit", new Effect.Strike(Mark.TARGET), "fight.rest"))
 
-			.add(new Node.Act("fight.close", new Effect.WalkTo(Mark.TARGET, 1f), "fight.again"))
+			.add(new Node.Act("fight.walk", new Effect.WalkTo(Mark.TARGET, 0.45f), "fight.soon"))
+			.add(new Node.Act("fight.run", new Effect.WalkTo(Mark.TARGET, 1f), "fight.later"))
 
-			// Half a second. Long enough that the whole fight is not settled in one
-			// tick, short enough that she notices the other one moving.
-			.add(new Node.Every("fight.again", 10, "fight.look"))
+			// How often she looks up, and why it is not one number.
+			//
+			// It was ten ticks for everything, and that is half a second — at a run,
+			// two blocks. So she decided to close from four blocks away and next
+			// looked up from inside her opponent. Every complaint about the fighting
+			// was downstream of that: they circled, they rarely struck, and when they
+			// did it was from a shove rather than from a step.
+			//
+			// Near, she looks up every other tick, which costs one comparison and
+			// buys the difference between stopping at arm's length and running
+			// through somebody. Far, six ticks is plenty: nothing decided at eight
+			// blocks changes in a third of a second.
+			.add(new Node.Every("fight.soon", 2, "fight.look"))
+			.add(new Node.Every("fight.later", 6, "fight.look"))
+			// After a blow. Not a rhythm — she is committed for the length of her own
+			// swing anyway, and this is only how soon she asks again once it is over.
+			.add(new Node.Every("fight.rest", 4, "fight.look"))
 			.build();
 	}
 

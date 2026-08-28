@@ -158,8 +158,52 @@ class DuelTest {
 			Map.of(), Map.of(), Map.of());
 	}
 
+	/**
+	 * What she does about the world, with the guard left out.
+	 *
+	 * The skill squares her up before it does anything else, every time it is
+	 * asked, and saying so in every case below would be repeating one fact eight
+	 * times. It has a test of its own instead — {@link #sheSquaresUpFirst()} —
+	 * which is where a change to it should break something.
+	 */
 	private static List<Effect> whatSheDoes(Condition.World world) {
-		return inTheFight(begun(), world).effects();
+		return inTheFight(begun(), world).effects().stream()
+			.filter(effect -> !(effect instanceof Effect.Guard))
+			.toList();
+	}
+
+	@Test
+	@DisplayName("she squares up before she does anything else")
+	void sheSquaresUpFirst() {
+		// The second half of the wooden fight. Phases in a blow read as nothing
+		// while the character between blows stands the way she stands in a queue and
+		// closes the distance the way she walks to a shop.
+		List<Effect> did = inTheFight(begun(), fighting(9, "nothing")).effects();
+		assertEquals(new Effect.Guard(true), did.get(0), "she should be on guard first: " + did);
+	}
+
+	@Test
+	@DisplayName("she closes the last few blocks at a walk, not at a charge")
+	void theLastStrideIsNotACharge() {
+		// This is what the circling was. A walk goes to within a block and a half,
+		// which is inside the distance at which the game pushes two bodies apart, so
+		// each shoved the other and set off again — and it looked like two people
+		// running rings round each other rather than fighting.
+		List<Effect> near = whatSheDoes(fighting(5, "melee"));
+		List<Effect> far = whatSheDoes(fighting(12, "melee"));
+		assertEquals(List.of(new Effect.WalkTo(Mark.TARGET, 0.45f)), near);
+		assertEquals(List.of(new Effect.WalkTo(Mark.TARGET, 1f)), far);
+	}
+
+	@Test
+	@DisplayName("closing in, she looks up often enough to stop in time")
+	void sheLooksUpAtTheSpeedSheMoves() {
+		// It was ten ticks for everything, which at a run is two blocks: she decided
+		// to close from four blocks away and next looked up from inside her
+		// opponent. Every complaint about the fighting came from that one number.
+		var screen = inTheFight(begun(), fighting(5, "melee")).screen();
+		assertTrue(screen instanceof DialogueEngine.Screen.Waiting w && w.ticks() <= 2,
+			"too long between decisions while closing: " + screen);
 	}
 
 	@Test

@@ -97,6 +97,26 @@ public sealed interface Effect {
 	record Halt() implements Effect { }
 
 	/**
+	 * Carry yourself like somebody expecting a fight, or stop.
+	 *
+	 * <h2>Why this is a verb and not something java works out</h2>
+	 *
+	 * Because being on guard is a decision, and java has no business making it.
+	 * A character can be armed and relaxed, or unarmed and squaring up; guessing
+	 * from the weapon would make both impossible to write.
+	 *
+	 * What java does supply is <em>how</em> — which stance, which walk, which run,
+	 * for whatever is in her hands. That is the same split as everywhere else: the
+	 * graph decides what this is, the manner of doing it comes from the weapon, and
+	 * either can be overruled.
+	 *
+	 * It is the other half of the wooden fight. A blow with phases still looks like
+	 * nothing if the character between blows is standing the way she stands in a
+	 * queue, and walks towards her enemy the way she walks to a shop.
+	 */
+	record Guard(boolean up) implements Effect { }
+
+	/**
 	 * Turn to face a {@link Mark}, and keep facing it.
 	 *
 	 * Held rather than done once, because looking at somebody is a state and not

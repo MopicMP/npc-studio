@@ -152,6 +152,11 @@ class RoundTripTest {
 		Dialogue back = DialogueCodecs.DIALOGUE
 			.parse(JsonOps.INSTANCE, JsonParser.parseString(json))
 			.getOrThrow(AssertionError::new);
-		assertEquals("fight.look", back.segment("fight"));
+		// Whatever the skill happens to begin with. Written as a lookup rather than
+		// as a name, because the name of a skill's first node is nobody's business
+		// but the skill's, and pinning it here means every change to the fighting
+		// breaks a test about files.
+		assertEquals(DialogueRegistry.get("fighting").orElseThrow().segment("fight"),
+			back.segment("fight"));
 	}
 }

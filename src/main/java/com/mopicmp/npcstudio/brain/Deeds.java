@@ -41,6 +41,7 @@ public final class Deeds {
 				npc.walkTo(Marks.feet(npc, mark), pace);
 			}
 			case Effect.Halt _ -> npc.halt();
+			case Effect.Guard(boolean up) -> npc.guard(up);
 			case Effect.LookAt(String mark) -> npc.lookAt(mark);
 			case Effect.Strike(String mark) -> npc.strikeAt(mark);
 			case Effect.Fire(String mark) -> {
