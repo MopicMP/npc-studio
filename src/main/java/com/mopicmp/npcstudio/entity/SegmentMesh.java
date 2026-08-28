@@ -20,6 +20,23 @@ import java.util.List;
  * own length, and the change from one to the next is a step somebody chose, not a
  * ripple nobody can see.
  *
+ * <h2>And two links is not a leg</h2>
+ *
+ * The paragraph above is right about the method and was wrong about the number. A
+ * chain of two reads as two different bones stuck together, because a leg's outline
+ * does not simply narrow: it narrows to the knee and <em>widens again</em> into the
+ * calf before it narrows to the ankle. An arm does the same at the forearm and a
+ * torso does it at the waist.
+ *
+ * Smoothness in a cubic model is not a curved surface — that was tried twice and is
+ * invisible. It is <b>enough steps</b>: a staircase with enough treads reads as a
+ * slope, and each tread is a whole pixel so it is crisp rather than smeared.
+ *
+ * Segments are cheap and steps are not. A segment costs faces; a change of
+ * cross-section costs a ring and a duplicated row of texels. So a limb wants as
+ * many links as it takes to put the steps at the right heights, and only as many
+ * steps as the outline is worth.
+ *
  * <h2>Why it is given the vanilla faces rather than the skin layout</h2>
  *
  * Because the layout is exactly the sort of thing that gets remembered wrong. A box
