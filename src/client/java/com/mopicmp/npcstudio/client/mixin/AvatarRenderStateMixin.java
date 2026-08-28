@@ -13,7 +13,6 @@ public class AvatarRenderStateMixin implements GestureHolder {
 
 	@Unique private String npcStudio$name = "";
 	@Unique private float npcStudio$age;
-	@Unique private float npcStudio$strength = 1f;
 	@Unique private com.mopicmp.npcstudio.client.skin.Eyes npcStudio$eyes;
 
 	// Ordinary rather than null, so that everything downstream can ask without
@@ -65,15 +64,9 @@ public class AvatarRenderStateMixin implements GestureHolder {
 	}
 
 	@Override
-	public float npcStudio$gestureStrength() {
-		return npcStudio$strength;
-	}
-
-	@Override
-	public void npcStudio$setGesture(String name, float age, float strength) {
+	public void npcStudio$setGesture(String name, float age) {
 		npcStudio$name = name;
 		npcStudio$age = age;
-		npcStudio$strength = strength;
 	}
 
 	@Unique private String npcStudio$leaving = "";

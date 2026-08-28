@@ -21,9 +21,8 @@ public interface GestureHolder {
 	 * wherever the animator left them — a bow ends bowed — so a gesture cut off
 	 * at its last tick would snap the body upright in one frame.
 	 */
-	float npcStudio$gestureStrength();
 
-	void npcStudio$setGesture(String name, float age, float strength);
+	void npcStudio$setGesture(String name, float age);
 
 	/**
 	 * The animation being left behind, while it is still being left behind.

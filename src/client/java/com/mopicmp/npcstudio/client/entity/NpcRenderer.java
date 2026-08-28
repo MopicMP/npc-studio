@@ -15,38 +15,34 @@ import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 
 	/**
-	 * Over how many ticks a finishing gesture gives the body back.
+	 * There used to be a second fade here, and taking it out is the point.
 	 *
-	 * A quarter of a second. Emotes do not end anywhere near the resting pose —
-	 * a bow ends bowed — so cutting one off at its last tick snaps the character
-	 * upright in a single frame, which reads as the animation breaking rather
-	 * than finishing. Long enough to be a movement, short enough that nobody
-	 * waits for it.
+	 * <h2>What it was for, and why it stopped being for that</h2>
 	 *
-	 * The built-in gestures already fade themselves over their whole length, so
-	 * this only ever has anything to do for emotes from a pack.
+	 * Emotes do not end anywhere near the resting pose — a bow ends bowed — so
+	 * cutting one off at its last tick snapped the character upright in a single
+	 * frame. This eased the pose out over the gesture's last few ticks to cover it.
+	 *
+	 * That was written before animations changed into one another. Now the ending
+	 * of a gesture <em>is</em> a change: it runs out, the resting animation takes
+	 * its place, and the crossfade carries the body from one to the other. The
+	 * second fade was doing the same job a second time.
+	 *
+	 * <h2>And doing it harm</h2>
+	 *
+	 * Because the two do not compose. This one weakened the pose during the last
+	 * ticks of the gesture, and then the crossfade began — from that same gesture
+	 * applied at <em>full</em> strength, because the outgoing pose is always laid
+	 * down whole for the incoming one to blend away from. So the body faded out of
+	 * the flinch and then snapped all the way into it on the tick the flinch ended.
+	 *
+	 * On a four-tick flinch it was worse still: with two ticks arriving and two
+	 * ticks leaving, there was not one tick of it left at its own strength. It was
+	 * reported, exactly, as a character who does not flinch — whose animation breaks
+	 * instead.
 	 */
-	private static final float LEAVING = 5f;
-
 	public NpcRenderer(EntityRendererProvider.Context context, boolean slim) {
 		super(context, slim);
-	}
-
-	/**
-	 * How much of the pose is left, given how many ticks remain of it.
-	 *
-	 * Cut to half the gesture when the gesture is shorter than the fade. Five ticks
-	 * of easing out of a four-tick flinch means it begins fading on the tick it
-	 * begins and is down to a tenth of itself by the time the body would have
-	 * folded — the pose is drawn on every tick of it and reads as nothing at all.
-	 */
-	private static float leaving(float remaining, int ticks) {
-		float over = ticks > 0 ? Math.min(LEAVING, ticks / 2f) : LEAVING;
-		if (remaining >= over) return 1f;
-		// Smoothed rather than straight, so the last moment of the movement slows
-		// into the rest instead of arriving at a corner.
-		float t = Math.max(0f, remaining) / over;
-		return t * t * (3f - 2f * t);
 	}
 
 	@Override
@@ -83,7 +79,6 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 		// holding its last frame for the length of the round trip.
 		String gesture = npc.gesture();
 		int ticks = npc.gestureTicks();
-		float strength = 1f;
 		// Whether what is being shown has an ending of its own. A gesture does and a
 		// way of standing does not, and the difference decides what happens to it
 		// while it fades: see ClientNpcEntity#leavingAge.
@@ -91,8 +86,9 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 		if (!gesture.isEmpty() && ticks > 0) {
 			// Against how long it has been running rather than against where in the
 			// animation it is, because a length is a length whatever it started from.
+			// Held at its own strength right up to that tick — the leaving of it is the
+			// change into whatever comes next, and doing it twice is what broke.
 			if (elapsed >= ticks) gesture = "";
-			else strength = leaving(ticks - elapsed, ticks);
 		} else if (NpcGestures.runsOut(gesture, age)) {
 			// No length was asked for, but this one is over regardless: the built-in
 			// gestures are a there-and-back arc rather than a pose to hold.
@@ -101,7 +97,6 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 		if (gesture.isEmpty()) {
 			gesture = npc.restingAnimation();
 			age = npc.tickCount + partial;
-			strength = 1f;
 			// And it has no end, which is the thing the change downstream has to know:
 			// a resting animation is not cut short by anything, and when something
 			// replaces it, it goes on running underneath rather than freezing.
@@ -117,7 +112,7 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 		// but only on the client doing the dragging and only while it is open.
 		var editing = ShapeEditing.of(npc.getId());
 		holder.npcStudio$setShape(editing != null ? editing : npc.bodyShape());
-		holder.npcStudio$setGesture(gesture, age, strength);
+		holder.npcStudio$setGesture(gesture, age);
 		// The tick it was asked on travels with it, so that asking twice for one
 		// animation reads as two performances rather than as nothing having happened.
 		npc.changingTo(gesture, age, npc.gestureBegan(), ticks, carriesOn);

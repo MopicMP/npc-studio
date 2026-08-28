@@ -54,7 +54,7 @@ public class PlayerModelMixin {
 		}
 		if (!name.isEmpty()) {
 			NpcGestures.apply(model, name, holder.npcStudio$gestureAge(),
-				holder.npcStudio$gestureStrength() * (crossing ? changing : 1f), crossing);
+				crossing ? changing : 1f, crossing);
 		}
 
 		// Last, and outside the check above. An emote writes absolute positions for
