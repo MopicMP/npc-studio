@@ -30,7 +30,7 @@ class BodyChainTest {
 	}
 
 	@Test
-	@DisplayName("an outline turns round twice, which no single number can say")
+	@DisplayName("an outline comes back out, which no single number can say")
 	void theProfileIsNotOneStep() {
 		BodyShape stepped = new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, 0f, 1f, BodyShape.MAX_TAPER);
 		List<SegmentMesh.Ring> loft = leg(stepped);
@@ -40,11 +40,25 @@ class BodyChainTest {
 		assertTrue(loft.get(loft.size() - 1).halfX() < loft.get(0).halfX(),
 			"the ankle is no narrower than the hip");
 
-		// It never widens back on a leg this thin, and that is not a bug — see below.
+		// And it does widen back at the calf, on a vanilla-sized leg, which it could
+		// not do while the steps were rounded to whole pixels — there were only three
+		// widths to be had and the swell fell between two of them.
+		int backOut = 0;
+		for (int i = 1; i < loft.size(); i++) {
+			if (loft.get(i).halfX() > loft.get(i - 1).halfX()) backOut++;
+		}
+		assertTrue(backOut >= 1, "a four-pixel leg came out monotone: " + widths(loft));
+	}
+
+	/** Every ring's half-width, in order, for a message worth reading. */
+	private static String widths(List<SegmentMesh.Ring> loft) {
+		StringBuilder out = new StringBuilder();
+		for (SegmentMesh.Ring ring : loft) out.append(String.format("%.3f ", ring.halfX()));
+		return out.toString().trim();
 	}
 
 	@Test
-	@DisplayName("the outline turns round twice, which no single number can say")
+	@DisplayName("the tables come back out too, across and through alike")
 	void theOutlineIsNotMonotone() {
 		// The intent, checked apart from what survives rounding. A leg narrows towards
 		// the knee, comes back out at the knee and the calf, and only then goes away to
@@ -52,51 +66,81 @@ class BodyChainTest {
 		// narrower the bottom is" cannot say either, and a limb built from one reads as
 		// two bones stuck together — which is what it was reported as.
 		for (boolean leg : new boolean[] { true, false }) {
-			float[] outline = BodyChain.outline(leg);
-			int backOut = 0;
-			for (int i = 1; i < outline.length; i++) {
-				if (outline[i] < outline[i - 1]) backOut++;
+			for (boolean deep : new boolean[] { false, true }) {
+				float[] outline = BodyChain.outline(leg, deep);
+				assertEquals(BodyChain.RINGS, outline.length, "a table has to cover the rings");
+				int backOut = 0;
+				for (int i = 1; i < outline.length; i++) {
+					if (outline[i] < outline[i - 1]) backOut++;
+				}
+				assertTrue(backOut >= 1,
+					(leg ? "a leg" : "an arm") + (deep ? " through" : " across")
+						+ " never comes back out, which is a taper");
 			}
-			assertTrue(backOut >= 1,
-				(leg ? "a leg" : "an arm") + " only ever narrows, which is a taper");
 		}
 	}
 
 	@Test
-	@DisplayName("and four pixels has no room to show it, which is the medium not a fault")
-	void aThinLimbCannotCarryAnOutline() {
-		// Worth pinning, because it is the honest half of the previous test and the
-		// thing that decides what to do next.
-		//
-		// A vanilla limb is four pixels across and the slider's whole range is a pixel
-		// and a half of width — three quarters of a pixel per side. The smallest step
-		// this art has is half a pixel per side, so there are two levels to put a
-		// six-band outline on, and everything between them rounds to the same width.
-		//
-		// So a calf cannot appear on a vanilla leg at any setting. Room comes from a
-		// bigger figure, and that is what the drawings we are working towards are.
+	@DisplayName("across and through are separate shapes, or a limb is round all the way down")
+	void widthAndDepthAreNotTheSameShape() {
+		// Measured on the reference: down the Elf's leg the width holds at 2.317 while
+		// the depth goes 2.573 to 3.458. A calf bulges backwards, not sideways, and one
+		// table for both cannot say so.
+		for (boolean leg : new boolean[] { true, false }) {
+			assertTrue(!java.util.Arrays.equals(BodyChain.outline(leg, false),
+					BodyChain.outline(leg, true)),
+				(leg ? "a leg" : "an arm") + " is the same shape across as through");
+		}
+	}
+
+	@Test
+	@DisplayName("four pixels does carry an outline, once nothing is rounded off it")
+	void aThinLimbDoesCarryAnOutline() {
+		// This test used to assert the opposite, and the opposite was an artefact. The
+		// steps were quantised to a whole pixel of width, which left a four-pixel leg
+		// exactly three widths to choose from — 4, 3 and 2 — so a twelve-band outline
+		// came out as a staircase of three. The reference models never take a
+		// whole-pixel step at all; the Elf's largest is 0.58 of a pixel and its
+		// smallest is 0.02, on a leg thinner than vanilla's.
 		BodyShape most = new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, 0f, 1f, BodyShape.MAX_TAPER);
 		List<SegmentMesh.Ring> loft = leg(most);
 		long widths = new java.util.TreeSet<>(loft.stream()
 			.map(SegmentMesh.Ring::halfX).toList()).size();
-		assertTrue(widths <= 3,
-			"a four-pixel leg came out with " + widths + " widths, so there is more room"
-				+ " than this test believed and the outline should be showing");
+		assertTrue(widths >= 10,
+			"a four-pixel leg came out with only " + widths + " widths: " + widths(loft));
 	}
 
 	@Test
-	@DisplayName("every step is a whole pixel of box, because nothing finer is visible")
-	void stepsAreWholePixels() {
-		// Two rounds of sub-pixel profiling were invisible on a four-pixel limb. So the
-		// narrowing is quantised — but the narrowing only. Rounding the width itself
-		// would move a limb nobody asked to move.
+	@DisplayName("no step is big enough to read as a step")
+	void everyStepIsSmallerThanTheEyeCatches() {
+		// The bar comes off the reference rather than off taste. The Elf's leg spends
+		// its whole range in eight changes, the largest 0.575 of a pixel of width; its
+		// arm's largest is 1.101, and that one is the wrist, where a step is meant to
+		// be seen. So: nothing on the smooth run of a limb may exceed the largest step
+		// the smoothest reference takes.
 		for (BodyShape shape : shapes()) {
-			for (SegmentMesh.Ring ring : BodyChain.limb(shape, 0, 12, 0, 1.2f, 0, 1.2f)) {
-				float off = Math.abs(1.2f - ring.halfX());
-				assertEquals(0f, Math.abs(off * 2f - Math.round(off * 2f)), 1e-4f,
-					"a step of " + off + " is not a whole pixel of width");
+			List<SegmentMesh.Ring> loft = BodyChain.limb(shape, 0, 12, 0, 2f, 0, 2f);
+			for (int i = 1; i < loft.size(); i++) {
+				float across = Math.abs(loft.get(i).halfX() - loft.get(i - 1).halfX()) * 2f;
+				float through = Math.abs(loft.get(i).halfZ() - loft.get(i - 1).halfZ()) * 2f;
+				assertTrue(across <= 0.6f && through <= 0.6f,
+					"band " + i + " steps by " + across + " across and " + through
+						+ " through, which is a staircase again: " + widths(loft));
 			}
 		}
+	}
+
+	@Test
+	@DisplayName("nothing is quantised, because quantising was the fault")
+	void widthsAreNotOnAGrid() {
+		// The guard against the old line coming back. If every width lands on a half
+		// pixel, somebody has rounded again.
+		BodyShape most = new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, 0f, 1f, BodyShape.MAX_TAPER);
+		int offGrid = 0;
+		for (SegmentMesh.Ring ring : leg(most)) {
+			if (Math.abs(ring.halfX() * 2f - Math.round(ring.halfX() * 2f)) > 1e-3f) offGrid++;
+		}
+		assertTrue(offGrid >= 8, "the widths are back on a grid: " + widths(leg(most)));
 	}
 
 	@Test
