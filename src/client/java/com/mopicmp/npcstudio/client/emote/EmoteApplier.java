@@ -154,15 +154,23 @@ public final class EmoteApplier {
 			return;
 		}
 
-		torso(model, pose, s);
+		// How folded the body was before this pass touched it. Nought for a single
+		// animation; whatever the outgoing one left for a change.
+		float hadFold = ((BendablePart) (Object) model.body).npcStudio$bend();
+
+		torso(model, pose, s, over);
 		limb(model.head, model.hat, pose, Bone.HEAD, s, over);
 		limb(model.rightArm, model.rightSleeve, pose, Bone.RIGHT_ARM, s, over);
 		limb(model.leftArm, model.leftSleeve, pose, Bone.LEFT_ARM, s, over);
 		limb(model.rightLeg, model.rightPants, pose, Bone.RIGHT_LEG, s, over);
 		limb(model.leftLeg, model.leftPants, pose, Bone.LEFT_LEG, s, over);
 
-		// After the limbs, because it adds to where they were put.
-		legsFollowTheWaist(model, pose, s);
+		// After the limbs, because it adds to where they were put. Given the fold
+		// actually on the body rather than this pose's own, so that the legs follow
+		// the waist that is being drawn — halfway through a change that is a fold
+		// neither animation asked for.
+		legsFollowTheWaist(model,
+			((BendablePart) (Object) model.body).npcStudio$bend(), hadFold);
 
 		// The second skin layer is deliberately not touched here. Those parts are
 		// children of the limbs they cover — the model builds them as
@@ -200,14 +208,19 @@ public final class EmoteApplier {
 	 * emote has its own opinion about where the legs are and this is only the
 	 * correction for a fold it did not know we would draw.
 	 */
-	private static void legsFollowTheWaist(PlayerModel model, Pose pose, float s) {
-		float fold = -pose.or(Bone.TORSO, Channel.BEND, 0) * s;
-		if (fold == 0) return;
+	private static void legsFollowTheWaist(PlayerModel model, float fold, float had) {
+		if (fold == had) return;
 
+		// The difference rather than the whole thing, because this runs once per
+		// animation being laid on and the legs must end up carrying one correction
+		// rather than two. Undoing what the previous pass put there and putting the
+		// new one leaves exactly the correction for the fold now on the body — and
+		// for a single animation, where nothing was there before, it is unchanged.
 		Vector3f moved = waistAfterFolding(fold);
+		Vector3f before = waistAfterFolding(had);
 		for (ModelPart leg : new ModelPart[] { model.rightLeg, model.leftLeg }) {
-			leg.y += moved.y;
-			leg.z += moved.z;
+			leg.y += moved.y - before.y;
+			leg.z += moved.z - before.z;
 		}
 		// Not the trousers: they are children of the legs and have moved already.
 	}
@@ -387,27 +400,59 @@ public final class EmoteApplier {
 	 * reads as forwards if the pitch is flipped — and until it was, a bow of a
 	 * hundred degrees came out as a character standing on its head.
 	 */
-	private static void torso(PlayerModel model, Pose pose, float s) {
+	private static void torso(PlayerModel model, Pose pose, float s, boolean over) {
 		if (!pose.has(Bone.TORSO)) return;
 		ModelPart root = model.root();
 		PartPose rest = root.getInitialPose();
+
+		// Where the blend starts, and this is the part that was missing.
+		//
+		// Every torso term is the rest pose plus an offset, so for one animation
+		// scaling the offset is already the blend — which is what this used to do,
+		// and it is right for one animation and wrong for two. Laid over another it
+		// does not blend with the pose underneath, it overwrites it: at the first
+		// tick of a change the strength is nought, so the whole character snapped
+		// bolt upright and then leaned into the new pose.
+		//
+		// The torso turns the model's root, so everything hangs off it. That snap was
+		// every limb moving at once, which is what "some limbs teleport" is.
+		float fromPitch = over ? root.xRot : rest.xRot();
+		float fromYaw = over ? root.yRot : rest.yRot();
+		float fromRoll = over ? root.zRot : rest.zRot();
+		// The correction below is a pure function of the rotations, so the one
+		// already sitting in the root's position can be worked out from the
+		// rotations still on it and taken back off. That leaves the position the
+		// previous pose asked for, which is what there is to blend from.
+		Vector3f already = over
+			? waistCorrection(fromPitch, fromYaw, fromRoll)
+			: new Vector3f();
+		float fromX = (over ? root.x : rest.x()) - already.x;
+		float fromY = (over ? root.y : rest.y()) - already.y;
+		float fromZ = (over ? root.z : rest.z()) - already.z;
+		float fromBend = over ? ((BendablePart) (Object) model.body).npcStudio$bend() : 0;
 
 		// The bend is not part of this rotation, and folding it in was a mistake
 		// worth naming: a torso bend curves the body at the waist, while the root
 		// rotation swings the entire character. "Reading a book while sitting"
 		// wants a lean of 38° and a fold of 61°, and adding them gave a hundred
 		// degrees of lean — a character reading a book behind itself.
-		// Every torso term is the rest pose plus an offset, so scaling the offset
-		// is already the blend — no mixing needed, and nothing to get backwards.
-		root.xRot = rest.xRot() - pose.or(Bone.TORSO, Channel.PITCH, 0) * s;
-		bend(model.body, model.jacket, -pose.or(Bone.TORSO, Channel.BEND, 0) * s);
-		root.yRot = rest.yRot() - pose.or(Bone.TORSO, Channel.YAW, 0) * s;
-		root.zRot = rest.zRot() + pose.or(Bone.TORSO, Channel.ROLL, 0) * s;
+		root.xRot = mix(fromPitch, rest.xRot() - pose.or(Bone.TORSO, Channel.PITCH, 0), s);
+		bend(model.body, model.jacket,
+			mix(fromBend, -pose.or(Bone.TORSO, Channel.BEND, 0), s));
+		root.yRot = mix(fromYaw, rest.yRot() - pose.or(Bone.TORSO, Channel.YAW, 0), s);
+		root.zRot = mix(fromRoll, rest.zRot() + pose.or(Bone.TORSO, Channel.ROLL, 0), s);
 
-		root.x = rest.x() - shift(pose.or(Bone.TORSO, Channel.X, 0)) * TORSO_SCALE * s;
-		root.y = rest.y() - shift(pose.or(Bone.TORSO, Channel.Y, 0)) * TORSO_SCALE * s;
-		root.z = rest.z() + shift(pose.or(Bone.TORSO, Channel.Z, 0)) * TORSO_SCALE * s;
+		root.x = mix(fromX,
+			rest.x() - shift(pose.or(Bone.TORSO, Channel.X, 0)) * TORSO_SCALE, s);
+		root.y = mix(fromY,
+			rest.y() - shift(pose.or(Bone.TORSO, Channel.Y, 0)) * TORSO_SCALE, s);
+		root.z = mix(fromZ,
+			rest.z() + shift(pose.or(Bone.TORSO, Channel.Z, 0)) * TORSO_SCALE, s);
 
+		// Worked out from the rotations that ended up on the root rather than from
+		// either pose's own, so it is always the correction for the lean actually
+		// being drawn. Halfway through a change that is a lean neither animation
+		// asked for, and it is the one the waist has to be held under.
 		Vector3f correction = waistCorrection(root.xRot, root.yRot, root.zRot);
 		root.x += correction.x;
 		root.y += correction.y;

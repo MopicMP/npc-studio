@@ -371,6 +371,59 @@ class BlowTest {
 		return e.get("stopTick").getAsInt() - e.get("beginTick").getAsInt();
 	}
 
+	/**
+	 * Where a limb rests, in model pixels, so how far one has been flung can be read.
+	 *
+	 * The vanilla numbers, and they are here rather than asked of the model because
+	 * a model needs a game running and these six numbers have not moved since 2011.
+	 */
+	private static final java.util.Map<String, float[]> RESTS = java.util.Map.of(
+		"head", new float[] { 0, 0, 0 },
+		"rightArm", new float[] { -5, 2, 0 },
+		"leftArm", new float[] { 5, 2, 0 },
+		"rightLeg", new float[] { -2, 12, 0 },
+		"leftLeg", new float[] { 2, 12, 0 });
+
+	@Test
+	@DisplayName("no blow flings a limb far enough to be hidden mid-swing")
+	void nothingAFighterDoesTripsTheLimbHider() {
+		// The format has no way to say "do not draw this bone", so authors say it
+		// with distance: a limb sent far enough away is treated as gone and stops
+		// being drawn. Forty-eight pixels is where that starts.
+		//
+		// A fighting animation that crossed it would make an arm blink out and back
+		// in mid-swing, which from outside is a limb teleporting — the complaint this
+		// is written against, and the one thing checked here that was <em>not</em> the
+		// cause. Nothing a fighter does goes past ten pixels. It should stay that way,
+		// and a pack update is the thing that would change it.
+		for (Style style : styles()) {
+			java.util.List<String> all = new java.util.ArrayList<>(style.chain());
+			all.add(style.stance());
+			all.add(style.flinch().animation());
+			for (String name : all) {
+				if (name.isEmpty()) continue;
+				var e = emote(name);
+				if (e == null) continue;
+				for (var move : e.getAsJsonArray("moves")) {
+					var frame = move.getAsJsonObject();
+					for (var bone : RESTS.entrySet()) {
+						if (!frame.has(bone.getKey())
+							|| !frame.get(bone.getKey()).isJsonObject()) continue;
+						var at = frame.getAsJsonObject(bone.getKey());
+						String[] axes = { "x", "y", "z" };
+						for (int i = 0; i < axes.length; i++) {
+							if (!at.has(axes[i])) continue;
+							float off = Math.abs(at.get(axes[i]).getAsFloat() - bone.getValue()[i]);
+							assertTrue(off < 48,
+								name + " flings " + bone.getKey() + "." + axes[i] + " by " + off
+									+ " pixels, which is far enough to be hidden");
+						}
+					}
+				}
+			}
+		}
+	}
+
 	private static boolean loops(String id) {
 		var e = emote(id);
 		// Written as the string "true" in every file in the pack, which is why it
