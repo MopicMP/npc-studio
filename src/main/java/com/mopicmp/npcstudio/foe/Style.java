@@ -137,6 +137,34 @@ public record Style(String stance, String walk, String run, List<String> chain) 
 	}
 
 	/**
+	 * What taking a blow looks like.
+	 *
+	 * <h2>Where this comes from, honestly</h2>
+	 *
+	 * The opening of a death. The pack has no animation called a flinch — the
+	 * nearest things are held states like {@code spe_stomach_pain}, which is a
+	 * condition rather than a moment — but {@code spe_to_die_from_a_severe_blow}
+	 * begins with somebody being hit hard, and its first half-second is exactly
+	 * that: the body folds forward over the blow.
+	 *
+	 * Looked at frame by frame before it was used. Ticks two to seven are the
+	 * impact; everything after is the falling over, which is why it is played for a
+	 * few ticks and then handed back rather than run to its end.
+	 *
+	 * <h2>How far in reads as how hard</h2>
+	 *
+	 * For nothing. A gesture given a length eases back out of itself over its last
+	 * few ticks, so a short flinch only reaches a shallow fold and a long one
+	 * reaches a deep one. Severity is the length, and needs no second number.
+	 *
+	 * On the style so that it can differ — a blow taken behind a shield is not the
+	 * blow taken in the chest — even though every style names the same one today.
+	 */
+	public String flinch() {
+		return "spe_to_die_from_a_severe_blow";
+	}
+
+	/**
 	 * How she carries herself while doing this, given how she is moving.
 	 *
 	 * Empty means "the way she always does", which is what an unarmed style says

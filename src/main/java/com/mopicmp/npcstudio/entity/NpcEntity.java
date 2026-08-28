@@ -1318,9 +1318,21 @@ public class NpcEntity extends Avatar {
 		// A blow that is landed on is a blow that does not finish. Dropping it rather
 		// than letting it run is what makes an exchange an exchange: whoever got
 		// there first keeps the initiative, and being quicker means something.
+		//
+		// The combination is not forgotten with it. Being interrupted is what an
+		// exchange is, and forgetting on every interruption meant both fighters were
+		// permanently on the first swing of three — one movement, repeated.
 		blow.drop();
 		swingingAt = "";
 		waitDoing(WINDED);
+
+		// And it is seen. Played for the beat it costs her, so the body folds over
+		// the blow and comes back out of it rather than running on into falling
+		// over — the animation this borrows from is a death, and only its opening is
+		// about being hit.
+		playGesture(com.mopicmp.npcstudio.foe.Style
+			.forWeapon(com.mopicmp.npcstudio.foe.Arms.of(getMainHandItem())).flinch(), WINDED);
+		swingShowing = "";
 		return true;
 	}
 
@@ -1574,6 +1586,10 @@ public class NpcEntity extends Avatar {
 	 */
 	public void guard(boolean up) {
 		entityData.set(DATA_GUARD, up);
+		// Standing easy ends the combination. A fight that is over is the one moment
+		// where starting again from the first blow is right, and it is a better
+		// answer than a timer because it is the actual event.
+		if (!up) blow.standDown();
 	}
 
 	/**

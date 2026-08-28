@@ -67,11 +67,17 @@ public final class Blow {
 	/**
 	 * How long after a blow ends before the chain resets to its first swing.
 	 *
-	 * A second. Keep hitting and the swings run one into another; stop, and the
-	 * next fight starts from the first blow rather than halfway through somebody
-	 * else's combination.
+	 * Three seconds. It was one, and one is shorter than a real exchange: two
+	 * evenly matched fighters take turns roughly every twenty-five ticks, because
+	 * the winded beat a blow costs is shorter than the swing that caused it. So the
+	 * chain expired between every pair of blows and each of them threw the first
+	 * swing of the combination for ever — which is what "the same cycle over and
+	 * over" looks like from outside.
+	 *
+	 * Three seconds is still plainly "she stopped": walk away and come back, and it
+	 * begins again rather than halfway through somebody else's combination.
 	 */
-	public static final int CHAIN_HOLDS = 20;
+	public static final int CHAIN_HOLDS = 60;
 
 	private Shape shape;
 	private int at = -1;
@@ -142,8 +148,27 @@ public final class Blow {
 		return outOf <= 0 ? 0 : Math.floorMod(link, outOf);
 	}
 
-	/** Gives up mid-swing. Only the world may do this — her own graph may not. */
+	/**
+	 * Gives up mid-swing. Only the world may do this — her own graph may not.
+	 *
+	 * <h2>The chain survives it, and that took a report to notice</h2>
+	 *
+	 * This used to forget the combination as well, which sounds right — she lost
+	 * the initiative, so she starts again — and in a real exchange it meant nobody
+	 * ever threw a second blow. Both fighters were interrupted by each other every
+	 * time, so both were permanently on swing one, and a fight was one movement
+	 * repeated.
+	 *
+	 * Being interrupted is what an exchange <em>is</em>. Only stopping forgets, and
+	 * stopping is the timer's business.
+	 */
 	public void drop() {
+		at = -1;
+		sinceEnded = 0;
+	}
+
+	/** Forgets the combination outright, for when the fight itself is over. */
+	public void standDown() {
 		at = -1;
 		sinceEnded = CHAIN_HOLDS;
 		link = 0;

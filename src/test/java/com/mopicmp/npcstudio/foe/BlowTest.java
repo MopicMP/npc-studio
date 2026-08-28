@@ -138,6 +138,45 @@ class BlowTest {
 	}
 
 	@Test
+	@DisplayName("being interrupted does not lose the combination")
+	void anInterruptionIsNotAStop() {
+		// This was reported as "the same cycle over and over". Two evenly matched
+		// fighters interrupt each other on every exchange, so forgetting the chain
+		// on interruption meant both were permanently on swing one and a fight was
+		// one movement repeated.
+		Blow blow = new Blow();
+		blow.begin(SWING);
+		through(blow, SWING.length());
+		assertEquals(1, blow.link(3));
+
+		blow.begin(SWING);
+		blow.tick();
+		blow.drop();
+		assertEquals(1, blow.link(3), "the interrupted swing should still be next in line");
+	}
+
+	@Test
+	@DisplayName("standing down does forget it, because the fight is over")
+	void standingDownForgets() {
+		Blow blow = new Blow();
+		blow.begin(SWING);
+		through(blow, SWING.length());
+		assertEquals(1, blow.link(3));
+		blow.standDown();
+		assertEquals(0, blow.link(3), "a new fight starts from the first blow");
+	}
+
+	@Test
+	@DisplayName("the chain outlives a real exchange, not just a swing")
+	void theChainSpansTakingTurns() {
+		// A blow commits her for its own length and costs the other one a shorter
+		// beat, so two fighters take turns roughly every twenty-five ticks. A memory
+		// shorter than that expires between every pair of blows.
+		assertTrue(Blow.CHAIN_HOLDS > 2 * Style.SWORD.shape(0).length(),
+			"a chain of " + Blow.CHAIN_HOLDS + " ticks cannot survive taking turns");
+	}
+
+	@Test
 	@DisplayName("a long recovery does not by itself break a combination")
 	void recoveryIsNotAPause() {
 		// The chain forgets only while she is not swinging. Otherwise a heavy
