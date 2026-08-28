@@ -513,6 +513,19 @@ public final class EmoteApplier {
 		float fromPitch = over ? part.xRot : rest.xRot();
 		float fromYaw = over ? part.yRot : rest.yRot();
 		float fromRoll = over ? part.zRot : rest.zRot();
+		// The elbow too, and it was the last thing in the pose that did not blend.
+		//
+		// A fold is a rotation like any other, but it was written as the value scaled
+		// by the strength rather than as a mix from where the limb is. For one
+		// animation those are the same thing, since a limb starts unfolded. Laid over
+		// another they are not: at the first tick of a change the strength is nought,
+		// so every elbow and knee went straight in one frame and then bent back into
+		// the new pose.
+		//
+		// It reads as one limb teleporting, because it is: bare-handed fighting folds
+		// an arm by a radian and a half, and a forearm snapping out of ninety degrees
+		// throws the hand most of the length of the arm.
+		float fromBend = over ? ((BendablePart) (Object) part).npcStudio$bend() : 0;
 
 		float x = pose.or(bone, Channel.X, rest.x());
 		float y = pose.or(bone, Channel.Y, rest.y());
@@ -546,7 +559,7 @@ public final class EmoteApplier {
 		// turns the far half. This only says by how much — and says it even when
 		// the answer is nothing, because a model is shared between every character
 		// wearing it and a bend left set would follow the next one out.
-		bend(part, layer, pose.or(bone, Channel.BEND, 0) * s);
+		bend(part, layer, mix(fromBend, pose.or(bone, Channel.BEND, 0), s));
 		part.yRot = mix(fromYaw, pose.or(bone, Channel.YAW, rest.yRot()), s);
 		part.zRot = mix(fromRoll, pose.or(bone, Channel.ROLL, rest.zRot()), s);
 	}
