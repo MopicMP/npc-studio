@@ -127,6 +127,18 @@ public final class Blow {
 		return Phase.RECOVERY;
 	}
 
+	/**
+	 * Which part of the swing she is in right now, without advancing anything.
+	 *
+	 * {@link #tick} both answers and moves on, which is right for the one caller
+	 * that drives her and wrong for anybody looking — a recorder that ticked the
+	 * blow to find out what it was doing would make the fight run at double speed
+	 * while it watched.
+	 */
+	public Phase phaseNow() {
+		return at < 0 ? Phase.READY : phaseAt(at);
+	}
+
 	/** Whether she is in the middle of a blow and may not be given other orders. */
 	public boolean committed() {
 		return at >= 0;

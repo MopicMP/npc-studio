@@ -240,5 +240,6 @@
   "npc_studio.graph.kind.until": "waits for something",
   "npc_studio.graph.kind.do": "calls a skill",
   "npc_studio.graph.kind.stop": "stops a skill",
-  "npc_studio.graph.kind.end": "ends here"
+  "npc_studio.graph.kind.end": "ends here",
+  "npc_studio.bench.tape": "write the fight down"
 }

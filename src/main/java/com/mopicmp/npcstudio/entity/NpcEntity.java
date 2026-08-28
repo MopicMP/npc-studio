@@ -1158,6 +1158,22 @@ public class NpcEntity extends Avatar {
 	 */
 	private final com.mopicmp.npcstudio.foe.Blow blow = new com.mopicmp.npcstudio.foe.Blow();
 
+	/**
+	 * What happened to her this tick, for the tape and nothing else.
+	 *
+	 * Cleared every tick after it is written down. A field rather than a return
+	 * value because the events come from four different places — a swing beginning,
+	 * a blade landing, a blow taken, a graph refusing — and threading a return
+	 * through all four to reach one recorder would put the recorder into the
+	 * fighting, which is the opposite of what it is for.
+	 */
+	private String happened = "";
+
+	private void happened(String what) {
+		if (!com.mopicmp.npcstudio.foe.Tape.rolling()) return;
+		happened = happened.isEmpty() ? what : happened + "; " + what;
+	}
+
 	/** Whom the swing in progress was aimed at, so the blade can look again. */
 	private String swingingAt = "";
 
@@ -1228,6 +1244,8 @@ public class NpcEntity extends Avatar {
 		blowLanded = false;
 		swingingAt = mark;
 		swingShowing = style.swing(link);
+		happened("BEGAN " + style.swing(link) + " contact@" + style.timing(link).contact()
+			+ " cancel@" + style.timing(link).cancel());
 		// Vanilla's own arm swing as well, because everything hung on it — the
 		// sound, the sweep particles, a mod watching for an attack — is hung on that
 		// and not on ours.
@@ -1309,6 +1327,22 @@ public class NpcEntity extends Avatar {
 	 */
 	private static final int WINDED = 6;
 
+	/**
+	 * How much of the flinch is shown, in ticks.
+	 *
+	 * Shorter than the beat it costs her, and they are separate numbers because
+	 * they are separate things: one is how long she is out of the fight, the other
+	 * is how far into a picture she gets.
+	 *
+	 * Four, read off the frames rather than chosen. The animation it borrows from
+	 * is a death, and its opening is the part about being hit: at its second and
+	 * third tick the body dips over the blow, and by its fifth it is doubled over
+	 * on its way to the floor. Six ticks of it was reported as "he fell down and
+	 * got up again", which is a fair description of what a death animation does
+	 * when you play too much of it.
+	 */
+	private static final int FLINCH = 4;
+
 	@Override
 	public boolean hurtServer(net.minecraft.server.level.ServerLevel level,
 			net.minecraft.world.damagesource.DamageSource source, float amount) {
@@ -1322,6 +1356,8 @@ public class NpcEntity extends Avatar {
 		// The combination is not forgotten with it. Being interrupted is what an
 		// exchange is, and forgetting on every interruption meant both fighters were
 		// permanently on the first swing of three — one movement, repeated.
+		happened("HURT " + String.format("%.1f", amount) + " by " + (source.getEntity() == null
+			? source.getMsgId() : source.getEntity().getName().getString()));
 		blow.drop();
 		swingingAt = "";
 		waitDoing(WINDED);
@@ -1331,7 +1367,7 @@ public class NpcEntity extends Avatar {
 		// over — the animation this borrows from is a death, and only its opening is
 		// about being hit.
 		playGesture(com.mopicmp.npcstudio.foe.Style
-			.forWeapon(com.mopicmp.npcstudio.foe.Arms.of(getMainHandItem())).flinch(), WINDED);
+			.forWeapon(com.mopicmp.npcstudio.foe.Arms.of(getMainHandItem())).flinch(), FLINCH);
 		swingShowing = "";
 		return true;
 	}
@@ -1356,6 +1392,7 @@ public class NpcEntity extends Avatar {
 
 		boolean landed = hit(server, target);
 		lastBlow = landed ? "landed" : "blocked or absorbed";
+		happened(landed ? "LANDED on " + target.getName().getString() : "BLOCKED");
 		return landed;
 	}
 
@@ -1668,7 +1705,39 @@ public class NpcEntity extends Avatar {
 			gaze();
 			workTheWeapon();
 			com.mopicmp.npcstudio.brain.Brain.tick(this);
+			// Last, so the line describes the tick as it ended rather than as it began.
+			record();
 		}
+	}
+
+	/**
+	 * One line of the tape, if one is being written.
+	 *
+	 * Everything is taken from where it actually lives rather than from anything
+	 * kept for the purpose. A recorder with its own copy of the state records its
+	 * own copy going wrong.
+	 */
+	private void record() {
+		if (!com.mopicmp.npcstudio.foe.Tape.rolling()) return;
+
+		var other = com.mopicmp.npcstudio.brain.Marks.creature(this,
+			com.mopicmp.npcstudio.dialogue.Mark.TARGET);
+		if (other == null) other = com.mopicmp.npcstudio.brain.Marks.kin(this);
+
+		com.mopicmp.npcstudio.foe.Tape.note(tickCount,
+			getName().getString() + "#" + getId(),
+			guarding(),
+			blow.committed() ? blow.phaseNow().name().toLowerCase(java.util.Locale.ROOT) : "",
+			blow.link(3),
+			blow.into(),
+			gesture(),
+			gestureAge(),
+			gestureTicks(),
+			doingState() == null ? doingNow() : doingState().currentNode(),
+			other == null ? -1 : distanceTo(other),
+			getHealth(),
+			happened);
+		happened = "";
 	}
 
 	/** Whether this character has yet asked the wardrobe where its eyes are. */

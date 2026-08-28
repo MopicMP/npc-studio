@@ -67,6 +67,7 @@ public final class Bench {
 			case "watch" -> watching(npc, player);
 			case "fire" -> fire(npc, player);
 			case "forget" -> forget(npc);
+			case "tape" -> tape(npc);
 			default -> List.of("The bench has nothing called \"" + action + "\".");
 		});
 	}
@@ -348,6 +349,31 @@ public final class Bench {
 		npc.forgetWhereSheWas();
 		return List.of("Forgot this world's copy of \"" + id + "\".",
 			"She is on the built-in one now.");
+	}
+
+	/**
+	 * Starts or stops writing the fight down.
+	 *
+	 * <h2>Why a file and not this readout</h2>
+	 *
+	 * Because the answer is never in one tick. Five rounds of fixing the fighting
+	 * were five guesses at which of a dozen numbers matched a sentence about how it
+	 * looked, and every one of them happened to be about something real — which is
+	 * luck, not a method. A fight is twenty ticks a second across two bodies; it
+	 * has to be written down before it can be understood.
+	 *
+	 * It goes beside the world rather than into chat, because chat cannot hold four
+	 * hundred lines and because a file can be read by somebody who was not there.
+	 */
+	private static List<String> tape(NpcEntity npc) {
+		if (com.mopicmp.npcstudio.foe.Tape.rolling()) {
+			return List.of(com.mopicmp.npcstudio.foe.Tape.stop());
+		}
+		com.mopicmp.npcstudio.foe.Tape.start(
+			net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir(), npc.tickCount);
+		return List.of("recording — every character writes a line a tick",
+			"press again to stop, or it stops itself after "
+				+ com.mopicmp.npcstudio.foe.Tape.LONGEST + " ticks");
 	}
 
 	/**

@@ -240,5 +240,6 @@
   "npc_studio.graph.kind.until": "ждёт чего-то",
   "npc_studio.graph.kind.do": "вызывает умение",
   "npc_studio.graph.kind.stop": "прекращает умение",
-  "npc_studio.graph.kind.end": "здесь заканчивается"
+  "npc_studio.graph.kind.end": "здесь заканчивается",
+  "npc_studio.bench.tape": "записать бой"
 }
