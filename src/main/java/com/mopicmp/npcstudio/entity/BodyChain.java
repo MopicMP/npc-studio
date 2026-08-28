@@ -71,6 +71,14 @@ public final class BodyChain {
 	public static List<SegmentMesh.Segment> limb(BodyShape shape,
 			float top, float bottom, float middleX, float halfX, float middleZ, float halfZ,
 			float upperX, float upperZ, float upperMiddleX) {
+		return limb(shape, top, bottom, middleX, halfX, middleZ, halfZ,
+			upperX, upperZ, upperMiddleX, LEG);
+	}
+
+	/** The same, told which outline to follow — a leg's or an arm's. */
+	private static List<SegmentMesh.Segment> limb(BodyShape shape,
+			float top, float bottom, float middleX, float halfX, float middleZ, float halfZ,
+			float upperX, float upperZ, float upperMiddleX, float[] profile) {
 		float length = (bottom - top) * shape.height();
 		boolean parted = upperX != halfX || upperZ != halfZ || upperMiddleX != middleX;
 
@@ -80,25 +88,109 @@ public final class BodyChain {
 			return List.of(new SegmentMesh.Segment(top, bottom, middleX, halfX, middleZ, halfZ));
 		}
 
-		// Half the taper off each side, because the number is the width of the box and
-		// not the distance one face moves. Never past half the limb: a calf thinner
-		// than that is a stick, and the pixel it is drawn with does not exist.
-		float thin = Math.min(shape.taper() / 2f, Math.min(halfX, halfZ) / 2f);
-		float lowerX = halfX - thin;
-		float lowerZ = halfZ - thin;
+		var chain = new java.util.ArrayList<SegmentMesh.Segment>(LINKS);
+		for (int i = 0; i < LINKS; i++) {
+			float from = top + length * i / LINKS;
+			float to = top + length * (i + 1) / LINKS;
+			if (i == 0) {
+				// The top link belongs to whatever the limb hangs from: two thighs stand
+				// under one pelvis, and the join has to be a join.
+				chain.add(new SegmentMesh.Segment(from, to, upperMiddleX, upperX, middleZ, upperZ));
+			} else if (i == JOINT) {
+				chain.add(null);
+			} else {
+				chain.add(new SegmentMesh.Segment(from, to, middleX,
+					step(halfX, shape.taper(), profile[i]), middleZ,
+					step(halfZ, shape.taper(), profile[i])));
+			}
+		}
+		// The joint last, because its size is read off the link below it.
+		SegmentMesh.Segment below = chain.get(JOINT + 1);
+		chain.set(JOINT, joint(top + length * JOINT / LINKS, top + length * (JOINT + 1) / LINKS,
+			middleX, below.halfX(), middleZ, below.halfZ()));
+		return List.copyOf(chain);
+	}
 
-		// Three equal thirds, and the middle one is the joint.
-		//
-		// Equal because the limb's flank is twelve rows of texels and three divides
-		// twelve — see BodyChainTest#everyCutLandsOnAWholeTexel. Equal in length as
-		// well as in texture, so every face comes out at a density of exactly one:
-		// four rows of skin over four pixels of limb, everywhere.
-		float first = top + length / 3f;
-		float second = top + length * 2f / 3f;
-		return List.of(
-			new SegmentMesh.Segment(top, first, upperMiddleX, upperX, middleZ, upperZ),
-			joint(first, second, middleX, lowerX, middleZ, lowerZ),
-			new SegmentMesh.Segment(second, top + length, middleX, lowerX, middleZ, lowerZ));
+	/**
+	 * How many links a limb is, and why six.
+	 *
+	 * A flank is twelve rows of texels, and a cut has to land on a whole row — see
+	 * {@code BodyChainTest#everyCutLandsOnAWholeTexel}. Twelve divides by six and
+	 * gives two rows each, which is also the fewest that can carry an anatomy: a hip,
+	 * a thigh, a knee, a calf, a shin and an ankle.
+	 *
+	 * Links are cheap. What costs is a <em>change of cross-section</em>, since each
+	 * one is a ring and a duplicated row of texels — so a limb has as many links as
+	 * it takes to put the steps at the right heights, and only as many steps as the
+	 * outline is worth.
+	 */
+	public static final int LINKS = 6;
+
+	/** Which link is the joint: the knee, the elbow. */
+	private static final int JOINT = 2;
+
+	/**
+	 * Where a limb is narrow, as a share of the whole range from widest to thinnest.
+	 *
+	 * <h2>Why a table and not a number</h2>
+	 *
+	 * Because an outline is not monotone. A leg narrows to the knee and then
+	 * <em>widens again</em> into the calf before it narrows to the ankle; an arm does
+	 * the same at the hand, which is thicker than the wrist it hangs from. One number
+	 * saying "how much narrower the bottom is" cannot say either, and a limb built
+	 * from one reads as two bones stuck together — which is exactly what it was
+	 * reported as.
+	 *
+	 * Nought is the widest the limb gets and one is the thinnest. The slider says how
+	 * many pixels those two are apart, so the shape is here and the amount is the
+	 * player's.
+	 *
+	 * These are authored rather than measured. There is no cubic model to take them
+	 * off — the reference pictures are a rendering, not a mesh — so they are what a
+	 * leg and an arm do, written down, and the honest thing is to say so.
+	 */
+	private static final float[] LEG = { 0f, 0.15f, 0f, 0.35f, 0.75f, 1f };
+
+	/** The same for an arm, whose hand is wider than its wrist. */
+	private static final float[] ARM = { 0f, 0.2f, 0f, 0.5f, 1f, 0.7f };
+
+	/**
+	 * One link's half-width, in whole pixels of box.
+	 *
+	 * <h2>Rounding is not a compromise here, it is the point</h2>
+	 *
+	 * The smallest step this art has is a whole pixel of width, which is half a pixel
+	 * on each side. Anything finer was tried twice and is invisible: a four-pixel arm
+	 * whose surface moves by a third of a pixel looks like a four-pixel arm with a
+	 * ragged edge.
+	 *
+	 * So the profile is worked out as a continuous shape and then <b>quantised</b>,
+	 * and what comes out is a staircase whose treads are all crisp.
+	 *
+	 * <h2>What this means for a thin limb, said plainly</h2>
+	 *
+	 * A vanilla limb is four pixels across, so between its full width and half of it
+	 * there are only two whole-pixel levels. A profile cannot show more steps than
+	 * there are levels, and no arrangement of numbers changes that: <b>four pixels
+	 * has no room for an anatomy.</b>
+	 *
+	 * It is not a fault to be tuned away. It is why a skeleton's arm is a stick and
+	 * why the figures this is being compared against have thick legs — a limb has to
+	 * be given the width before it can be given the shape.
+	 */
+	private static float step(float half, float taper, float share) {
+		// The step is rounded, not the width. Rounding the width would move a limb
+		// nobody asked to move: a part whose own half-width is 1.2 would come back as
+		// 1.0, which is the generator inventing something — the one thing this corner
+		// of the project has had to take out again every time it did it.
+		// Never past half the limb: a calf thinner than that is a stick, and the pixel
+		// it would be drawn with does not exist. The limit is put on the step rather
+		// than on the result, so that running into it still leaves a whole-pixel edge —
+		// clamping the width instead lands wherever half of the limb happens to be,
+		// which is off the grid for every limb whose width is not a multiple of two.
+		float most = (float) Math.floor(half) / 2f;
+		float drop = Math.min(most, Math.round(taper / 2f * share * 2f) / 2f);
+		return half - drop;
 	}
 
 	/**
@@ -178,7 +270,8 @@ public final class BodyChain {
 		float half = BodyField.armHalf(shape, base) + lip;
 		float deep = BodyField.armDepth(shape) + lip;
 		float middle = side * BodyField.armMiddle(shape, base) - pivotX;
-		return limb(shape, top, bottom, middle, half, middleZ, deep);
+		return limb(shape, top, bottom, middle, half, middleZ, deep,
+			half, deep, middle, ARM);
 	}
 
 	/**

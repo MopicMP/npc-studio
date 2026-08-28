@@ -29,14 +29,47 @@ class BodyChainTest {
 	}
 
 	@Test
-	@DisplayName("taper takes its pixel off the width, half from each side")
-	void taperIsAWidth() {
-		BodyShape stepped = new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, 0f, 1f, 1f);
+	@DisplayName("an outline goes in and out, so the ankle is not simply the bottom half")
+	void theProfileIsNotOneStep() {
+		BodyShape stepped = new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, 0f, 1f, BodyShape.MAX_TAPER);
 		List<SegmentMesh.Segment> chain = leg(stepped);
-		assertEquals(3, chain.size(), "a thigh, a knee and a calf");
-		assertEquals(2f, chain.get(0).halfX(), 1e-4f, "the thigh changed");
-		assertEquals(1.5f, chain.get(2).halfX(), 1e-4f, "the calf is not a pixel narrower");
-		assertEquals(1.5f, chain.get(2).halfZ(), 1e-4f, "the calf narrowed only one way");
+		assertEquals(BodyChain.LINKS, chain.size(), "a hip, thigh, knee, calf, shin and ankle");
+
+		// The top is the widest and the bottom the narrowest, and — the whole point —
+		// the drop is not one step in the middle. A limb that simply shrank its lower
+		// half read as two bones stuck together, which is what this replaced.
+		assertEquals(2f, chain.get(0).halfX(), 1e-4f, "the hip changed");
+		assertTrue(chain.get(chain.size() - 1).halfX() < chain.get(0).halfX(),
+			"the ankle is no narrower than the hip");
+
+		long widths = new java.util.TreeSet<>(chain.stream()
+			.map(SegmentMesh.Segment::halfX).toList()).size();
+		assertTrue(widths >= 3, "a leg came out with " + widths + " widths, which is a taper");
+	}
+
+	@Test
+	@DisplayName("every step is a whole pixel of box, because nothing finer is visible")
+	void stepsAreWholePixels() {
+		// Two rounds of sub-pixel profiling were invisible on a four-pixel limb. So the
+		// narrowing is quantised — but the narrowing only. Rounding the width itself
+		// would move a limb nobody asked to move.
+		//
+		// The joint is left out on purpose, and the reason is worth stating. Its size
+		// is not a step of the outline: it is the radius of the circle the corner
+		// below it travels on, which is a half-diagonal and therefore irrational. It
+		// cannot land on the pixel grid and must not be rounded down to it, because
+		// rounding down is exactly the amount by which the limb would come apart.
+		// What it costs is visible instead of hidden: the audit reads the joint's
+		// flank at a density of 0.943, six per cent, and that is the whole bill.
+		for (BodyShape shape : shapes()) {
+			List<SegmentMesh.Segment> chain = BodyChain.limb(shape, 0, 12, 0, 1.2f, 0, 1.2f);
+			for (int i = 0; i < chain.size(); i++) {
+				if (chain.size() > 1 && i == 2) continue;
+				float off = Math.abs(1.2f - chain.get(i).halfX());
+				assertEquals(0f, Math.abs(off * 2f - Math.round(off * 2f)), 1e-4f,
+					"a step of " + off + " is not a whole pixel of width");
+			}
+		}
 	}
 
 	@Test
@@ -49,8 +82,8 @@ class BodyChainTest {
 		// bigger knob for nothing.
 		BodyShape stepped = new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, 0f, 1f, 1f);
 		List<SegmentMesh.Segment> chain = leg(stepped);
-		SegmentMesh.Segment knee = chain.get(1);
-		SegmentMesh.Segment calf = chain.get(2);
+		SegmentMesh.Segment knee = chain.get(2);
+		SegmentMesh.Segment calf = chain.get(3);
 
 		float reach = (float) (Math.max(calf.halfX(), calf.halfZ()) * Math.sqrt(2));
 		assertEquals(reach, knee.halfX(), 1e-4f, "a bend at the knee can open a gap");
@@ -70,7 +103,7 @@ class BodyChainTest {
 		List<SegmentMesh.Segment> chain = BodyChain.limb(
 			new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, 0f, 1f, 0.001f),
 			0, 12, 0, 1.2f, 0, 1.2f);
-		assertEquals(1.697f, chain.get(1).halfX(), 2e-3f,
+		assertEquals(1.697f, chain.get(2).halfX(), 2e-3f,
 			"the knee no longer matches the model the rule was read off");
 	}
 
@@ -135,8 +168,9 @@ class BodyChainTest {
 	@DisplayName("a limb never tapers away to nothing")
 	void thereIsAlwaysALimbLeft() {
 		BodyShape silly = new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, 0f, 1f, BodyShape.MAX_TAPER);
-		List<SegmentMesh.Segment> chain = BodyChain.limb(silly, 0, 12, 0, 1f, 0, 1f);
-		assertTrue(chain.get(1).halfX() >= 0.5f, "the calf disappeared");
+		for (SegmentMesh.Segment segment : BodyChain.limb(silly, 0, 12, 0, 1f, 0, 1f)) {
+			assertTrue(segment.halfX() >= 0.5f, "a link of the limb disappeared");
+		}
 	}
 
 	@Test
