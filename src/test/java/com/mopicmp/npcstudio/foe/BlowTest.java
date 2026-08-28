@@ -241,6 +241,41 @@ class BlowTest {
 	}
 
 	@Test
+	@DisplayName("a blow reaches about as far as a person does, not as far as a mouse")
+	void everySwingReachesLikeALimb() {
+		// The bound this is really about is the top one. The fighting used to ask
+		// ENTITY_INTERACTION_RANGE, which is three blocks because that is how far a
+		// player can click on a mob, and characters swung at each other from three
+		// and a half blocks apart with a metre of air between the fists.
+		//
+		// A person with a weapon reaches something between half a metre and about
+		// two and a half. Anything outside that is not a reading of an animation,
+		// it is somebody's idea of one — which is the whole failure being fenced off.
+		for (String name : Swings.names()) {
+			Swing swing = Swings.of(name);
+			assertTrue(swing.reach() >= 0.5,
+				name + " reaches " + swing.reach() + " blocks, which is inside her own body");
+			assertTrue(swing.reach() <= 3.0,
+				name + " reaches " + swing.reach() + " blocks, which is not an arm");
+		}
+	}
+
+	@Test
+	@DisplayName("a spear outreaches a fist, because the animations say so")
+	void aLongWeaponReachesFurtherThanAShortOne() {
+		// Not asserted as a rule the code enforces — nothing enforces it. It is a
+		// consequence of having measured, and it is worth a test precisely because
+		// it used to be false: every weapon reached three and a half blocks, so a
+		// spear and a bare hand were the same length.
+		assertTrue(Swings.of("spe_spear_strike1").reach()
+				> Swings.of("spe_strike_with_a_sword1").reach(),
+			"a spear should outreach a sword");
+		assertTrue(Swings.of("spe_strike_with_a_sword1").reach()
+				> Swings.of("spe_hand_strike1").reach(),
+			"a sword should outreach a fist");
+	}
+
+	@Test
 	@DisplayName("an animation nobody measured still swings, and says it was a guess")
 	void anUnknownAnimationIsAGuessAndSaysSo() {
 		// A modded pack's own strike. Refusing to swing would read as a character
@@ -258,7 +293,7 @@ class BlowTest {
 		// only way back to the shipped numbers is to remember what they were.
 		String name = "spe_strike_with_a_sword1";
 		Swing was = Swings.of(name);
-		Swings.override(name, new Swing(3, 1, 9, false));
+		Swings.override(name, new Swing(3, 1, 9, 1.5, false));
 		assertEquals(3, Swings.of(name).contact());
 		assertEquals(was, Swings.shipped(name).orElseThrow(), "the file is not touched");
 		Swings.forget(name);

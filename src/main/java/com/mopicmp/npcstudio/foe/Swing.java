@@ -1,7 +1,7 @@
 package com.mopicmp.npcstudio.foe;
 
 /**
- * What one animation's blow does in time.
+ * What one animation's blow does, in time and in space.
  *
  * <h2>Why this is a property of the animation and not of the weapon</h2>
  *
@@ -25,13 +25,26 @@ package com.mopicmp.npcstudio.foe;
  *                 animation, and the difference is the whole of why a fight is
  *                 not a slideshow: {@code spe_zweihander_strike} runs for
  *                 sixty-one ticks and has finished swinging by its thirty-fifth
+ * @param reach    how far in front of herself the edge gets when it lands, in
+ *                 blocks, measured off the animation along the arm's own axis.
+ *                 <p>
+ *                 This used to be {@code ENTITY_INTERACTION_RANGE}, which is
+ *                 three blocks and is the game's number for clicking on a mob
+ *                 with a mouse. Nothing about it is a fact about an arm, and it
+ *                 was three times what an arm is: two characters stood three and
+ *                 a half blocks apart and punched the air between them.
+ *                 <p>
+ *                 In blocks rather than model units because everything that asks
+ *                 — a distance to a target, a hitbox width — is in blocks, and a
+ *                 unit that has to be converted at every use is a unit that will
+ *                 be converted wrongly once
  * @param checked  whether somebody has looked at this rather than only measured
  *                 it. Two automatic measures agreed on eleven strikes out of
  *                 nineteen and disagreed on eight, and where they disagreed each
  *                 was right about half the time — so an unlooked-at number is a
  *                 draft, and saying which is which is worth a field
  */
-public record Swing(int contact, int through, int cancel, boolean checked) {
+public record Swing(int contact, int through, int cancel, double reach, boolean checked) {
 
 	public Swing {
 		contact = Math.max(0, contact);
@@ -40,6 +53,9 @@ public record Swing(int contact, int through, int cancel, boolean checked) {
 		// never happened, and the graph asking again every tick would make it the
 		// ordinary case rather than an edge one.
 		cancel = Math.max(contact + through, cancel);
+		// A blow that reaches nowhere is a character who has decided not to fight,
+		// and that is never what somebody meant to write.
+		reach = Math.max(0.25, reach);
 	}
 
 	/**

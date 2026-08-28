@@ -38,7 +38,12 @@ public final class Deeds {
 				if (com.mopicmp.npcstudio.dialogue.Mark.POST.equals(mark) && npc.post() == null) {
 					npc.markPost();
 				}
-				npc.walkTo(Marks.feet(npc, mark), pace);
+				// A mark that is a person is walked at rather than walked to, so that
+				// arriving is judged against them. The graph does not have to say which
+				// — it named a mark, and whether that mark breathes is not a fact an
+				// author should have to write down twice.
+				if (Marks.creature(npc, mark) != null) npc.walkAt(mark, pace);
+				else npc.walkTo(Marks.feet(npc, mark), pace);
 			}
 			case Effect.Halt _ -> npc.halt();
 			case Effect.Guard(boolean up) -> npc.guard(up);

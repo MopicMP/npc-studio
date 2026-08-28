@@ -566,7 +566,37 @@ public class NpcEntity extends Avatar {
 	 * @return whether there was a way there at all, so that a graph can tell
 	 *         being unable to go from having arrived
 	 */
+	/**
+	 * Whom she is walking at, or empty when she is walking to a place.
+	 *
+	 * A place stays where it is and a person does not, and the difference decides
+	 * when the walk is over. Arriving at a place is arriving near the spot; arriving
+	 * at a person is being near enough to <em>them</em>, measured against them,
+	 * every tick — by the time she reaches the block somebody was standing on they
+	 * are somewhere else.
+	 */
+	private String walkingAt = "";
+
+	/**
+	 * Sets off after somebody.
+	 *
+	 * The same walk, told what it is walking at, so that arriving can be judged
+	 * against a thing that moves. Kept apart from {@link #walkTo} rather than
+	 * folded into it because a graph asking to go to a doorway and a graph asking
+	 * to close on a swordsman want different endings, and only one of them can be
+	 * the default.
+	 */
+	public boolean walkAt(String mark, float pace) {
+		walkingAt = mark == null ? "" : mark;
+		return walkTo(com.mopicmp.npcstudio.brain.Marks.feet(this, mark), pace, walkingAt);
+	}
+
 	public boolean walkTo(Vec3 wanted, float pace) {
+		return walkTo(wanted, pace, "");
+	}
+
+	private boolean walkTo(Vec3 wanted, float pace, String at) {
+		walkingAt = at;
 		if (wanted == null) return false;
 		// Not while she is swinging. A strike is a step with the weight on it, and a
 		// character who walks out of her own blow is the wooden thing this whole
@@ -609,6 +639,16 @@ public class NpcEntity extends Avatar {
 	private void walkOn() {
 		walk.moved(getX(), getZ());
 		if (!walk.walking()) return;
+
+		// Near enough to whoever she is walking at, judged against them rather than
+		// against the last waypoint of a route that was worked out several ticks ago.
+		if (!walkingAt.isEmpty()) {
+			var whom = com.mopicmp.npcstudio.brain.Marks.creature(this, walkingAt);
+			if (whom != null && distanceTo(whom) <= closeEnoughTo(walkingAt)) {
+				stopWalking();
+				return;
+			}
+		}
 
 		// Wedged against a fence post. Nobody needs to decide this: a route that
 		// cannot be followed is not a route, and keeping it would mean pushing at
@@ -1320,21 +1360,94 @@ public class NpcEntity extends Avatar {
 	}
 
 	/**
-	 * How far she can hit, from the edge of her body to the edge of theirs.
+	 * How far the blow she is about to throw actually reaches, in blocks.
 	 *
-	 * From the edges rather than centre to centre, so that two broad characters can
-	 * reach each other and a scaled-up one reaches further, which is what size
-	 * already means everywhere else.
+	 * <h2>Off the animation, because that is where the answer was all along</h2>
 	 *
-	 * Public because a graph has to be able to ask it. The alternative was every
-	 * graph writing down a number, and every one of those numbers being wrong for
-	 * somebody built differently.
+	 * This used to be {@code ENTITY_INTERACTION_RANGE} — three blocks, plus half of
+	 * each body, so three and a half. That attribute is how far a player can click
+	 * on a mob. It is not a fact about an arm and it is roughly three times one,
+	 * and the result was two characters standing three and a half blocks apart
+	 * swinging at the air between them, which is what was reported.
+	 *
+	 * The real answer is written in the animation: where the edge is on the tick
+	 * the blow lands. It is measured with {@code tools/shape-look/reach.ps1} and
+	 * kept beside the contact tick in {@code swings.json}, because it is the same
+	 * kind of fact about the same picture and belongs in the same place — where
+	 * somebody can change it.
+	 *
+	 * <h2>What is added to it, and what is not</h2>
+	 *
+	 * Her scale, because a giant's arm is a giant arm and everything else about
+	 * size already works that way. And whatever a weapon says about itself over
+	 * vanilla's own baseline: an item carrying an {@code ENTITY_INTERACTION_RANGE}
+	 * modifier is a modded polearm telling the world it reaches further, and it
+	 * should be believed rather than argued with.
+	 *
+	 * Her own half-width is <em>not</em> added. The measurement starts at the
+	 * model's own axis, which is where she stands, so her body is already inside
+	 * the number — adding it again was the old formula counting her twice.
+	 */
+	public double reachOfBlow() {
+		var style = com.mopicmp.npcstudio.foe.Style.forWeapon(
+			com.mopicmp.npcstudio.foe.Arms.of(getMainHandItem()));
+		double arm = style.timing(blow.link(style.chain().size())).reach() * getScale();
+		double bare = Attributes.ENTITY_INTERACTION_RANGE.value().getDefaultValue();
+		double weapon = getAttributeValue(Attributes.ENTITY_INTERACTION_RANGE) - bare;
+		return arm + Math.max(0, weapon);
+	}
+
+	/**
+	 * How much room she leaves between herself and somebody she has walked up to.
+	 *
+	 * A fifth of a block. Not a preference — bodies push each other apart in this
+	 * game, and a walk that ends inside somebody is a walk that ends in the two of
+	 * them shoving. That was reported once already, as two characters circling each
+	 * other instead of fighting.
+	 */
+	private static final double ELBOW_ROOM = 0.2;
+
+	/**
+	 * How near she means to get, walking at this mark.
+	 *
+	 * <h2>Three quarters of her reach, and why it is short of it</h2>
+	 *
+	 * Because arriving exactly at the edge of what she can hit means the first step
+	 * either of them takes puts her outside it again, and the fight becomes walking.
+	 * Standing inside her own reach costs nothing — a blow that could have landed
+	 * from further away still lands from here.
+	 *
+	 * <h2>Why there is no upper limit on it</h2>
+	 *
+	 * There was one, and it would have been wrong for exactly the character it
+	 * matters most for. A general walk stops a block and a half short, which is
+	 * fine for a doorway and fine for a fist; a spear reaches over two blocks, and
+	 * capping the approach at the general number would walk a spearman into
+	 * punching range to use a polearm. What she wants is her own reach, whatever
+	 * that is.
+	 */
+	public double closeEnoughTo(String mark) {
+		var whom = com.mopicmp.npcstudio.brain.Marks.creature(this, mark);
+		// A place, and nobody stands on an exact spot.
+		if (whom == null) return com.mopicmp.npcstudio.foe.Walk.ARRIVED;
+		double touching = getBbWidth() / 2 + whom.getBbWidth() / 2 + ELBOW_ROOM;
+		return Math.max(touching, reachOfBlow() * 0.75 + whom.getBbWidth() / 2);
+	}
+
+	/**
+	 * Whether the target is close enough to hit.
+	 *
+	 * Public because a graph has to be able to ask it, and it has to be this exact
+	 * question. A graph that wrote down a distance instead was wrong for anybody
+	 * built differently, and the gap between its number and the body's was where a
+	 * blow's own knockback used to land her: still able to hit, and told to walk.
 	 */
 	public boolean canReach(String mark) {
 		var target = com.mopicmp.npcstudio.brain.Marks.creature(this, mark);
 		if (target == null) return false;
-		double reach = getAttributeValue(Attributes.ENTITY_INTERACTION_RANGE);
-		return distanceTo(target) <= reach + getBbWidth() / 2 + target.getBbWidth() / 2;
+		// Their half-width, because the edge has to arrive inside their body rather
+		// than at the point they are standing on. Hers is already in the reach.
+		return distanceTo(target) <= reachOfBlow() + target.getBbWidth() / 2;
 	}
 
 	/**
@@ -1387,13 +1500,15 @@ public class NpcEntity extends Avatar {
 			lastBlow = "nothing there when the blade came round";
 			return false;
 		}
-		double reach = getAttributeValue(Attributes.ENTITY_INTERACTION_RANGE);
-		// From the edges rather than centre to centre, so that two broad characters
-		// can reach each other and a scaled-up one reaches further, which is what
-		// the size already means everywhere else.
-		if (distanceTo(target) > reach + getBbWidth() / 2 + target.getBbWidth() / 2) {
-			lastBlow = "swung and missed — " + Math.round(distanceTo(target))
-				+ " blocks, reach " + Math.round(reach);
+		// The same question the graph asked before she committed, asked the same way.
+		// Two ways of working out one reach is two numbers, and the gap between them
+		// is where a fight goes wrong invisibly: she walks in because one says yes
+		// and swings at nothing because the other says no.
+		double reach = reachOfBlow();
+		if (distanceTo(target) > reach + target.getBbWidth() / 2) {
+			lastBlow = String.format(java.util.Locale.ROOT,
+				"swung and missed — %.1f blocks away, reaches %.1f",
+				distanceTo(target), reach + target.getBbWidth() / 2);
 			return false;
 		}
 		if (!(level() instanceof net.minecraft.server.level.ServerLevel server)) return false;
@@ -1792,6 +1907,7 @@ public class NpcEntity extends Avatar {
 			(doingState() == null ? doingNow() : doingState().currentNode())
 				+ (doingWaitLeft() > 0 ? " +" + doingWaitLeft() : ""),
 			other == null ? -1 : distanceTo(other),
+			other == null ? reachOfBlow() : reachOfBlow() + other.getBbWidth() / 2,
 			getHealth(),
 			happened);
 		happened = "";

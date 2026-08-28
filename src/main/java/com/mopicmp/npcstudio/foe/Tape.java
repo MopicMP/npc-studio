@@ -71,10 +71,10 @@ public final class Tape {
 		where = gameDir.resolve("npc-fight-tape.txt");
 		began = tick;
 		rolling = true;
-		LINES.add(String.format("%5s %-16s %-5s %-8s %-4s %-4s %-34s %-6s %-20s %-5s %-5s %s",
+		LINES.add(String.format("%5s %-16s %-5s %-8s %-4s %-4s %-34s %-6s %-20s %-5s %-5s %-5s %s",
 			"tick", "who", "guard", "phase", "link", "into", "playing", "age", "graph at",
-			"dist", "hp", "event"));
-		LINES.add("-".repeat(140));
+			"dist", "reach", "hp", "event"));
+		LINES.add("-".repeat(146));
 	}
 
 	/**
@@ -87,13 +87,13 @@ public final class Tape {
 	 */
 	public static void note(int tick, String who, boolean guard, String phase, int link,
 			int into, String playing, int age, int gestureFor, String graphAt, double dist,
-			float hp, String event) {
+			double reach, float hp, String event) {
 		if (!rolling) return;
 		if (tick - began > LONGEST) {
 			stop();
 			return;
 		}
-		LINES.add(String.format("%5d %-16s %-5s %-8s %-4d %-4d %-34s %-6s %-20s %-5s %-5s %s",
+		LINES.add(String.format("%5d %-16s %-5s %-8s %-4d %-4d %-34s %-6s %-20s %-5s %-5s %-5s %s",
 			tick - began,
 			cut(who, 16),
 			guard ? "up" : "",
@@ -104,6 +104,11 @@ public final class Tape {
 			playing.isEmpty() ? "" : (gestureFor > 0 ? age + "/" + gestureFor : String.valueOf(age)),
 			cut(graphAt, 20),
 			dist < 0 ? "" : String.format("%.1f", dist),
+			// Beside the distance, because the question every line has to answer is
+			// whether she could have hit from where she was, and a reader holding one
+			// number in their head while reading the other is a reader who gets it
+			// wrong on line four hundred.
+			String.format("%.1f", reach),
 			String.format("%.1f", hp),
 			event));
 	}

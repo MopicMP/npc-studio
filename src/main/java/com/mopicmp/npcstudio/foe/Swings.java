@@ -57,7 +57,7 @@ public final class Swings {
 	 * that lands in the middle of a swing beats refusing to swing at all, which
 	 * from outside is a character who has decided not to fight.
 	 */
-	public static final Swing UNKNOWN = new Swing(8, 3, 14, false);
+	public static final Swing UNKNOWN = new Swing(8, 3, 14, 1.5, false);
 
 	private static void load() {
 		if (loaded) return;
@@ -92,6 +92,7 @@ public final class Swings {
 			from.has("contact") ? from.get("contact").getAsInt() : UNKNOWN.contact(),
 			from.has("through") ? from.get("through").getAsInt() : UNKNOWN.through(),
 			from.has("cancel") ? from.get("cancel").getAsInt() : UNKNOWN.cancel(),
+			from.has("reach") ? from.get("reach").getAsDouble() : UNKNOWN.reach(),
 			from.has("checked") && from.get("checked").getAsBoolean());
 	}
 
