@@ -33,10 +33,61 @@ class BodyChainTest {
 	void taperIsAWidth() {
 		BodyShape stepped = new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, 0f, 1f, 1f);
 		List<SegmentMesh.Segment> chain = leg(stepped);
-		assertEquals(2, chain.size());
+		assertEquals(3, chain.size(), "a thigh, a knee and a calf");
 		assertEquals(2f, chain.get(0).halfX(), 1e-4f, "the thigh changed");
-		assertEquals(1.5f, chain.get(1).halfX(), 1e-4f, "the calf is not a pixel narrower");
-		assertEquals(1.5f, chain.get(1).halfZ(), 1e-4f, "the calf narrowed only one way");
+		assertEquals(1.5f, chain.get(2).halfX(), 1e-4f, "the calf is not a pixel narrower");
+		assertEquals(1.5f, chain.get(2).halfZ(), 1e-4f, "the calf narrowed only one way");
+	}
+
+	@Test
+	@DisplayName("the knee is as wide as the corner of the calf reaches")
+	void theJointCoversEveryAngle() {
+		// Two boxes end to end are flush only while they are in line. Turn the lower
+		// one and its far corner travels on a circle of its own half-diagonal, so a
+		// cube of that half-extent contains the corner at every angle there is. Less
+		// than that and there is an angle where the limb comes apart; more is a
+		// bigger knob for nothing.
+		BodyShape stepped = new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, 0f, 1f, 1f);
+		List<SegmentMesh.Segment> chain = leg(stepped);
+		SegmentMesh.Segment knee = chain.get(1);
+		SegmentMesh.Segment calf = chain.get(2);
+
+		float reach = (float) (Math.max(calf.halfX(), calf.halfZ()) * Math.sqrt(2));
+		assertEquals(reach, knee.halfX(), 1e-4f, "a bend at the knee can open a gap");
+		assertEquals(reach, knee.halfZ(), 1e-4f, "and one sideways can too");
+		assertTrue(knee.halfX() > chain.get(0).halfX(),
+			"a knee narrower than the thigh cannot cover the join");
+	}
+
+	@Test
+	@DisplayName("and the reference model arrived at the same number by eye")
+	void theRuleMatchesTheModelItWasReadFrom() {
+		// docs/body-shape-mesh.md, measured out of the glTF: a calf 2.4 across with a
+		// knee cube 3.4. Half of 2.4 times the root of two is 1.697; half of 3.4 is
+		// 1.7. Somebody chose that by looking. This arrives at it from the circle a
+		// corner travels on, which is why it is worth writing down as a test rather
+		// than as a coincidence in a comment.
+		List<SegmentMesh.Segment> chain = BodyChain.limb(
+			new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, 0f, 1f, 0.001f),
+			0, 12, 0, 1.2f, 0, 1.2f);
+		assertEquals(1.697f, chain.get(1).halfX(), 2e-3f,
+			"the knee no longer matches the model the rule was read off");
+	}
+
+	@Test
+	@DisplayName("a knee costs no stretch: four rows of skin over four pixels of leg")
+	void everySegmentIsAsLongAsItsShareOfTheSkin() {
+		// Three equal thirds in length and three equal shares of the texture, so the
+		// density instrument reads exactly one on every face. A knee given a third of
+		// the skin and a sixth of the length would show a squashed band, and that is
+		// the sort of thing nobody notices until it is on somebody's face.
+		BodyShape stepped = new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, 0f, 1f, 1f);
+		List<SegmentMesh.Segment> chain = leg(stepped);
+		float each = 12f / chain.size();
+		for (SegmentMesh.Segment segment : chain) {
+			assertEquals(each, segment.length(), 1e-4f,
+				"a segment is not as long as its share of the skin");
+		}
 	}
 
 	/**

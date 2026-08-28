@@ -80,15 +80,66 @@ public final class BodyChain {
 			return List.of(new SegmentMesh.Segment(top, bottom, middleX, halfX, middleZ, halfZ));
 		}
 
-		float joint = top + length * UPPER;
 		// Half the taper off each side, because the number is the width of the box and
 		// not the distance one face moves. Never past half the limb: a calf thinner
 		// than that is a stick, and the pixel it is drawn with does not exist.
 		float thin = Math.min(shape.taper() / 2f, Math.min(halfX, halfZ) / 2f);
+		float lowerX = halfX - thin;
+		float lowerZ = halfZ - thin;
+
+		// Three equal thirds, and the middle one is the joint.
+		//
+		// Equal because the limb's flank is twelve rows of texels and three divides
+		// twelve — see BodyChainTest#everyCutLandsOnAWholeTexel. Equal in length as
+		// well as in texture, so every face comes out at a density of exactly one:
+		// four rows of skin over four pixels of limb, everywhere.
+		float first = top + length / 3f;
+		float second = top + length * 2f / 3f;
 		return List.of(
-			new SegmentMesh.Segment(top, joint, upperMiddleX, upperX, middleZ, upperZ),
-			new SegmentMesh.Segment(joint, top + length,
-				middleX, halfX - thin, middleZ, halfZ - thin));
+			new SegmentMesh.Segment(top, first, upperMiddleX, upperX, middleZ, upperZ),
+			joint(first, second, middleX, lowerX, middleZ, lowerZ),
+			new SegmentMesh.Segment(second, top + length, middleX, lowerX, middleZ, lowerZ));
+	}
+
+	/**
+	 * The cube that stands between two segments so a bend cannot open a gap.
+	 *
+	 * <h2>Why a limb made of boxes needs one at all</h2>
+	 *
+	 * Two boxes meeting end to end are flush only while they are in line. Turn the
+	 * lower one about the join and its end face tilts: a wedge opens on one side and
+	 * the other side drives into its neighbour. Nothing about the skin causes this —
+	 * it is what rigid pieces do — and it is why every well-built cubic model has a
+	 * knob at the knee.
+	 *
+	 * <h2>How wide, and why exactly that</h2>
+	 *
+	 * The far corner of the turning segment's end face sits at its own half-diagonal
+	 * from the join, and turning keeps it at that distance — a corner travels on a
+	 * circle. A cube whose half-extent is that radius therefore contains the circle,
+	 * and the corner can never leave it, <em>at any angle at all</em>.
+	 *
+	 * So the joint's half-extent is the lower segment's half-diagonal, and there is
+	 * nothing to tune.
+	 *
+	 * <h2>The reference model agrees to three decimal places</h2>
+	 *
+	 * The cubic model measured in {@code docs/body-shape-mesh.md} has a calf 2.4
+	 * across and a knee cube 3.4. Half of 2.4, times the root of two, is 1.697. Half
+	 * of 3.4 is 1.7. Somebody arrived at that by eye; this arrives at it from the
+	 * circle a corner travels on, and they are the same number.
+	 *
+	 * <h2>What it costs, said plainly</h2>
+	 *
+	 * The joint is wider than the limb — a knee that shows. On a limb tapered by a
+	 * pixel it is about six per cent wider than the thigh, which is the knob in the
+	 * reference model and not a defect. Cover for every angle cannot be had for less:
+	 * a cube that fits inside the limb is a cube the corner leaves.
+	 */
+	private static SegmentMesh.Segment joint(float top, float bottom,
+			float middleX, float halfX, float middleZ, float halfZ) {
+		float reach = (float) (Math.max(halfX, halfZ) * Math.sqrt(2));
+		return new SegmentMesh.Segment(top, bottom, middleX, reach, middleZ, reach);
 	}
 
 	/**
