@@ -218,6 +218,24 @@ public class NpcEntity extends Avatar {
 		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.INT);
 
 	/**
+	 * Which tick of the animation the gesture starts at, and almost always nought.
+	 *
+	 * <h2>Why an animation gets to start partway in</h2>
+	 *
+	 * Because the movement we want is often a stretch inside a longer one that we
+	 * have no reason to own the rest of. The flinch is the clearest case: the pack
+	 * has no animation for taking a blow, but a death begins with somebody being
+	 * hit, and the two ticks before the body folds are the character still standing
+	 * there. Played from the top, a four-tick flinch spends half of itself doing
+	 * nothing and then stops before the fold arrives.
+	 *
+	 * The alternative was cutting new files, which is a worse answer than saying
+	 * which part we meant.
+	 */
+	private static final EntityDataAccessor<Integer> DATA_GESTURE_FROM =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.INT);
+
+	/**
 	 * How the character is built, packed into eight bytes.
 	 *
 	 * Synched because everyone who can see the character has to draw it, and
@@ -350,6 +368,7 @@ public class NpcEntity extends Avatar {
 		builder.define(DATA_GESTURE_START, 0);
 		builder.define(DATA_GUARD, false);
 		builder.define(DATA_GESTURE_TICKS, 0);
+		builder.define(DATA_GESTURE_FROM, 0);
 		builder.define(DATA_EXPRESSION, "");
 		builder.define(DATA_EXPRESSION_START, 0);
 		builder.define(DATA_EXPRESSION_TICKS, 0);
@@ -1332,22 +1351,6 @@ public class NpcEntity extends Avatar {
 	 */
 	private static final int WINDED = 6;
 
-	/**
-	 * How much of the flinch is shown, in ticks.
-	 *
-	 * Shorter than the beat it costs her, and they are separate numbers because
-	 * they are separate things: one is how long she is out of the fight, the other
-	 * is how far into a picture she gets.
-	 *
-	 * Four, read off the frames rather than chosen. The animation it borrows from
-	 * is a death, and its opening is the part about being hit: at its second and
-	 * third tick the body dips over the blow, and by its fifth it is doubled over
-	 * on its way to the floor. Six ticks of it was reported as "he fell down and
-	 * got up again", which is a fair description of what a death animation does
-	 * when you play too much of it.
-	 */
-	private static final int FLINCH = 4;
-
 	@Override
 	public boolean hurtServer(net.minecraft.server.level.ServerLevel level,
 			net.minecraft.world.damagesource.DamageSource source, float amount) {
@@ -1367,12 +1370,12 @@ public class NpcEntity extends Avatar {
 		swingingAt = "";
 		waitDoing(WINDED);
 
-		// And it is seen. Played for the beat it costs her, so the body folds over
-		// the blow and comes back out of it rather than running on into falling
-		// over — the animation this borrows from is a death, and only its opening is
-		// about being hit.
-		playGesture(com.mopicmp.npcstudio.foe.Style
-			.forWeapon(com.mopicmp.npcstudio.foe.Arms.of(getMainHandItem())).flinch(), FLINCH);
+		// And it is seen: the few ticks of a body folding over a blow, and no more.
+		// Where those ticks are inside the animation is the style's business, since
+		// it is the style that knows which animation it is.
+		var flinch = com.mopicmp.npcstudio.foe.Style
+			.forWeapon(com.mopicmp.npcstudio.foe.Arms.of(getMainHandItem())).flinch();
+		playGesture(flinch.animation(), flinch.ticks(), flinch.from());
 		swingShowing = "";
 		return true;
 	}
@@ -1892,10 +1895,29 @@ public class NpcEntity extends Avatar {
 		return entityData.get(DATA_GESTURE_TICKS);
 	}
 
+	/** Which tick of the animation the current gesture began at. */
+	public int gestureFrom() {
+		return entityData.get(DATA_GESTURE_FROM);
+	}
+
 	public void playGesture(String name, int ticks) {
+		playGesture(name, ticks, 0);
+	}
+
+	/**
+	 * Plays a stretch of an animation.
+	 *
+	 * @param ticks how long to play for, or nought to hold it until told otherwise
+	 * @param from  which tick of the animation to start at. The length is still a
+	 *              length rather than an end: asking for four ticks from two plays
+	 *              two, three, four and five, which is what somebody naming a
+	 *              stretch of a movement means and saves them one subtraction.
+	 */
+	public void playGesture(String name, int ticks, int from) {
 		entityData.set(DATA_GESTURE, name == null ? "" : name);
 		entityData.set(DATA_GESTURE_START, tickCount);
 		entityData.set(DATA_GESTURE_TICKS, Math.max(0, ticks));
+		entityData.set(DATA_GESTURE_FROM, Math.max(0, from));
 	}
 
 	/**

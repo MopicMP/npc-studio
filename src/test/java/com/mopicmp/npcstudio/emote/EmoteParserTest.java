@@ -274,6 +274,51 @@ class EmoteParserTest {
 		assertEquals(8f, emote.timeAt(23f), 1e-6, "and carries on from there");
 	}
 
+	/**
+	 * A one-tick loop turns any age at all into its final pose.
+	 *
+	 * <h2>Why this is worth a test of its own</h2>
+	 *
+	 * Because it is how the format writes "play once and hold", fifteen files use
+	 * it, and it means an emote is never out of range — ask it for tick nine
+	 * thousand and it answers with a pose rather than with nothing.
+	 *
+	 * That turned a small mistake into a loud one. An animation being faded out was
+	 * frozen at the wrong number — the age of the one replacing it, which for a
+	 * resting animation is the character's whole lifetime — and instead of showing
+	 * nothing, it showed the last frame of a death at full strength. The report was
+	 * that a punched character lies flat on the floor and gets up again, and every
+	 * word of it was accurate.
+	 */
+	@Test
+	void aLoopOfOneTickHoldsItsLastFrameForEver() {
+		Emote emote = new Emote("x", "x", "", "", true, 0, 32, 33, 31, Map.of());
+
+		assertEquals(20f, emote.timeAt(20f), 1e-6, "inside the pass it plays");
+		assertEquals(31f, emote.timeAt(33f), 1e-6, "one past the end is the held frame");
+		assertEquals(31f, emote.timeAt(9000f), 1e-6, "and so is a number off the clock");
+	}
+
+	/**
+	 * The animation the flinch is cut out of really is shaped the way we think.
+	 *
+	 * Against the shipped file rather than against a remembered reading of it, so
+	 * that a pack update which recuts the death is a failing build here instead of
+	 * a character on the floor in a fight.
+	 */
+	@Test
+	void theFlinchIsCutFromAnAnimationThatHoldsItsLastFrame() throws Exception {
+		Path file = PACK.resolve("spe_to_die_from_a_severe_blow.json");
+		assumeTrue(Files.exists(file), "the emote pack is not unpacked here");
+
+		Emote emote = parse(file);
+		assertTrue(emote.loop(), "it loops, which is how it holds");
+		assertEquals(31f, emote.timeAt(5000f), 1e-6, "and holds on the body being down");
+		// The four ticks the flinch actually uses are inside the animation and
+		// nowhere near that, which is the whole reason it is a range and not a name.
+		assertEquals(5f, emote.timeAt(5f), 1e-6, "the fold is still the fold");
+	}
+
 	@Test
 	void aNonLoopingEmoteStopsAndSaysSo() {
 		Emote emote = new Emote("x", "x", "", "", false, 0, 20, 24, 0, Map.of());

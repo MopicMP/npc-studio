@@ -137,6 +137,14 @@ public record Style(String stance, String walk, String run, List<String> chain) 
 	}
 
 	/**
+	 * A stretch of an animation: which one, where it starts, how much of it.
+	 *
+	 * A range rather than a name, because the movement wanted here is a few ticks
+	 * inside a longer one and neither end of it is where the file begins.
+	 */
+	public record Flinch(String animation, int from, int ticks) { }
+
+	/**
 	 * What taking a blow looks like.
 	 *
 	 * <h2>Where this comes from, honestly</h2>
@@ -144,24 +152,32 @@ public record Style(String stance, String walk, String run, List<String> chain) 
 	 * The opening of a death. The pack has no animation called a flinch — the
 	 * nearest things are held states like {@code spe_stomach_pain}, which is a
 	 * condition rather than a moment — but {@code spe_to_die_from_a_severe_blow}
-	 * begins with somebody being hit hard, and its first half-second is exactly
-	 * that: the body folds forward over the blow.
+	 * begins with somebody being hit hard.
 	 *
-	 * Looked at frame by frame before it was used. Ticks two to seven are the
-	 * impact; everything after is the falling over, which is why it is played for a
-	 * few ticks and then handed back rather than run to its end.
+	 * <h2>Ticks two to five, and every one of those numbers was looked at</h2>
 	 *
-	 * <h2>How far in reads as how hard</h2>
+	 * On a printed sheet of all thirty-three frames. Nought and one are the
+	 * character standing there; two is the first tilt; three leans with the knees
+	 * going; four is folded with the head down; five is the deepest fold, one leg
+	 * back. Six is a knee dropping and everything after it is the fall, which is a
+	 * different event and not this one.
 	 *
-	 * For nothing. A gesture given a length eases back out of itself over its last
-	 * few ticks, so a short flinch only reaches a shallow fold and a long one
-	 * reaches a deep one. Severity is the length, and needs no second number.
+	 * So it starts at two and lasts four. Played from the top instead — which is
+	 * what it did — half of a four-tick flinch is a character standing still and it
+	 * ends before the fold arrives.
 	 *
-	 * On the style so that it can differ — a blow taken behind a shield is not the
-	 * blow taken in the chest — even though every style names the same one today.
+	 * <h2>What happens after the four ticks is not in here</h2>
+	 *
+	 * Deliberately. The body comes out of the fold by the same means it went into
+	 * it — the change between one animation and the next, blended over a couple of
+	 * ticks — rather than by playing the rest of a death backwards. There is
+	 * nothing to author for standing up again: it is the stance arriving.
+	 *
+	 * On the style so that it can differ, since a blow taken behind a shield is not
+	 * the blow taken in the chest, even though every style names the same one today.
 	 */
-	public String flinch() {
-		return "spe_to_die_from_a_severe_blow";
+	public Flinch flinch() {
+		return new Flinch("spe_to_die_from_a_severe_blow", 2, 4);
 	}
 
 	/**

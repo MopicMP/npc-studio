@@ -175,10 +175,22 @@ public class ClientNpcEntity extends NpcEntity implements ClientAvatarEntity {
 	 */
 	private static final float CHANGES_OVER = 7f;
 
+	/**
+	 * The shortest change worth easing, in ticks.
+	 *
+	 * A change is capped at half of what it is changing into, because a fade that
+	 * outlasts its own animation is a fade nobody ever sees the end of. Half of a
+	 * four-tick flinch is two, and below about that there is nothing left to ease
+	 * — so anything shorter simply arrives.
+	 */
+	private static final float SHORTEST_CHANGE = 2f;
+
 	private String leaving = "";
 	private float leavingFrom;
 	private int changedAt = -1;
+	private float changesOver = CHANGES_OVER;
 	private String showing = "";
+	private float showingAge;
 	private int showingAskedOn = Integer.MIN_VALUE;
 
 	/**
@@ -194,19 +206,48 @@ public class ClientNpcEntity extends NpcEntity implements ClientAvatarEntity {
 	 *
 	 * The entity has the clock and the memory, so the entity notices.
 	 */
-	public void changingTo(String animation, float age, int askedOn) {
+	public void changingTo(String animation, float age, int askedOn, int lasts) {
 		// The same trap as above, one layer along: a repeat of one animation is a
 		// change even though the name has not changed, and without noticing it the
 		// second performance has nothing to fade in from.
-		if (animation.equals(showing) && askedOn == showingAskedOn) return;
+		if (animation.equals(showing) && askedOn == showingAskedOn) {
+			// Remembered every frame, because the frame this one is on now is the
+			// frame it will have to be frozen at whenever it is eventually replaced.
+			showingAge = age;
+			return;
+		}
 		showingAskedOn = askedOn;
 		// The one going out keeps its own age, frozen where it got to. An emote is a
 		// timeline and a fading one should stay on the frame it reached rather than
 		// carrying on playing to nobody.
+		//
+		// <h2>Its own age, and that word is the whole bug</h2>
+		//
+		// This used to freeze the outgoing animation at the age of the one coming
+		// in, which is nearly harmless between two gestures and ruinous at the end
+		// of one: a gesture that runs out is replaced by a resting animation, and a
+		// resting animation is timed from the entity's whole life rather than from a
+		// start. So the outgoing one was frozen at a time in the thousands.
+		//
+		// Emotes loop. Fifteen in the pack loop a single tick at the very end, which
+		// is how the format writes "hold the last pose", so a time in the thousands
+		// resolves to the last frame — and for a flinch borrowed from the opening of
+		// a death, the last frame is the body flat on the floor. It was then drawn at
+		// full strength for the length of the change.
+		//
+		// Which is exactly what was reported: no falling, just lying, and up again.
 		leaving = showing;
-		leavingFrom = age;
+		leavingFrom = showingAge;
 		changedAt = tickCount;
+		// A change into a bounded gesture is cut to fit it. Seven ticks into a
+		// four-tick flinch means the fold is still fading in when the flinch is over
+		// and never reaches even two thirds of itself — the movement is there in the
+		// data and invisible on the body.
+		changesOver = lasts > 0
+			? Math.clamp(lasts / 2f, SHORTEST_CHANGE, CHANGES_OVER)
+			: CHANGES_OVER;
 		showing = animation;
+		showingAge = age;
 	}
 
 	public String leavingAnimation() {
@@ -221,8 +262,8 @@ public class ClientNpcEntity extends NpcEntity implements ClientAvatarEntity {
 	public float changedBy(float partial) {
 		if (changedAt < 0 || leaving.isEmpty()) return 1f;
 		float since = tickCount - changedAt + partial;
-		if (since >= CHANGES_OVER) return 1f;
-		float t = Math.max(0f, since) / CHANGES_OVER;
+		if (since >= changesOver) return 1f;
+		float t = Math.max(0f, since) / changesOver;
 		// Eased at both ends, so the change leaves one pose and settles into the
 		// other rather than starting and stopping at corners.
 		return t * t * (3f - 2f * t);

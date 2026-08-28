@@ -32,12 +32,20 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 		super(context, slim);
 	}
 
-	/** How much of the pose is left, given how many ticks remain of it. */
-	private static float leaving(float remaining) {
-		if (remaining >= LEAVING) return 1f;
+	/**
+	 * How much of the pose is left, given how many ticks remain of it.
+	 *
+	 * Cut to half the gesture when the gesture is shorter than the fade. Five ticks
+	 * of easing out of a four-tick flinch means it begins fading on the tick it
+	 * begins and is down to a tenth of itself by the time the body would have
+	 * folded — the pose is drawn on every tick of it and reads as nothing at all.
+	 */
+	private static float leaving(float remaining, int ticks) {
+		float over = ticks > 0 ? Math.min(LEAVING, ticks / 2f) : LEAVING;
+		if (remaining >= over) return 1f;
 		// Smoothed rather than straight, so the last moment of the movement slows
 		// into the rest instead of arriving at a corner.
-		float t = Math.max(0f, remaining) / LEAVING;
+		float t = Math.max(0f, remaining) / over;
 		return t * t * (3f - 2f * t);
 	}
 
@@ -57,7 +65,12 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 		// a world is timed by the world, which is the only clock it shares with the
 		// server that started the gesture.
 		float forced = npc.previewAge();
-		float age = Float.isNaN(forced) ? npc.localGestureAge(partial) : forced;
+		float elapsed = Float.isNaN(forced) ? npc.localGestureAge(partial) : forced;
+		// Where in the animation that is. The two are the same for almost everything
+		// and differ whenever a gesture was asked to start partway in, which is how a
+		// movement buried inside a longer one gets used without cutting a new file:
+		// the flinch is ticks two to five of somebody dying.
+		float age = elapsed + npc.gestureFrom();
 
 		// A gesture from a conversation wins while it is running; the rest of the
 		// time the character falls back on how it is standing or moving. Timed from
@@ -72,8 +85,10 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 		int ticks = npc.gestureTicks();
 		float strength = 1f;
 		if (!gesture.isEmpty() && ticks > 0) {
-			if (age >= ticks) gesture = "";
-			else strength = leaving(ticks - age);
+			// Against how long it has been running rather than against where in the
+			// animation it is, because a length is a length whatever it started from.
+			if (elapsed >= ticks) gesture = "";
+			else strength = leaving(ticks - elapsed, ticks);
 		} else if (NpcGestures.runsOut(gesture, age)) {
 			// No length was asked for, but this one is over regardless: the built-in
 			// gestures are a there-and-back arc rather than a pose to hold.
@@ -83,6 +98,10 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 			gesture = npc.restingAnimation();
 			age = npc.tickCount + partial;
 			strength = 1f;
+			// And it has no end, which is the thing the change downstream has to know:
+			// a resting animation is not cut short by anything and its fade is the
+			// ordinary one.
+			ticks = 0;
 		}
 		GestureHolder holder = (GestureHolder) state;
 		// Carried across to the model, which is where the pose is actually put on.
@@ -96,7 +115,7 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 		holder.npcStudio$setGesture(gesture, age, strength);
 		// The tick it was asked on travels with it, so that asking twice for one
 		// animation reads as two performances rather than as nothing having happened.
-		npc.changingTo(gesture, age, npc.gestureBegan());
+		npc.changingTo(gesture, age, npc.gestureBegan(), ticks);
 		holder.npcStudio$setLeaving(npc.leavingAnimation(), npc.leavingAge(partial),
 			npc.changedBy(partial));
 		// The skin is read before anything is drawn over it. Nothing is assumed:
