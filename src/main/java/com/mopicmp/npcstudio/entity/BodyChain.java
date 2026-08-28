@@ -61,17 +61,23 @@ public final class BodyChain {
 			float top, float bottom, float middleX, float halfX, float middleZ, float halfZ,
 			float upperX, float upperZ, float upperMiddleX) {
 		return limb(shape, top, bottom, middleX, halfX, middleZ, halfZ,
-			upperX, upperZ, upperMiddleX, true);
+			upperX, upperZ, upperMiddleX, true, 0f);
 	}
 
-	/** The same, told which outline to follow — a leg's or an arm's. */
+	/**
+	 * The same, told which outline to follow and how much seat to carry.
+	 *
+	 * @param seat how far the torso's back stands out at the hip, which the top of a
+	 *             thigh has to stand out by too or the seat ends in a ledge
+	 */
 	private static List<SegmentMesh.Ring> limb(BodyShape shape,
 			float top, float bottom, float middleX, float halfX, float middleZ, float halfZ,
-			float upperX, float upperZ, float upperMiddleX, boolean leg) {
+			float upperX, float upperZ, float upperMiddleX, boolean leg, float seat) {
 		float[] across = leg ? LEG_WIDE : ARM_WIDE;
 		float[] through = leg ? LEG_DEEP : ARM_DEEP;
 		float length = (bottom - top) * shape.height();
-		boolean parted = upperX != halfX || upperZ != halfZ || upperMiddleX != middleX;
+		boolean parted = upperX != halfX || upperZ != halfZ || upperMiddleX != middleX
+			|| seat != 0;
 
 		// Nothing asked for and nothing to say: two rings, the part's own size, and the
 		// mesh gives the model straight back. A plain box is a loft of two.
@@ -85,10 +91,15 @@ public final class BodyChain {
 		for (int i = 0; i < RINGS; i++) {
 			float share = i / (float) (RINGS - 1);
 			float y = top + length * share;
+			// The seat is the torso's and the thigh only borrows it, so it goes away
+			// as the thigh becomes itself. Half of it moves the ring's middle and
+			// half its depth, which together move the back and leave the front.
+			float behind = seat * seatFade(share) / 2f;
 			if (i == 0) {
 				// The top ring belongs to whatever the limb hangs from: two thighs stand
 				// under one pelvis, and the join has to be a join.
-				loft.add(new SegmentMesh.Ring(y, 0f, upperMiddleX, upperX, middleZ, upperZ));
+				loft.add(new SegmentMesh.Ring(y, 0f, upperMiddleX, upperX,
+					middleZ + behind, upperZ + behind));
 			} else {
 				// Across and through are read from separate tables on purpose. A calf
 				// is no wider than the shin above it and is markedly deeper — the
@@ -96,12 +107,29 @@ public final class BodyChain {
 				// cannot say that. Measured on the reference: down one leg the width
 				// holds at 2.317 while the depth goes 2.573 to 3.458.
 				loft.add(new SegmentMesh.Ring(y, share, middleX,
-					step(halfX, shape.taper(), across[i]), middleZ,
-					step(halfZ, shape.taper(), through[i])));
+					step(halfX, shape.taper(), across[i]), middleZ + behind,
+					step(halfZ, shape.taper(), through[i]) + behind));
 			}
 		}
 		return List.copyOf(loft);
 	}
+
+	/**
+	 * How much of the torso's seat a ring of the thigh still carries.
+	 *
+	 * Full where the thigh meets the pelvis and gone a quarter of the way down, which
+	 * is where {@link BodyField#THIGH_Y} says a thigh has finished becoming itself.
+	 * Smoothed rather than ramped: a seat that ends in a straight line ends in a
+	 * crease, and the crease is the thing being got rid of.
+	 */
+	private static float seatFade(float share) {
+		if (share >= SEAT_REACH) return 0f;
+		float t = share / SEAT_REACH;
+		return 1f - t * t * (3f - 2f * t);
+	}
+
+	/** How far down a thigh the seat above it still shows. */
+	private static final float SEAT_REACH = 0.25f;
 
 	/**
 	 * How far a turning limb's corner reaches from the joint it turns about.
@@ -294,8 +322,13 @@ public final class BodyChain {
 		float upperMiddle = side * (BodyField.legMiddle(shape, BodyField.HIP_Y)) - pivotX;
 		float ownMiddle = side * Math.max(1.9f, BodyField.legGirth(shape) - BodyField.LEG_OVERLAP)
 			- pivotX;
+		// The seat the torso grew behind the hips, handed down so the thigh under it
+		// starts where the buttock ended. Without this a wide-hipped character has a
+		// ledge across the back of each leg — the same "one wider, another narrower"
+		// fault, turned front to back.
+		float seat = BodyField.torsoBack(shape, BodyField.HIP_Y) - BodyField.BODY_DEEP;
 		return limb(shape, top, bottom, ownMiddle, own, middleZ, own,
-			pelvis, BodyField.BODY_DEEP + lip, upperMiddle);
+			pelvis, BodyField.BODY_DEEP + lip, upperMiddle, true, seat);
 	}
 
 	/**
@@ -312,7 +345,7 @@ public final class BodyChain {
 		float deep = BodyField.armDepth(shape) + lip;
 		float middle = side * BodyField.armMiddle(shape, base) - pivotX;
 		return limb(shape, top, bottom, middle, half, middleZ, deep,
-			half, deep, middle, false);
+			half, deep, middle, false, 0f);
 	}
 
 	/**

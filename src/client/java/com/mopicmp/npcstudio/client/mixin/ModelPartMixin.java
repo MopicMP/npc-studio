@@ -218,7 +218,14 @@ public abstract class ModelPartMixin implements BendablePart {
 				- place.pivotX();
 		} else {
 			half = com.mopicmp.npcstudio.entity.BodyField.torsoHalf(shape, height) + lip;
-			deep = com.mopicmp.npcstudio.entity.BodyField.BODY_DEEP + lip;
+			// Front and back are two surfaces, not one depth. The back carries the
+			// seat and the hollow above it; the front is the chest's and the
+			// stomach's, pushed further down this method. They meet at the middle,
+			// where both come to nought, so the side of the torso stays one quad
+			// with a kink nobody can see because it is inside the character.
+			deep = (w >= 0
+				? com.mopicmp.npcstudio.entity.BodyField.torsoBack(shape, height)
+				: com.mopicmp.npcstudio.entity.BodyField.BODY_DEEP) + lip;
 			middle = 0;
 		}
 
@@ -243,6 +250,12 @@ public abstract class ModelPartMixin implements BendablePart {
 						npcStudio$down(at.y), across / half, build.chest(), build.belly());
 				}
 			}
+			// Last, and after the chest, because the chest reads how far across the
+			// depth a vertex sits and a spine that has moved would have moved that
+			// reading with it. The whole cross-section goes together, front and back
+			// alike: a body follows its own back.
+			at.z += com.mopicmp.npcstudio.entity.BodyField.spineLean(shape, height) / 16f;
+			at.y += com.mopicmp.npcstudio.entity.BodyField.spineDrop(shape, height) / 16f;
 		}
 	}
 

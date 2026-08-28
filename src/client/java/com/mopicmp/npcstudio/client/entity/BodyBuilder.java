@@ -103,7 +103,7 @@ public final class BodyBuilder {
 		// anyway; skipped so that the ordinary case touches no positions at all.
 		if (!build.isDefault()) {
 			attach(model, build);
-			stoop(model, build.stoop());
+			stoop(model, build);
 		}
 
 		// Places last of all, and that ordering is not tidiness. A place carries the
@@ -336,41 +336,42 @@ public final class BodyBuilder {
 	 * not the neck. Without it an old man walks along studying his own boots,
 	 * which is a different character and not the one anybody asked for.
 	 *
-	 * <h2>The torso, not the character</h2>
+	 * <h2>Three attempts, and why this one is not a turn at all</h2>
 	 *
 	 * The first version turned the whole model at the root, which tipped the legs
 	 * with everything else — a character leaning like a plank rather than one with
-	 * a bent back. A stoop happens in the spine: the legs stay under the body and
-	 * the shoulders come forward over them.
+	 * a bent back. The second turned only the torso, about the waist rather than
+	 * about its own origin up at the neck.
 	 *
-	 * So only the torso turns, and it turns about the waist rather than about its
-	 * own origin, which sits up at the neck. Turning it about the neck would swing
-	 * the hips forward instead and leave the shoulders where they were, which is
-	 * the same mistake upside down.
+	 * Both were turns, and a turn is the wrong shape. Turning a box turns every
+	 * face of it, so the torso met the legs as a tilted slab: its underside at an
+	 * angle to the horizontal top of the thigh, hanging out past it behind and
+	 * leaving a wedge of daylight in front. That is the corner that was reported.
 	 *
-	 * The correction that keeps the waist still is the one the emote engine
-	 * already works out, for exactly this reason — borrowed rather than derived a
-	 * second time. It also happens to be exactly how far the neck moves, since the
-	 * neck is the part's own origin: rotate about the origin, translate by the
-	 * correction, and the origin has travelled by the correction. So the head and
-	 * the arms follow by the same amount and stay attached.
+	 * So the lean now lives in {@link com.mopicmp.npcstudio.entity.BodyField#spineLean},
+	 * spread along the torso's height — nought at the hips, all of it by the
+	 * shoulders. The torso keeps its rotation for whatever the pose wanted, its
+	 * bottom stays flat on the legs, and the bend is a bend.
 	 *
-	 * They follow without turning, though. Arms hang and a head looks ahead; an
-	 * old man leaning on a stick does not study his own boots, and his hands do
-	 * not swing out in front of him.
+	 * <h2>What is left for this method</h2>
+	 *
+	 * Only the following. The head and the arms hang off the top of the torso, and
+	 * the field moves the top of the torso without their knowing, so they are moved
+	 * by however far the spine has leaned and dropped by the time it reaches the
+	 * shoulder line.
+	 *
+	 * They follow without turning. Arms hang and a head looks ahead; an old man
+	 * leaning on a stick does not study his own boots, and his hands do not swing
+	 * out in front of him.
 	 */
-	private static void stoop(PlayerModel model, float radians) {
-		if (radians == 0) return;
-		ModelPart body = model.body;
-
-		var before = EmoteApplier.waistCorrection(body.xRot, body.yRot, body.zRot);
-		body.xRot += radians;
-		var after = EmoteApplier.waistCorrection(body.xRot, body.yRot, body.zRot);
-
-		float downwards = after.y - before.y;
-		float forwards = after.z - before.z;
-		body.y += downwards;
-		body.z += forwards;
+	private static void stoop(PlayerModel model, com.mopicmp.npcstudio.entity.BodyShape shape) {
+		if (shape.stoop() == 0) return;
+		// The same two numbers the field gives every vertex of the torso, read at the
+		// shoulder line — which is where the head and the arms are attached.
+		float forwards = com.mopicmp.npcstudio.entity.BodyField.spineLean(
+			shape, com.mopicmp.npcstudio.entity.BodyField.SHOULDER_Y) / 16f;
+		float downwards = com.mopicmp.npcstudio.entity.BodyField.spineDrop(
+			shape, com.mopicmp.npcstudio.entity.BodyField.SHOULDER_Y) / 16f;
 
 		// Everything that hangs off the top of the torso goes with it. Not the hat
 		// or the sleeves: they are children of the head and the arms — the model

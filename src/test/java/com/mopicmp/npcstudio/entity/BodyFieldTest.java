@@ -189,4 +189,111 @@ class BodyFieldTest {
 		float overlap = BodyField.torsoHalf(wide, BodyField.HIP_Y) - BodyField.BODY_HALF;
 		assertEquals(overlap, moved, 1e-3f, "the arm did not clear the hip by exactly the overlap");
 	}
+
+	// ------------------------------------------------- the back, and the spine
+
+	/** A stooped character and nothing else, so a failure can only be the stoop. */
+	private static BodyShape stooped(float radians) {
+		return new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, radians);
+	}
+
+	/** The sixteen bands the torso is actually cut into, which is what a step means. */
+	private static final float BAND = (BodyField.HIP_Y - BodyField.SHOULDER_Y) / 16f;
+
+	@Test
+	@DisplayName("an untouched back is the vanilla plane, front and back alike")
+	void defaultBackIsFlat() {
+		for (float y = 0; y <= BodyField.HIP_Y; y += 0.25f) {
+			assertEquals(BodyField.BODY_DEEP, BodyField.torsoBack(BodyShape.DEFAULT, y), 1e-4f,
+				"the back moved at " + y + " on a character nobody touched");
+			assertEquals(0f, BodyField.spineLean(BodyShape.DEFAULT, y), 1e-6f, "lean at " + y);
+			assertEquals(0f, BodyField.spineDrop(BodyShape.DEFAULT, y), 1e-6f, "drop at " + y);
+		}
+	}
+
+	@Test
+	@DisplayName("wide hips build a seat behind them, and a hollow above it")
+	void hipsWorkThroughAsWellAsAcross() {
+		// The fault this answers: hips only ever moved the sides apart, so a
+		// wide-hipped character was a wider plank seen from the front and the same
+		// plank seen from the side. Measured on the reference, the back of the torso
+		// stands 0.55 pixels further out at the seat than at the shoulders.
+		BodyShape wide = shape(1.6f, 1f);
+		float shoulders = BodyField.torsoBack(wide, BodyField.SHOULDER_Y);
+		float seat = BodyField.torsoBack(wide, BodyField.HIP_Y);
+		assertEquals(BodyField.BODY_DEEP, shoulders, 1e-4f, "the shoulders are not a seat");
+		assertEquals(0.55f, seat - shoulders, 0.1f, "the seat is not the reference's depth");
+
+		// And it turns round on the way, or it is a wedge rather than a seat.
+		float least = Float.MAX_VALUE;
+		for (float y = 0; y <= BodyField.HIP_Y; y += 0.25f) {
+			least = Math.min(least, BodyField.torsoBack(wide, y));
+		}
+		assertTrue(least < BodyField.BODY_DEEP - 0.05f,
+			"there is no small of the back: the shallowest point is " + least);
+	}
+
+	@Test
+	@DisplayName("the seat arrives gradually, like everything else on this model")
+	void theSeatHasNoStep() {
+		// The bar is looser than a limb's, and deliberately. A limb's outline is a
+		// smooth run and its bar is 0.6 of a pixel of width per pixel of height; a
+		// seat is a feature, and the reference's own features are steeper than its
+		// runs — its wrist steps 1.1 pixels. At the widest hips the sliders allow,
+		// the seat is a whole pixel deep and it arrives over three and a half.
+		BodyShape wide = shape(2f, 2f);
+		float was = BodyField.torsoBack(wide, 0);
+		for (float y = BAND; y <= BodyField.HIP_Y; y += BAND) {
+			float now = BodyField.torsoBack(wide, y);
+			assertTrue(Math.abs(now - was) <= 0.4f,
+				"the back steps by " + (now - was) + " at " + y);
+			was = now;
+		}
+	}
+
+	@Test
+	@DisplayName("a stoop is pinned at the hips and spent by the shoulders")
+	void theSpineLeansWhereASpineDoes() {
+		// This is the whole of the fix for "осанка под прямым углом". The lean used
+		// to be one rigid turn of the torso about the waist, which tilted the bottom
+		// of the torso against the flat top of the thigh and left a corner. Nought at
+		// the hips is what keeps that junction square.
+		BodyShape old = stooped(BodyShape.MAX_STOOP);
+		assertEquals(0f, BodyField.spineLean(old, BodyField.HIP_Y), 1e-4f, "the hips moved");
+		assertEquals(0f, BodyField.spineDrop(old, BodyField.HIP_Y), 1e-4f, "the hips dropped");
+		assertTrue(BodyField.spineLean(old, BodyField.SHOULDER_Y) < -1f,
+			"the shoulders did not come forward");
+		assertTrue(BodyField.spineDrop(old, BodyField.SHOULDER_Y) > 0f,
+			"a bent back is a shorter back and this one is not");
+
+		// Below the hips there is no torso, and nothing there may move: that is where
+		// the legs are.
+		assertEquals(0f, BodyField.spineLean(old, BodyField.HIP_Y + 1f), 1e-4f);
+		assertEquals(0f, BodyField.spineLean(old, BodyField.THIGH_Y), 1e-4f);
+	}
+
+	@Test
+	@DisplayName("and it bends on the way rather than hinging")
+	void theSpineIsACurveNotAHinge() {
+		// A hinge puts all its turn in one place; a bend spreads it. Read as the
+		// change per band, a hinge is one big number among zeroes and a bend is a
+		// hump. So: every band moves, and no band moves more than twice the average.
+		BodyShape old = stooped(BodyShape.MAX_STOOP);
+		float most = 0;
+		float total = 0;
+		int bands = 0;
+		float was = BodyField.spineLean(old, BodyField.HIP_Y);
+		for (float y = BodyField.HIP_Y - BAND; y >= BodyField.SHOULDER_Y - 1e-4f; y -= BAND) {
+			float now = BodyField.spineLean(old, y);
+			float step = Math.abs(now - was);
+			most = Math.max(most, step);
+			total += step;
+			bands++;
+			was = now;
+		}
+		assertTrue(bands >= 15, "only " + bands + " bands of spine");
+		assertTrue(most <= 2f * total / bands,
+			"one band takes " + most + " of the lean where the average is " + total / bands
+				+ ", which is a hinge");
+	}
 }

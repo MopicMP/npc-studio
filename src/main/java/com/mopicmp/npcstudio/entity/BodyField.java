@@ -103,6 +103,130 @@ public final class BodyField {
 			: mix(waist, hips, smooth((y - WAIST_Y) / (HIP_Y - WAIST_Y)));
 	}
 
+	/**
+	 * How far the back of the torso is behind its middle, at a height.
+	 *
+	 * <h2>Why the back needs a surface of its own</h2>
+	 *
+	 * Because until now it did not have one. The torso was as deep at the hips as at
+	 * the shoulders and as deep at the back as at the front: widening the hips moved
+	 * the sides apart and nothing else, so a wide-hipped character was a wide plank.
+	 * Measured on the reference model, the back of the torso stands 0.55 pixels
+	 * further back at the seat than at the shoulders, on a torso four pixels deep —
+	 * and the front, which the chest and the stomach already own, does something
+	 * else entirely.
+	 *
+	 * <h2>The hollow above it</h2>
+	 *
+	 * A seat that only bulges reads as a lump. What makes it read as a seat is the
+	 * small of the back just above, where the surface comes back <em>in</em> — the
+	 * same "turns round twice" that a limb's outline needed, applied front to back
+	 * instead of side to side.
+	 *
+	 * The hollow is authored and the seat is measured, and the difference is worth
+	 * stating: the reference wears a waistband exactly where the hollow would be, so
+	 * the measurement cannot show one.
+	 *
+	 * <h2>What it is driven by</h2>
+	 *
+	 * The hips, which is the same slider that widens them, so the two cannot
+	 * disagree — and at the defaults both terms are nought, which is what keeps an
+	 * untouched character byte-for-byte the vanilla torso.
+	 */
+	public static float torsoBack(BodyShape shape, float y) {
+		float seat = BODY_DEEP * (hipsUsed(shape) - 1f) * SEAT_GAIN;
+		if (seat == 0) return BODY_DEEP;
+		return BODY_DEEP + seat * seatShare(y);
+	}
+
+	/**
+	 * Where the back is, as a share of the seat's full depth: negative in the hollow.
+	 *
+	 * Nought down to {@link #SMALL_TOP}, because a seat is a thing of the lower back
+	 * and the ribcage above it belongs to the chest.
+	 */
+	private static float seatShare(float y) {
+		if (y <= SMALL_TOP) return 0f;
+		if (y >= SEAT_Y) return 1f;
+		return y <= SMALL_Y
+			? mix(0f, -SMALL_SHARE, smooth((y - SMALL_TOP) / (SMALL_Y - SMALL_TOP)))
+			: mix(-SMALL_SHARE, 1f, smooth((y - SMALL_Y) / (SEAT_Y - SMALL_Y)));
+	}
+
+	/**
+	 * Where the lower back begins, where it is hollowest, and where the seat is full.
+	 *
+	 * Spread rather than chosen for looks. The torso is drawn in sixteen bands, and
+	 * the seat has to arrive over enough of them that no one band carries a visible
+	 * jump — the same rule the limbs are held to, applied front to back. Four and a
+	 * half pixels of rise is what keeps the steepest band under a third of a pixel at
+	 * the widest hips the sliders allow.
+	 */
+	private static final float SMALL_TOP = 4f;
+	private static final float SMALL_Y = 6.5f;
+	private static final float SEAT_Y = 11f;
+
+	/**
+	 * How deep the seat gets, per unit of hip.
+	 *
+	 * Half. At the widest hips the sliders allow, that puts the back 0.6 pixels
+	 * further out, which is what the reference measures at 0.55 — so this is the
+	 * measurement rather than a taste, and it is written as a ratio so that it stays
+	 * the measurement when the torso is not four deep.
+	 */
+	private static final float SEAT_GAIN = 0.5f;
+
+	/** How far into the seat the hollow above it cuts, as a share of the seat. */
+	private static final float SMALL_SHARE = 0.3f;
+
+	/**
+	 * How far forward the spine has leaned by a height, in pixels. Forward is minus.
+	 *
+	 * <h2>The fault this replaces</h2>
+	 *
+	 * A stoop used to be one rigid turn of the torso about the waist. Turning a box
+	 * turns every face of it, so the torso arrived at the hips as a plank set at an
+	 * angle: its bottom face tilted while the legs under it stayed upright, which
+	 * left the seat hanging out past the thigh on one side and a wedge of daylight on
+	 * the other. Reported as "осанка под прямым углом" — a corner where a bend was
+	 * wanted. Turning about the waist rather than the neck was already the second
+	 * attempt at the same idea, and the idea is what was wrong.
+	 *
+	 * <h2>A spine bends, it does not hinge</h2>
+	 *
+	 * So the lean is spread along the height instead: nought at the hips, so the
+	 * torso still meets the legs square and horizontal, and the whole of it by the
+	 * shoulders, with {@link #smooth} in between. That curve is the bend — its
+	 * steepest part is the middle of the back and it flattens out at both ends,
+	 * which is what a spine does and what one rigid angle can never say.
+	 *
+	 * The reach is the same one the old turn had, so a stoop still looks like the
+	 * same amount of stoop: the neck used to travel the waist's height times the sine
+	 * of the angle, and it still does.
+	 */
+	public static float spineLean(BodyShape shape, float y) {
+		if (shape.stoop() == 0) return 0f;
+		return -WAIST_Y * (float) Math.sin(shape.stoop()) * leaned(y);
+	}
+
+	/**
+	 * How far that lean has lowered the spine by a height, in pixels. Down is plus.
+	 *
+	 * A bent back is a shorter back, seen from the side — the distance from hip to
+	 * neck is the chord and not the arc. Without this a stooped character keeps its
+	 * full height and reads as sliding forwards rather than folding, which is the
+	 * failure mode of every shear that forgets it.
+	 */
+	public static float spineDrop(BodyShape shape, float y) {
+		if (shape.stoop() == 0) return 0f;
+		return (HIP_Y - SHOULDER_Y) * (1f - (float) Math.cos(shape.stoop())) * leaned(y);
+	}
+
+	/** How much of the lean has happened by a height: none at the hips, all at the neck. */
+	private static float leaned(float y) {
+		return smooth(Math.clamp((HIP_Y - y) / (HIP_Y - SHOULDER_Y), 0f, 1f));
+	}
+
 	// --------------------------------------------------------------- the legs
 
 	/** How thick a leg is on its own account, before the pelvis has its say. */
