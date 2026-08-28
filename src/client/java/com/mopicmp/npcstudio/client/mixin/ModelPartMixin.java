@@ -1096,7 +1096,7 @@ public abstract class ModelPartMixin implements BendablePart {
 		Vector3f local = new Vector3f();
 		Vector3f normal = new Vector3f();
 		Vector3f at = new Vector3f();
-		for (var quad : com.mopicmp.npcstudio.entity.SegmentMesh.build(source, chain, null)) {
+		for (var quad : com.mopicmp.npcstudio.entity.SegmentMesh.build(source, chain)) {
 			var corners = quad.corners();
 			npcStudio$facing(corners, local);
 			// Lit by the turn it is drawn with: a band held back at the joint faces
