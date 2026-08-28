@@ -39,6 +39,47 @@ class BodyChainTest {
 		assertEquals(1.5f, chain.get(1).halfZ(), 1e-4f, "the calf narrowed only one way");
 	}
 
+	/**
+	 * How many texels tall a limb's flank is on a skin. Twelve, since 2011.
+	 *
+	 * Not a number of ours to choose, which is the whole point of the test below.
+	 */
+	private static final int LIMB_ROWS = 12;
+
+	@Test
+	@DisplayName("a limb is cut into a number of pieces that divides its rows of texels")
+	void everyCutLandsOnAWholeTexel() {
+		// A skin is pixel art and the cuts are fractions. Segments take equal shares
+		// of the texture, so cutting a twelve-texel flank into five pieces puts a join
+		// at two and two fifths — through the middle of the third row.
+		//
+		// While the two pieces are in line nobody sees it. The moment one steps, that
+		// row is torn between two surfaces at different depths, and what shows is a
+		// ragged line all the way round the limb. So the rule is arithmetic, not
+		// taste: the count has to divide the rows.
+		//
+		// It is here rather than in the mesh because it is not the mesh's decision.
+		// SegmentMesh cuts wherever it is told; this is where the telling happens, and
+		// it is also the constraint on how many segments we are allowed to want.
+		for (BodyShape shape : shapes()) {
+			int pieces = leg(shape).size();
+			assertEquals(0, LIMB_ROWS % pieces,
+				pieces + " segments do not divide " + LIMB_ROWS + " rows of skin, so a"
+					+ " join lands through the middle of a texel: " + shape);
+		}
+	}
+
+	/** Every build the sliders can reach at their ends, plus the ordinary one. */
+	private static List<BodyShape> shapes() {
+		return List.of(
+			BodyShape.DEFAULT,
+			new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, 0f, 1f, 1f),
+			new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, 0f, 1f, BodyShape.MAX_TAPER),
+			new BodyShape(1, 1, 1, 1, 1.6f, 1, 1, 0f, 0f, 1.3f, 0f),
+			new BodyShape(1.35f, 1.05f, 1.1f, 1.3f, 1.1f, 1.3f, 1, 0f, -0.06f),
+			new BodyShape(1.1f, 1.5f, 1.6f, 1.2f, 1.4f, 1.1f, 1, 0f, 0f));
+	}
+
 	@Test
 	@DisplayName("a limb never tapers away to nothing")
 	void thereIsAlwaysALimbLeft() {

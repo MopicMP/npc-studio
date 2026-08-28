@@ -149,6 +149,106 @@ class SegmentMeshTest {
 	}
 
 	@Test
+	@DisplayName("a step between segments is covered, and covered from the flank")
+	void theStepIsNotAHole() {
+		SegmentMesh.Source source = arm();
+		List<SegmentMesh.Quad> out = SegmentMesh.build(source, List.of(
+			new SegmentMesh.Segment(0, 6, 0, 2, 0, 2),
+			new SegmentMesh.Segment(6, 12, 0, 1.5f, 0, 1.5f)), null);
+
+		// Every quad lying flat at the join. Without these, looking up at a knee sees
+		// through the thigh, because the inside of a box is not drawn.
+		List<SegmentMesh.Quad> ring = new ArrayList<>();
+		for (SegmentMesh.Quad quad : out) {
+			boolean flat = true;
+			for (SegmentMesh.Corner corner : quad.corners()) {
+				if (Math.abs(corner.y() - 6f) > 1e-4f) flat = false;
+			}
+			if (flat) ring.add(quad);
+		}
+		assertTrue(!ring.isEmpty(), "the step between the two segments was left open");
+
+		// The frame reaches from the narrow edge out to the wide one, all the way
+		// round: four strips, and between them they cover the half pixel that steps.
+		float reach = 0;
+		for (SegmentMesh.Quad quad : ring) {
+			for (SegmentMesh.Corner corner : quad.corners()) {
+				reach = Math.max(reach, Math.abs(corner.x()));
+				// And the texture is the flank's, not the end's. The arm's ends live at
+				// v 0.14 to 0.20 and its flanks at 0.20 to 0.44; a ring reading from an
+				// end would be transparent on most skins, which is a hole with extra
+				// steps.
+				assertTrue(corner.v() >= 0.20f - 1e-4f,
+					"the ring is reading from an end face, at v " + corner.v());
+			}
+		}
+		assertEquals(2f, reach, 1e-4f, "the ring stops short of the wider segment");
+	}
+
+	@Test
+	@DisplayName("segments that do not step leave no ring behind")
+	void nothingIsAddedWhereNothingSteps() {
+		SegmentMesh.Source source = arm();
+		// The same width all the way down, cut in three. There is no step anywhere,
+		// so there is nothing to cover — and covering it anyway would put a surface
+		// inside the limb and a duplicated row of texels on it.
+		List<SegmentMesh.Quad> out = SegmentMesh.build(source, List.of(
+			new SegmentMesh.Segment(0, 4, 0, 2, 0, 2),
+			new SegmentMesh.Segment(4, 8, 0, 2, 0, 2),
+			new SegmentMesh.Segment(8, 12, 0, 2, 0, 2)), null);
+
+		for (SegmentMesh.Quad quad : out) {
+			boolean flat = true;
+			for (SegmentMesh.Corner corner : quad.corners()) {
+				if (Math.abs(corner.y() - quad.a().y()) > 1e-4f) flat = false;
+			}
+			if (!flat) continue;
+			assertTrue(Math.abs(quad.a().y()) < 1e-4f || Math.abs(quad.a().y() - 12f) < 1e-4f,
+				"a flat face turned up at y " + quad.a().y() + ", which is inside the limb");
+		}
+	}
+
+	@Test
+	@DisplayName("a ring faces out of the limb, not into it")
+	void theRingFacesTheRightWay() {
+		SegmentMesh.Source source = arm();
+		List<SegmentMesh.Quad> out = SegmentMesh.build(source, List.of(
+			new SegmentMesh.Segment(0, 6, 0, 2, 0, 2),
+			new SegmentMesh.Segment(6, 12, 0, 1.5f, 0, 1.5f)), null);
+
+		// The underside of the thicker segment, which is what the step exposes. It has
+		// to be wound the same way as the limb's own bottom end, or it is drawn from
+		// the inside and shows as nothing at all.
+		float end = 0;
+		for (SegmentMesh.Quad quad : out) {
+			if (Math.abs(quad.a().y() - 12f) < 1e-4f && flatQuad(quad)) end = normalY(quad);
+		}
+		assertTrue(end != 0, "the limb has no bottom end to compare against");
+
+		boolean found = false;
+		for (SegmentMesh.Quad quad : out) {
+			if (Math.abs(quad.a().y() - 6f) > 1e-4f || !flatQuad(quad)) continue;
+			found = true;
+			assertEquals(Math.signum(end), Math.signum(normalY(quad)), 1e-4f,
+				"a ring at the join is wound the other way from the limb's own end");
+		}
+		assertTrue(found, "no ring to check");
+	}
+
+	private static boolean flatQuad(SegmentMesh.Quad quad) {
+		for (SegmentMesh.Corner corner : quad.corners()) {
+			if (Math.abs(corner.y() - quad.a().y()) > 1e-4f) return false;
+		}
+		return true;
+	}
+
+	/** The y of a quad's normal, whichever way round it is wound. */
+	private static float normalY(SegmentMesh.Quad quad) {
+		SegmentMesh.Corner a = quad.a(), b = quad.b(), c = quad.c();
+		return (b.z() - a.z()) * (c.x() - a.x()) - (b.x() - a.x()) * (c.z() - a.z());
+	}
+
+	@Test
 	@DisplayName("shares decide how much skin a segment gets, not its length")
 	void sharesAreToldRatherThanMeasured() {
 		SegmentMesh.Source source = arm();

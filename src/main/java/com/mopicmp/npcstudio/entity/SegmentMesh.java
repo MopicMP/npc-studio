@@ -112,7 +112,194 @@ public final class SegmentMesh {
 				out.add(cut(face, source, segment, cuts[i], cuts[i + 1], cap));
 			}
 		}
+		rings(source, chain, cuts, out);
 		return out;
+	}
+
+	/** How close two edges must be before they count as the same edge. */
+	private static final float SNUG = 1e-4f;
+
+	/**
+	 * The step where two segments of different cross-section meet.
+	 *
+	 * <h2>Why there has to be anything here at all</h2>
+	 *
+	 * A chain whose segments differ — a thigh wider than a calf — leaves a ring
+	 * facing along the limb at every join. It is real surface, and it is the one
+	 * place where "every texel appears exactly once" cannot be kept: the ring is
+	 * not in the skin, because vanilla has no such surface to paint.
+	 *
+	 * Not drawing it, which is what happened before, leaves a hole. Looking at a
+	 * knee from below you see through the thigh, because the inside of a box is not
+	 * drawn.
+	 *
+	 * <h2>Why not the cap's own texels</h2>
+	 *
+	 * Because an end face is not what this is. Many skins leave the ends of a limb
+	 * transparent — nobody sees the top of an arm — so a ring painted with them is
+	 * a hole with extra steps.
+	 *
+	 * So it takes the flank's boundary row: the line of texels the surface arrives
+	 * at, continued outwards across the step. One row duplicated, on a strip a
+	 * fraction of a pixel wide, facing along the limb. That is the whole of the
+	 * price, and naming it is the point.
+	 *
+	 * <h2>Nothing is emitted where nothing steps</h2>
+	 *
+	 * Two segments of the same cross-section produce strips of no width, and those
+	 * are dropped. So a chain of one, and a chain of equal pieces, both give back
+	 * exactly what they were handed — which is the property everything else rests
+	 * on.
+	 */
+	private static void rings(Source source, List<Segment> chain, float[] cuts,
+			List<Quad> out) {
+		for (int i = 1; i < chain.size(); i++) {
+			Segment above = chain.get(i - 1);
+			Segment below = chain.get(i);
+			float[] wide = box(above);
+			float[] narrow = box(below);
+			// Each segment covers whatever the other does not, so a piece that is
+			// broader across and shallower through — which is a real shape, not a
+			// pathological one — gets a ring facing each way rather than neither.
+			skirt(source, wide, narrow, below.top(), cuts[i], false, out);
+			skirt(source, narrow, wide, below.top(), cuts[i], true, out);
+		}
+	}
+
+	/** A segment's cross-section as x0, x1, z0, z1. */
+	private static float[] box(Segment segment) {
+		return new float[] {
+			segment.middleX() - segment.halfX(), segment.middleX() + segment.halfX(),
+			segment.middleZ() - segment.halfZ(), segment.middleZ() + segment.halfZ() };
+	}
+
+	/**
+	 * Whatever of {@code outer} sticks out past {@code inner}, as up to four strips.
+	 *
+	 * The frame decomposition: the part outside on either side across, and then the
+	 * part outside front and back of what is left. Every strip belongs to one flank
+	 * — the one it runs along — and takes its texture from there.
+	 */
+	private static void skirt(Source source, float[] outer, float[] inner, float y,
+			float share, boolean facesUp, List<Quad> out) {
+		float ix0 = Math.max(outer[0], inner[0]);
+		float ix1 = Math.min(outer[1], inner[1]);
+		float iz0 = Math.max(outer[2], inner[2]);
+		float iz1 = Math.min(outer[3], inner[3]);
+
+		if (ix1 - ix0 < SNUG || iz1 - iz0 < SNUG) {
+			// The two do not overlap at all, so the whole end is a step. Nothing in a
+			// body does this, and answering it with a whole face beats answering it
+			// with a hole.
+			strip(source, outer[0], outer[1], outer[2], outer[3], y, share, facesUp,
+				true, -1, out);
+			return;
+		}
+		strip(source, outer[0], ix0, outer[2], outer[3], y, share, facesUp, true, -1, out);
+		strip(source, ix1, outer[1], outer[2], outer[3], y, share, facesUp, true, 1, out);
+		strip(source, ix0, ix1, outer[2], iz0, y, share, facesUp, false, -1, out);
+		strip(source, ix0, ix1, iz1, outer[3], y, share, facesUp, false, 1, out);
+	}
+
+	/**
+	 * One strip of a ring, if it has any width at all.
+	 *
+	 * @param acrossX whether the strip runs along a flank facing across rather than
+	 *                through, which is what decides where its texture comes from
+	 * @param side    which of the two flanks on that axis, as a sign
+	 */
+	private static void strip(Source source, float x0, float x1, float z0, float z1,
+			float y, float share, boolean facesUp, boolean acrossX, float side,
+			List<Quad> out) {
+		if (x1 - x0 < SNUG || z1 - z0 < SNUG) return;
+		Quad flank = flankOn(source, acrossX, side);
+		if (flank == null) return;
+
+		float v = vAt(flank, share);
+		// Along the flank's own horizontal axis, which is the one the strip does not
+		// step along: a strip on the left of the body runs front to back, and the
+		// texture of the left flank runs front to back with it.
+		Corner a = corner(flank, acrossX, x0, z0, y, v);
+		Corner b = corner(flank, acrossX, x1, z0, y, v);
+		Corner c = corner(flank, acrossX, x1, z1, y, v);
+		Corner d = corner(flank, acrossX, x0, z1, y, v);
+
+		Quad quad = new Quad(a, b, c, d);
+		// Wound to match the model's own ends rather than to match an assumption
+		// about which way round a front face is.
+		boolean down = Math.signum(normalY(quad)) == Math.signum(downward(source));
+		if (down == facesUp) quad = new Quad(d, c, b, a);
+		out.add(quad);
+	}
+
+	private static Corner corner(Quad flank, boolean acrossX, float x, float z, float y,
+			float v) {
+		return new Corner(x, y, z, uAt(flank, !acrossX, acrossX ? z : x), v);
+	}
+
+	/** The face on one side of the box, or null where the model has none. */
+	private static Quad flankOn(Source source, boolean acrossX, float side) {
+		for (Quad face : source.faces()) {
+			if (isCap(face, source)) continue;
+			boolean all = true;
+			for (Corner corner : face.corners()) {
+				float from = acrossX
+					? corner.x() - source.middleX()
+					: corner.z() - source.middleZ();
+				if (Math.abs(from) < SNUG || Math.signum(from) != side) {
+					all = false;
+					break;
+				}
+			}
+			if (all) return face;
+		}
+		return null;
+	}
+
+	/** Where along the flank's texture the join sits. */
+	private static float vAt(Quad flank, float share) {
+		float low = lowestV(flank);
+		return low + (highestV(flank) - low) * share;
+	}
+
+	/**
+	 * The flank's texture at a point along it, carried on past its own edge.
+	 *
+	 * A segment wider than the part it came from asks for texture beyond where the
+	 * flank ends, and the honest answer is the row carrying on at the rate it was
+	 * already going, rather than stopping at the edge and smearing.
+	 */
+	private static float uAt(Quad flank, boolean alongX, float at) {
+		Corner[] corners = flank.corners();
+		for (int i = 0; i < corners.length; i++) {
+			for (int j = i + 1; j < corners.length; j++) {
+				float from = alongX ? corners[i].x() : corners[i].z();
+				float to = alongX ? corners[j].x() : corners[j].z();
+				if (Math.abs(to - from) > SNUG) {
+					return corners[i].u()
+						+ (corners[j].u() - corners[i].u()) * (at - from) / (to - from);
+				}
+			}
+		}
+		return flank.a().u();
+	}
+
+	/** The y of a quad's normal, whichever way round it happens to be wound. */
+	private static float normalY(Quad quad) {
+		Corner a = quad.a(), b = quad.b(), c = quad.c();
+		float ux = b.x() - a.x(), uz = b.z() - a.z();
+		float vx = c.x() - a.x(), vz = c.z() - a.z();
+		return uz * vx - ux * vz;
+	}
+
+	/** What a downward-facing quad looks like in this model, taken from its own end. */
+	private static float downward(Source source) {
+		for (Quad face : source.faces()) {
+			if (!isCap(face, source)) continue;
+			if (face.a().y() <= (source.top() + source.bottom()) / 2f) continue;
+			return normalY(face);
+		}
+		return -1;
 	}
 
 	/** Where each segment starts and ends, as a share of the source's length. */
