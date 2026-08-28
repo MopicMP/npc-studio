@@ -596,13 +596,13 @@ public class NpcEntity extends Avatar {
 	}
 
 	private boolean walkTo(Vec3 wanted, float pace, String at) {
-		walkingAt = at;
 		if (wanted == null) return false;
 		// Not while she is swinging. A strike is a step with the weight on it, and a
 		// character who walks out of her own blow is the wooden thing this whole
 		// piece of work is about — the arm carries on through an animation while the
 		// feet take her somewhere else entirely.
 		if (blow.committed()) return false;
+		walkingAt = at;
 		wantedPace = Math.clamp(pace, 0f, 1f);
 
 		// Ordered somewhere she is already going. This is not an optimisation, it
@@ -638,16 +638,25 @@ public class NpcEntity extends Avatar {
 	 */
 	private void walkOn() {
 		walk.moved(getX(), getZ());
-		if (!walk.walking()) return;
 
 		// Near enough to whoever she is walking at, judged against them rather than
 		// against the last waypoint of a route that was worked out several ticks ago.
+		// Before the check below, because arriving at somebody is a thing that can
+		// happen without a route: they can walk into her.
 		if (!walkingAt.isEmpty()) {
 			var whom = com.mopicmp.npcstudio.brain.Marks.creature(this, walkingAt);
 			if (whom != null && distanceTo(whom) <= closeEnoughTo(walkingAt)) {
 				stopWalking();
 				return;
 			}
+		}
+
+		if (!walk.walking()) {
+			// No route, which for somebody a step away is the search agreeing there is
+			// nothing to search: every block between here and them is the one she is
+			// standing in. She still has somewhere to go.
+			closeTheLastStretch();
+			return;
 		}
 
 		// Wedged against a fence post. Nobody needs to decide this: a route that
@@ -658,12 +667,67 @@ public class NpcEntity extends Avatar {
 			return;
 		}
 
-		double[] step = walk.heading(getX(), getY(), getZ());
+		// Walking at somebody, the route is not what says she has arrived — she has,
+		// when she is near enough to them, and that was decided above. So the last
+		// waypoint is held onto rather than dropped a block and a half out, which is
+		// further away than any blow lands.
+		double[] step = walk.heading(getX(), getY(), getZ(),
+			walkingAt.isEmpty() ? com.mopicmp.npcstudio.foe.Walk.ARRIVED
+				: com.mopicmp.npcstudio.foe.Walk.CLOSE_ENOUGH);
 		if (step == null) {
-			stopWalking();
+			// The route ran out with her still short of them, which for somebody she
+			// is closing on is the ordinary ending rather than a failure — see below.
+			if (!closeTheLastStretch()) stopWalking();
 			return;
 		}
 		stride(step);
+	}
+
+	/**
+	 * How near somebody has to be before she stops asking for a route to them.
+	 *
+	 * Three blocks. Far enough that the last stretch of any approach is covered,
+	 * short enough that walking straight cannot take her through much of anything:
+	 * there is no wall three blocks long that she could be on the wrong side of
+	 * without the route having said so already.
+	 */
+	private static final double LAST_STRETCH = 3.0;
+
+	/**
+	 * Walks the final part of an approach without a route.
+	 *
+	 * <h2>Why the pathfinder cannot do this bit</h2>
+	 *
+	 * Because a route is a list of blocks and the end of closing on somebody is
+	 * shorter than a block. Two fighters a metre apart want to be four fifths of a
+	 * metre apart; there is no sequence of block centres that says so, and every
+	 * answer the search can give is either "you are already there" or a step past
+	 * them.
+	 *
+	 * So the route gets her to the same few blocks and this covers the rest. It is
+	 * not a shortcut around the pathfinding — it is the part that was never
+	 * pathfinding, and pretending otherwise is what left two characters standing a
+	 * metre apart looking at each other.
+	 *
+	 * Safe to walk blindly because it is three blocks at most and because
+	 * {@link com.mopicmp.npcstudio.foe.Walk#stuck} is still watching: if she is
+	 * walking into a pillar she stops the same way she would anywhere else.
+	 *
+	 * @return whether she is still closing, so the caller can tell this from the
+	 *         walk being genuinely over
+	 */
+	private boolean closeTheLastStretch() {
+		if (walkingAt.isEmpty()) return false;
+		// The same rule the walk itself keeps: she does not walk out of her own blow.
+		// Worth repeating here rather than relying on the walk having refused, since
+		// this runs when there is no walk to have refused anything.
+		if (blow.committed()) return false;
+		var whom = com.mopicmp.npcstudio.brain.Marks.creature(this, walkingAt);
+		if (whom == null) return false;
+		double away = distanceTo(whom);
+		if (away > LAST_STRETCH || away <= closeEnoughTo(walkingAt)) return false;
+		stride(new double[] { whom.getX(), whom.getY(), whom.getZ() });
+		return true;
 	}
 
 	/**
@@ -752,6 +816,11 @@ public class NpcEntity extends Avatar {
 	private void stopWalking() {
 		walk.stop();
 		headingFor = null;
+		// Whoever she was following is forgotten with it. Otherwise arriving would
+		// leave her quietly re-closing on them for ever afterwards, without anybody
+		// having asked — and being shoved backwards by a blow would put her back in
+		// on her own account rather than because her graph decided to.
+		walkingAt = "";
 		zza = 0;
 		// Still eased, because coming to a stop is a movement too and a character who
 		// stops dead is as wrong as one who starts dead.

@@ -87,6 +87,26 @@ public final class Walk {
 	 * spend six ticks ticking them off from a standstill.
 	 */
 	public double[] heading(double x, double y, double z) {
+		return heading(x, y, z, ARRIVED);
+	}
+
+	/**
+	 * The same, told how near the end counts as the end.
+	 *
+	 * <h2>Because a block and a half is an answer about doorways</h2>
+	 *
+	 * {@link #ARRIVED} is right for going somewhere: nobody stands on an exact
+	 * spot, and stopping a stride short of a doorway is what a person does. It is
+	 * wrong for closing on somebody, because a blow reaches about a block — so the
+	 * walk called itself finished while she was still out of range, the graph asked
+	 * again, and the walk finished again on the same tick. Two fighters stood a
+	 * metre apart doing that to each other for ever.
+	 *
+	 * Passed in rather than decided here, because how near is near enough is a fact
+	 * about what she means to do when she gets there, and walking does not know
+	 * what that is.
+	 */
+	public double[] heading(double x, double y, double z, double arrived) {
 		while (at < path.size()) {
 			int[] mark = path.get(at);
 			double toX = mark[0] + 0.5;
@@ -94,7 +114,7 @@ public final class Walk {
 			double flat = Math.sqrt((toX - x) * (toX - x) + (toZ - z) * (toZ - z));
 
 			boolean last = at == path.size() - 1;
-			double near = last ? ARRIVED : CLOSE_ENOUGH;
+			double near = last ? arrived : CLOSE_ENOUGH;
 			// The height has to agree as well, or a character standing on a roof
 			// counts as having arrived at the doorway underneath it.
 			boolean level = Math.abs(mark[1] - y) < 1.6;

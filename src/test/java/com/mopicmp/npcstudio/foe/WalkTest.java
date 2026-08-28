@@ -151,6 +151,29 @@ class WalkTest {
 	}
 
 	@Test
+	@DisplayName("closing the last stretch on somebody is not the same as arriving at a place")
+	void walkingAtSomebodyGetsCloserThanWalkingToASpot() {
+		// The bug this is written against froze two fighters facing each other.
+		//
+		// A blow reaches about a block, so a fighter has to close to about a block.
+		// The last waypoint of a route is dropped as soon as she is within ARRIVED of
+		// it — a block and a half, which is right for a doorway and is further away
+		// than a punch lands. So the walk reported itself finished while she was
+		// still out of range, the graph asked for a walk again, and the walk finished
+		// again on the same tick. Neither of them was wrong and nobody moved.
+		Walk walk = walking(4);
+		double standingAt = 3.0;
+
+		assertEquals(null, walk.heading(standingAt, 0, 0.5),
+			"a block and a half short counts as arrived, which is the whole trouble");
+
+		Walk closing = walking(4);
+		double[] step = closing.heading(standingAt, 0, 0.5, 0.3);
+		assertTrue(step != null, "asked to get closer, she still has somewhere to go");
+		assertTrue(step[0] > standingAt, "and it is forwards: " + step[0]);
+	}
+
+	@Test
 	@DisplayName("standing still on purpose is not being stuck")
 	void notWalkingIsNotStuck() {
 		Walk walk = new Walk();
