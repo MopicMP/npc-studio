@@ -223,10 +223,13 @@ public final class DialogueRegistry {
 						Condition.Op.EQ, Value.of("drawn")),
 					new Condition.Compare(Sense.TARGET_DISTANCE, Scope.SENSE,
 						Condition.Op.GT, Value.of(5)))), "fight.aim"),
-				// Close enough to hit. Under the reach rather than at it, so she is
-				// not swinging from the exact edge and missing every time.
-				new Node.Arm(new Condition.Compare(Sense.TARGET_DISTANCE, Scope.SENSE,
-					Condition.Op.LT, Value.of(2.8)), "fight.stop"),
+				// Close enough to hit, asked of the body rather than guessed at. The
+				// guess was two and eight tenths while the body could reach three and
+				// a half, and a blow's own knockback lands squarely in the gap: still
+				// able to hit, and told to walk. That is why every exchange was one
+				// blow followed by an approach.
+				new Node.Arm(new Condition.Compare(Sense.IN_REACH, Scope.SENSE,
+					Condition.Op.EQ, Value.of(true)), "fight.stop"),
 				// Near, and closing at a walk. Running the last few blocks is what
 				// made two of them orbit each other: the walk goes to within one and
 				// a half blocks, which is inside the distance at which the game
@@ -264,7 +267,10 @@ public final class DialogueRegistry {
 			.add(new Node.Every("fight.later", 6, "fight.look"))
 			// After a blow. Not a rhythm — she is committed for the length of her own
 			// swing anyway, and this is only how soon she asks again once it is over.
-			.add(new Node.Every("fight.rest", 4, "fight.look"))
+			// Short, because a fighter still in reach should press rather than
+			// wait: the chain is three different blows and it only ever gets to the
+			// second if the first is followed up inside a second.
+			.add(new Node.Every("fight.rest", 3, "fight.look"))
 			.build();
 	}
 

@@ -144,10 +144,22 @@ class DuelTest {
 	// ------------------------------------------------------------------ the skill
 
 	/** The target this far off, with this in her hand. */
+	/**
+	 * The target this far off, with this in her hand.
+	 *
+	 * Reach is answered here the way the body answers it — her interaction range
+	 * plus half of each of them, which for two ordinary characters is about three
+	 * and a half blocks. Written out rather than passed in, because a test that
+	 * could set "in reach" independently of the distance could describe a world
+	 * that cannot happen, and would then pass about it.
+	 */
+	private static final double REACH = 3.6;
+
 	private static Condition.World fighting(double away, String weapon) {
 		return feeling(Map.of(
 			Sense.TARGET, new Value.Flag(true),
 			Sense.TARGET_DISTANCE, new Value.Num(away),
+			Sense.IN_REACH, new Value.Flag(away <= REACH),
 			Sense.WEAPON, new Value.Text(weapon)));
 	}
 
@@ -180,6 +192,17 @@ class DuelTest {
 		// closes the distance the way she walks to a shop.
 		List<Effect> did = inTheFight(begun(), fighting(9, "nothing")).effects();
 		assertEquals(new Effect.Guard(true), did.get(0), "she should be on guard first: " + did);
+	}
+
+	@Test
+	@DisplayName("knocked back but still able to reach, she hits again rather than walking")
+	void sheDoesNotWalkWhatSheCanReach() {
+		// This was the report: strike, both fly apart, strike, fly apart. The blow's
+		// own knockback put her at a distance the body could still hit from and the
+		// graph could not — because the graph had a number written in it and the
+		// body had an answer.
+		assertTrue(whatSheDoes(fighting(3.2, "melee")).contains(new Effect.Strike(Mark.TARGET)),
+			"she is in reach and should press, not set off again");
 	}
 
 	@Test

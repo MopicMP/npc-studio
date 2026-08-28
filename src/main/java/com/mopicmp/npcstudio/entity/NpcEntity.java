@@ -1277,6 +1277,53 @@ public class NpcEntity extends Avatar {
 		}
 	}
 
+	/**
+	 * How far she can hit, from the edge of her body to the edge of theirs.
+	 *
+	 * From the edges rather than centre to centre, so that two broad characters can
+	 * reach each other and a scaled-up one reaches further, which is what size
+	 * already means everywhere else.
+	 *
+	 * Public because a graph has to be able to ask it. The alternative was every
+	 * graph writing down a number, and every one of those numbers being wrong for
+	 * somebody built differently.
+	 */
+	public boolean canReach(String mark) {
+		var target = com.mopicmp.npcstudio.brain.Marks.creature(this, mark);
+		if (target == null) return false;
+		double reach = getAttributeValue(Attributes.ENTITY_INTERACTION_RANGE);
+		return distanceTo(target) <= reach + getBbWidth() / 2 + target.getBbWidth() / 2;
+	}
+
+	/**
+	 * How long a blow costs whoever takes it, in ticks.
+	 *
+	 * A third of a second. The half of a reaction that can be built without an
+	 * animation: she does not get to act on the beat she was hit on, so whoever
+	 * lands a blow gets to follow it up rather than trading one for one for ever.
+	 *
+	 * The other half — a body that visibly flinches — is not in the pack and has to
+	 * be made, which is a later step. This is deliberately not a substitute for it,
+	 * and saying so is the point: without the picture a player feels the rhythm
+	 * change without seeing why.
+	 */
+	private static final int WINDED = 6;
+
+	@Override
+	public boolean hurtServer(net.minecraft.server.level.ServerLevel level,
+			net.minecraft.world.damagesource.DamageSource source, float amount) {
+		boolean hurt = super.hurtServer(level, source, amount);
+		if (!hurt) return false;
+
+		// A blow that is landed on is a blow that does not finish. Dropping it rather
+		// than letting it run is what makes an exchange an exchange: whoever got
+		// there first keeps the initiative, and being quicker means something.
+		blow.drop();
+		swingingAt = "";
+		waitDoing(WINDED);
+		return true;
+	}
+
 	/** The blow, once the blade is actually passing through. */
 	private boolean land(String mark) {
 		var target = com.mopicmp.npcstudio.brain.Marks.creature(this, mark);

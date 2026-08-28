@@ -94,6 +94,9 @@ public final class Senses {
 				var at = Marks.feet(npc, com.mopicmp.npcstudio.dialogue.Mark.TARGET);
 				yield new Value.Num(at == null ? Sense.OUT_OF_MIND : npc.position().distanceTo(at));
 			}
+			case Sense.IN_REACH -> new Value.Flag(npc.canReach(
+				com.mopicmp.npcstudio.dialogue.Mark.TARGET));
+
 			case Sense.PLAYER_DISTANCE -> new Value.Num(nearestPlayer(npc));
 
 			// Somebody else running the same graph. Whether that makes them a

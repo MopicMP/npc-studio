@@ -106,6 +106,24 @@ public final class Sense {
 
 	public static final String TARGET_DISTANCE = "target.distance";
 
+	/**
+	 * Whether she could hit the target from where she stands.
+	 *
+	 * <h2>Why this is asked rather than worked out in the graph</h2>
+	 *
+	 * Because the graph cannot know the answer. Reach is her interaction range plus
+	 * half of each body, so it changes with a weapon, with a build, with anything
+	 * that scales her — and every graph that guessed at it would guess a different
+	 * number and all of them would be wrong for somebody.
+	 *
+	 * It was guessed at, and the guess cost an exchange. The fighting struck below
+	 * two and eight tenths while the body could reach three and a half, so a blow's
+	 * own knockback pushed her into the gap between the two: still able to hit, and
+	 * told to walk. Every blow was followed by an approach, which is why a fight
+	 * read as strike, shove, walk, strike.
+	 */
+	public static final String IN_REACH = "target.in_reach";
+
 	/** Whether another character running the same graph is in sight. */
 	public static final String KIN = "kin";
 
@@ -115,7 +133,7 @@ public final class Sense {
 	public static final List<String> KNOWN = List.of(
 		ALARM, MOOD, LEAD, LEAD_STRENGTH, LEAD_URGENCY, LEAD_SEEN, LEAD_DISTANCE,
 		WALKING, ARMED, WEAPON, HAND, DOING, PLAYER_DISTANCE, KIN, KIN_DISTANCE,
-		TARGET, TARGET_DISTANCE);
+		TARGET, TARGET_DISTANCE, IN_REACH);
 
 	/**
 	 * A distance meaning "nobody" or "nothing".
@@ -144,7 +162,7 @@ public final class Sense {
 			case ALARM, LEAD_STRENGTH, LEAD_URGENCY, LEAD_DISTANCE, PLAYER_DISTANCE,
 				KIN_DISTANCE, TARGET_DISTANCE -> "number";
 			case MOOD, WEAPON, HAND, DOING -> "text";
-			case LEAD, LEAD_SEEN, WALKING, ARMED, KIN, TARGET -> "flag";
+			case LEAD, LEAD_SEEN, WALKING, ARMED, KIN, TARGET, IN_REACH -> "flag";
 			default -> null;
 		};
 	}
