@@ -1077,6 +1077,11 @@ public class NpcEntity extends Avatar {
 		doingWait = Math.max(ticks, 0);
 	}
 
+	/** How many ticks the skill is still parked for, for a readout. */
+	public int doingWaitLeft() {
+		return doingWait;
+	}
+
 	public boolean skillStillWaiting() {
 		if (doingWait <= 0) return false;
 		doingWait--;
@@ -1621,12 +1626,47 @@ public class NpcEntity extends Avatar {
 	 * guard — a character can be armed and relaxed or unarmed and squaring up, and
 	 * guessing from the weapon would make both impossible to write.
 	 */
+	/**
+	 * How much of a blow's shove a braced fighter keeps her feet against.
+	 *
+	 * <h2>Read off a recording, not chosen</h2>
+	 *
+	 * A tape of two of them punching showed the same eleven ticks after every
+	 * landed blow: the distance went from 2.3 to 4.0 and back to 2.9. Reach is
+	 * about 3.6, so every single exchange ended with them out of range and needing
+	 * to walk back in — and five of those ticks were the two of them still sliding
+	 * apart on the knockback.
+	 *
+	 * Half of it keeps them inside reach: 2.3 plus 0.85 is 3.15. So a blow still
+	 * moves somebody, and it stops being a blow that ends the exchange.
+	 *
+	 * <h2>Why it is an attribute and only while she is on guard</h2>
+	 *
+	 * Because bracing is what a fighter does and standing about is not, and because
+	 * an attribute is a number the game already understands: a datapack can see it,
+	 * a character can be built to shrug off more or less of it, and nothing here
+	 * had to invent a second idea of being hard to push.
+	 */
+	private static final double BRACED = 0.5;
+
+	private static final net.minecraft.resources.Identifier BRACING =
+		com.mopicmp.npcstudio.NpcStudio.id("bracing");
+
 	public void guard(boolean up) {
 		entityData.set(DATA_GUARD, up);
 		// Standing easy ends the combination. A fight that is over is the one moment
 		// where starting again from the first blow is right, and it is a better
 		// answer than a timer because it is the actual event.
 		if (!up) blow.standDown();
+
+		var footing = getAttribute(Attributes.KNOCKBACK_RESISTANCE);
+		if (footing == null) return;
+		footing.removeModifier(BRACING);
+		if (up) {
+			footing.addTransientModifier(new net.minecraft.world.entity.ai.attributes
+				.AttributeModifier(BRACING, BRACED,
+					net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_VALUE));
+		}
 	}
 
 	/**
@@ -1698,13 +1738,22 @@ public class NpcEntity extends Avatar {
 			keepWatch();
 			// The doing, as against the deciding: whoever ordered the walk - a
 			// reflex or a graph - the legs move here, every tick, the same way.
-			// Before the graph, so that a graph asking whether she is free this tick
-			// gets an answer about this tick rather than the last one.
-			workTheBlow();
 			walkOn();
 			gaze();
 			workTheWeapon();
 			com.mopicmp.npcstudio.brain.Brain.tick(this);
+			// After the graph, so that a blow and the animation of it share a clock.
+			//
+			// It ran before, and the tape caught the cost: a swing begun during the
+			// graph's turn had its first tick consumed on the following one, so the
+			// blade landed on the fifth frame of an animation whose contact was
+			// authored on the fourth. One tick, invisible to anybody watching and
+			// exactly the sort of thing that makes every measured number a lie.
+			//
+			// What it costs the other way is that a graph asking whether she is free
+			// is answered about the previous tick, which can only ever delay her by
+			// one — a thing nobody can see, unlike damage arriving off its picture.
+			workTheBlow();
 			// Last, so the line describes the tick as it ended rather than as it began.
 			record();
 		}
@@ -1733,7 +1782,12 @@ public class NpcEntity extends Avatar {
 			gesture(),
 			gestureAge(),
 			gestureTicks(),
-			doingState() == null ? doingNow() : doingState().currentNode(),
+			// Where the skill is parked and for how long. The node alone always read
+			// as the same one — a wait moves the bookmark past itself, so the name is
+			// where she will resume rather than what she is doing — and a column that
+			// says one thing for four hundred lines is a column nobody reads twice.
+			(doingState() == null ? doingNow() : doingState().currentNode())
+				+ (doingWaitLeft() > 0 ? " +" + doingWaitLeft() : ""),
 			other == null ? -1 : distanceTo(other),
 			getHealth(),
 			happened);
