@@ -84,6 +84,10 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 		String gesture = npc.gesture();
 		int ticks = npc.gestureTicks();
 		float strength = 1f;
+		// Whether what is being shown has an ending of its own. A gesture does and a
+		// way of standing does not, and the difference decides what happens to it
+		// while it fades: see ClientNpcEntity#leavingAge.
+		boolean carriesOn = false;
 		if (!gesture.isEmpty() && ticks > 0) {
 			// Against how long it has been running rather than against where in the
 			// animation it is, because a length is a length whatever it started from.
@@ -99,9 +103,10 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 			age = npc.tickCount + partial;
 			strength = 1f;
 			// And it has no end, which is the thing the change downstream has to know:
-			// a resting animation is not cut short by anything and its fade is the
-			// ordinary one.
+			// a resting animation is not cut short by anything, and when something
+			// replaces it, it goes on running underneath rather than freezing.
 			ticks = 0;
+			carriesOn = true;
 		}
 		GestureHolder holder = (GestureHolder) state;
 		// Carried across to the model, which is where the pose is actually put on.
@@ -115,7 +120,7 @@ public class NpcRenderer extends AvatarRenderer<ClientNpcEntity> {
 		holder.npcStudio$setGesture(gesture, age, strength);
 		// The tick it was asked on travels with it, so that asking twice for one
 		// animation reads as two performances rather than as nothing having happened.
-		npc.changingTo(gesture, age, npc.gestureBegan(), ticks);
+		npc.changingTo(gesture, age, npc.gestureBegan(), ticks, carriesOn);
 		holder.npcStudio$setLeaving(npc.leavingAnimation(), npc.leavingAge(partial),
 			npc.changedBy(partial));
 		// The skin is read before anything is drawn over it. Nothing is assumed:

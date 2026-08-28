@@ -319,6 +319,64 @@ class EmoteParserTest {
 		assertEquals(5f, emote.timeAt(5f), 1e-6, "the fold is still the fold");
 	}
 
+	/**
+	 * How far apart two poses are, which is how long a change between them takes.
+	 *
+	 * The scale matters more than any single number: a change has to be able to
+	 * tell a step from a swing from falling over, because one length for all three
+	 * is what "the changes are not smooth enough" turns out to mean.
+	 */
+	@Test
+	void poseTravelIsZeroForAPoseAgainstItselfAndGrowsWithTheMovement() {
+		Emote.Pose still = new Emote.Pose(Map.of());
+		assertEquals(0d, still.travelTo(still), 1e-6, "nothing has to move");
+
+		// One radian at one shoulder. Twelve pixels, because that is how far a hand
+		// on the end of an arm travels when the shoulder turns by a radian.
+		float[] turned = new float[Emote.Channel.values().length];
+		java.util.Arrays.fill(turned, Float.NaN);
+		turned[Emote.Channel.PITCH.ordinal()] = 1f;
+		Emote.Pose armUp = new Emote.Pose(Map.of(Emote.Bone.RIGHT_ARM, turned));
+
+		assertEquals(12d, still.travelTo(armUp), 1e-4);
+		assertEquals(12d, armUp.travelTo(still), 1e-4, "and it is the same either way");
+	}
+
+	/**
+	 * The measured spread across a real fight, against the shipped pack.
+	 *
+	 * Written down as a test rather than only in a document because the numbers are
+	 * what the length of every change is drawn from, and a pack update that recuts
+	 * these animations should fail here rather than quietly change how the fighting
+	 * moves.
+	 */
+	@Test
+	void aStepIsASmallerChangeThanASwingWhichIsSmallerThanFallingOver() throws Exception {
+		assumeTrue(Files.exists(PACK.resolve("spe_fighting_stance.json")),
+			"the emote pack is not unpacked here");
+
+		double step = travel("spe_gait_with_a_sword_on_belt", 10,
+			"spe_fighting_stance_with_swords", 0);
+		double punch = travel("spe_fighting_stance", 0, "spe_hand_strike1", 0);
+		double swing = travel("spe_fighting_stance_with_swords", 0,
+			"spe_strike_with_a_sword1", 0);
+		double falling = travel("spe_fighting_stance", 0,
+			"spe_to_die_from_a_severe_blow", 31);
+
+		assertTrue(step < punch, "a step is less movement than a punch: " + step + " vs " + punch);
+		assertTrue(punch < swing, "a punch is less than a sword swing: " + punch + " vs " + swing);
+		assertTrue(swing < falling, "and nothing is further than falling over: " + falling);
+		assertTrue(falling < 16 * 12,
+			"the whole scale has to fit inside the longest change: " + falling);
+	}
+
+	private static double travel(String from, int fromTick, String to, int toTick)
+			throws Exception {
+		Emote a = parse(PACK.resolve(from + ".json"));
+		Emote b = parse(PACK.resolve(to + ".json"));
+		return a.poseAt(a.timeAt(fromTick)).travelTo(b.poseAt(b.timeAt(toTick)));
+	}
+
 	@Test
 	void aNonLoopingEmoteStopsAndSaysSo() {
 		Emote emote = new Emote("x", "x", "", "", false, 0, 20, 24, 0, Map.of());

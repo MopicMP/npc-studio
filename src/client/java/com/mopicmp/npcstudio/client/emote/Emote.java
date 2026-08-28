@@ -192,5 +192,62 @@ public record Emote(
 		public boolean has(Bone bone) {
 			return limbs.containsKey(bone);
 		}
+
+		/** The six bones a body is. The two that hold items are not part of one. */
+		private static final Bone[] BODY = {
+			Bone.HEAD, Bone.TORSO,
+			Bone.RIGHT_ARM, Bone.LEFT_ARM,
+			Bone.RIGHT_LEG, Bone.LEFT_LEG,
+		};
+
+		/**
+		 * How far a body would have to move to get from this pose to that one, in
+		 * model pixels, summed over every limb.
+		 *
+		 * <h2>What it is for</h2>
+		 *
+		 * Deciding how long a change between two animations should take. One number
+		 * for every change cannot be right: the same seven ticks were spent on a
+		 * wrist moving a hand's breadth and on a whole body turning over, so one
+		 * looked sluggish and the other looked abrupt.
+		 *
+		 * How far the limbs have to travel is written in the two animations, and this
+		 * reads it. Measured across the pack it comes out between nought — a pose
+		 * against itself — and about a hundred and sixty, which is a fighting stance
+		 * against a body lying on the floor. An ordinary change in a fight is thirty
+		 * to a hundred.
+		 *
+		 * <h2>Turns and shifts in one number</h2>
+		 *
+		 * A limb's tracks are partly angles and partly positions, and they have to be
+		 * added up somehow. Twelve pixels to the radian, because that is the length
+		 * of the arm the game draws: turning a shoulder by a radian moves the hand
+		 * twelve pixels, so the two are the same distance measured at the hand.
+		 *
+		 * Not exact — a head is shorter than an arm — and it does not need to be.
+		 * What it has to get right is the order of things, and it does: a step is
+		 * smaller than a swing is smaller than falling over.
+		 */
+		public double travelTo(Pose other) {
+			double travel = 0;
+			for (Bone bone : BODY) {
+				travel += ARM * length(
+					or(bone, Channel.PITCH, 0) - other.or(bone, Channel.PITCH, 0),
+					or(bone, Channel.YAW, 0) - other.or(bone, Channel.YAW, 0),
+					or(bone, Channel.ROLL, 0) - other.or(bone, Channel.ROLL, 0));
+				travel += length(
+					or(bone, Channel.X, 0) - other.or(bone, Channel.X, 0),
+					or(bone, Channel.Y, 0) - other.or(bone, Channel.Y, 0),
+					or(bone, Channel.Z, 0) - other.or(bone, Channel.Z, 0));
+			}
+			return travel;
+		}
+
+		/** Pixels a radian moves, at the far end of a limb the length of an arm. */
+		private static final double ARM = 12;
+
+		private static double length(float x, float y, float z) {
+			return Math.sqrt(x * x + y * y + z * z);
+		}
 	}
 }

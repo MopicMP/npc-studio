@@ -168,29 +168,57 @@ public class ClientNpcEntity extends NpcEntity implements ClientAvatarEntity {
 	// ------------------------------------------------------- changing animation
 
 	/**
-	 * Over how many ticks one animation becomes another.
+	 * The longest a change may take, in ticks.
 	 *
-	 * A third of a second. Long enough to read as a movement, short enough that a
-	 * character who has just noticed you does not appear to think about it first.
+	 * Six tenths of a second, and it is reached by one pair in the pack: a fighting
+	 * stance against a body lying on the floor. Nothing a person does is further
+	 * from anything else a person does.
 	 */
-	private static final float CHANGES_OVER = 7f;
+	private static final float LONGEST_CHANGE = 12f;
 
 	/**
 	 * The shortest change worth easing, in ticks.
 	 *
-	 * A change is capped at half of what it is changing into, because a fade that
-	 * outlasts its own animation is a fade nobody ever sees the end of. Half of a
-	 * four-tick flinch is two, and below about that there is nothing left to ease
-	 * — so anything shorter simply arrives.
+	 * Below about a tenth of a second there is nothing left to ease and a change
+	 * simply arrives. It is a floor rather than a default: a change is capped at
+	 * half of what it is changing into — a fade that outlasts its own animation is
+	 * one nobody ever sees the end of — and half of a four-tick flinch is two.
 	 */
 	private static final float SHORTEST_CHANGE = 2f;
 
+	/**
+	 * How much a body has to move, in model pixels, to earn one more tick of change.
+	 *
+	 * <h2>Where sixteen comes from</h2>
+	 *
+	 * Measured pairs, with {@code tools/shape-look/change.ps1}. The travel between
+	 * two poses comes out like this across a fight:
+	 *
+	 * <pre>
+	 *   a walk into a stance                  32
+	 *   a stance into a punch                 70
+	 *   a punch into the next punch           76
+	 *   a stance into a sword swing           98
+	 *   a stance into lying on the floor     161
+	 * </pre>
+	 *
+	 * Two ticks plus a tick per sixteen puts a step at four ticks, an ordinary blow
+	 * at six or seven, a big swing at eight and falling over at twelve — which is
+	 * the spread that was missing when every one of them took seven.
+	 */
+	private static final float PIXELS_A_TICK = 16f;
+
+	/** What a change takes when there is no pose to measure. What they all took. */
+	private static final float WITHOUT_MEASURING = 7f;
+
 	private String leaving = "";
 	private float leavingFrom;
+	private boolean leavingCarriesOn;
 	private int changedAt = -1;
-	private float changesOver = CHANGES_OVER;
+	private float changesOver = LONGEST_CHANGE;
 	private String showing = "";
 	private float showingAge;
+	private boolean showingCarriesOn;
 	private int showingAskedOn = Integer.MIN_VALUE;
 
 	/**
@@ -206,7 +234,8 @@ public class ClientNpcEntity extends NpcEntity implements ClientAvatarEntity {
 	 *
 	 * The entity has the clock and the memory, so the entity notices.
 	 */
-	public void changingTo(String animation, float age, int askedOn, int lasts) {
+	public void changingTo(String animation, float age, int askedOn, int lasts,
+			boolean carriesOn) {
 		// The same trap as above, one layer along: a repeat of one animation is a
 		// change even though the name has not changed, and without noticing it the
 		// second performance has nothing to fade in from.
@@ -238,24 +267,68 @@ public class ClientNpcEntity extends NpcEntity implements ClientAvatarEntity {
 		// Which is exactly what was reported: no falling, just lying, and up again.
 		leaving = showing;
 		leavingFrom = showingAge;
+		leavingCarriesOn = showingCarriesOn;
 		changedAt = tickCount;
-		// A change into a bounded gesture is cut to fit it. Seven ticks into a
-		// four-tick flinch means the fold is still fading in when the flinch is over
-		// and never reaches even two thirds of itself — the movement is there in the
-		// data and invisible on the body.
-		changesOver = lasts > 0
-			? Math.clamp(lasts / 2f, SHORTEST_CHANGE, CHANGES_OVER)
-			: CHANGES_OVER;
+		changesOver = changeOver(leaving, leavingFrom, animation, age, lasts);
 		showing = animation;
 		showingAge = age;
+		showingCarriesOn = carriesOn;
+	}
+
+	/**
+	 * How long this particular change should take.
+	 *
+	 * <h2>Why it is not one number</h2>
+	 *
+	 * It was, and one number cannot be right for every pair. Seven ticks was spent
+	 * equally on a wrist moving a hand's breadth and on a whole body turning over,
+	 * so small changes dragged and big ones snapped — which is what "the changes
+	 * between animations are not smooth enough" is, when you go and measure it.
+	 *
+	 * How far the limbs have to travel is written in the two animations. Nobody has
+	 * to author it, no table has to be kept in step with the pack, and an animation
+	 * from a mod nobody has ever seen gets an answer of the same quality as a
+	 * shipped one.
+	 */
+	private static float changeOver(String from, float fromAge, String to, float toAge,
+			int lasts) {
+		// Where one of the two is not an emote at all — a built-in gesture, or a pack
+		// this client has not loaded — there is nothing to measure and this is what
+		// every change used to take. A middling answer, and it is the honest one:
+		// not knowing how far it is should not read as knowing it is far.
+		float over = WITHOUT_MEASURING;
+		var going = com.mopicmp.npcstudio.client.emote.EmoteLibrary.emote(from);
+		var coming = com.mopicmp.npcstudio.client.emote.EmoteLibrary.emote(to);
+		if (going.isPresent() && coming.isPresent()) {
+			double travel = going.get().poseAt(going.get().timeAt(fromAge))
+				.travelTo(coming.get().poseAt(coming.get().timeAt(toAge)));
+			over = SHORTEST_CHANGE + (float) (travel / PIXELS_A_TICK);
+		}
+		// A change into a bounded gesture is still cut to fit it, whatever the poses
+		// say. Half a flinch spent arriving at the flinch is as much as it can bear.
+		if (lasts > 0) over = Math.min(over, lasts / 2f);
+		return Math.clamp(over, SHORTEST_CHANGE, LONGEST_CHANGE);
 	}
 
 	public String leavingAnimation() {
 		return leaving;
 	}
 
+	/**
+	 * Where the animation being faded out has got to.
+	 *
+	 * <h2>A stance keeps going; a gesture holds where it stopped</h2>
+	 *
+	 * The difference is whether it was interrupted or finished. A swing that has
+	 * ended should hold its last frame — it is over, and playing on into whatever
+	 * the file does next is playing to nobody. But a stance, a walk or a run has no
+	 * end at all: it was replaced mid-stride, and freezing it there stops the legs
+	 * dead while the new pose slides in over them. That reads as a hitch every time
+	 * she stops walking, which is often.
+	 */
 	public float leavingAge(float partial) {
-		return leavingFrom;
+		if (!leavingCarriesOn) return leavingFrom;
+		return leavingFrom + (tickCount - changedAt) + partial;
 	}
 
 	/** How far through the change: nought as it begins, one when it is done. */
