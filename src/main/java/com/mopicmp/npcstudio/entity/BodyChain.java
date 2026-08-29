@@ -61,23 +61,55 @@ public final class BodyChain {
 			float top, float bottom, float middleX, float halfX, float middleZ, float halfZ,
 			float upperX, float upperZ, float upperMiddleX) {
 		return limb(shape, top, bottom, middleX, halfX, middleZ, halfZ,
-			upperX, upperZ, upperMiddleX, true, 0f);
+			upperX, upperZ, upperMiddleX, true, 0f, 1f);
 	}
 
 	/**
 	 * The same, told which outline to follow and how much seat to carry.
 	 *
-	 * @param seat how far the torso's back stands out at the hip, which the top of a
-	 *             thigh has to stand out by too or the seat ends in a ledge
+	 * Which two faces of a limb do not move, and why those two.
+	 *
+	 * <h2>Measured, and it was not what the code was doing</h2>
+	 *
+	 * Down the reference's left leg the inner edge sits at 0.276 and stays there —
+	 * 0.276, 0.291, 0.291, 0.291 — while the outer edge goes 3.30, 2.61, 3.16, 3.02.
+	 * Front to back it is the same story the other way round: the front holds at
+	 * −10.5 and the back does all the moving, −7.16 at the thigh, −7.87 tucked in at
+	 * the knee, −6.81 out again at the calf.
+	 *
+	 * So <b>a leg's shape is on its outside and its back</b>. The inner face and the
+	 * shin are straight lines, which is anatomy — the tibia is under the skin at the
+	 * front and the calf muscle is behind it, and the inner thighs are near parallel.
+	 *
+	 * <h2>What this replaces</h2>
+	 *
+	 * The rings used to keep their middle and shrink both ways, so a narrowing leg
+	 * pulled away from its neighbour and the gap between the two of them widened all
+	 * the way down. Reported as legs "сделаны хреново", and that gap is a large part
+	 * of what makes them read that way: real legs are a shape with a straight line
+	 * between them, not two cones pointing at the floor.
+	 *
+	 * An arm is held the same way, for the second reason rather than the first: its
+	 * inner face is the torso's side, and a face that starts on the body ought to
+	 * stay on it rather than drift away down the forearm.
+	 *
+	 * @param seat    how far the torso's back stands out at the hip, which the top of
+	 *                a thigh has to stand out by too or the seat ends in a ledge
+	 * @param outward which way is away from the body, so the held face is the near one
 	 */
 	private static List<SegmentMesh.Ring> limb(BodyShape shape,
 			float top, float bottom, float middleX, float halfX, float middleZ, float halfZ,
-			float upperX, float upperZ, float upperMiddleX, boolean leg, float seat) {
+			float upperX, float upperZ, float upperMiddleX, boolean leg, float seat,
+			float outward) {
 		float[] across = leg ? LEG_WIDE : ARM_WIDE;
 		float[] through = leg ? LEG_DEEP : ARM_DEEP;
 		float length = (bottom - top) * shape.height();
 		boolean parted = upperX != halfX || upperZ != halfZ || upperMiddleX != middleX
 			|| seat != 0;
+		// Everything is measured from the two faces that do not move: the limb's
+		// inner side and its front. See #hold below for why those two.
+		float inner = middleX - outward * halfX;
+		float front = middleZ - halfZ;
 
 		// Nothing asked for and nothing to say: two rings, the part's own size, and the
 		// mesh gives the model straight back. A plain box is a loft of two.
@@ -92,24 +124,22 @@ public final class BodyChain {
 			float share = i / (float) (RINGS - 1);
 			float y = top + length * share;
 			// The seat is the torso's and the thigh only borrows it, so it goes away
-			// as the thigh becomes itself. Half of it moves the ring's middle and
-			// half its depth, which together move the back and leave the front.
+			// as the thigh becomes itself. It is depth added behind, which is why it
+			// lands on the half and the front stays where it was.
 			float behind = seat * seatFade(share) / 2f;
-			if (i == 0) {
-				// The top ring belongs to whatever the limb hangs from: two thighs stand
-				// under one pelvis, and the join has to be a join.
-				loft.add(new SegmentMesh.Ring(y, 0f, upperMiddleX, upperX,
-					middleZ + behind, upperZ + behind));
-			} else {
-				// Across and through are read from separate tables on purpose. A calf
-				// is no wider than the shin above it and is markedly deeper — the
-				// muscle bulges backwards, not sideways — and one number for both
-				// cannot say that. Measured on the reference: down one leg the width
-				// holds at 2.317 while the depth goes 2.573 to 3.458.
-				loft.add(new SegmentMesh.Ring(y, share, middleX,
-					step(halfX, shape.taper(), across[i]), middleZ + behind,
-					step(halfZ, shape.taper(), through[i]) + behind));
-			}
+			// Across and through are read from separate tables on purpose. A calf is
+			// no wider than the shin above it and is markedly deeper — the muscle
+			// bulges backwards, not sideways — and one number for both cannot say
+			// that. Measured on the reference: down one leg the width holds at 2.317
+			// while the depth goes 2.573 to 3.458.
+			float thick = (i == 0 ? upperZ : step(halfZ, shape.taper(), through[i])) + behind;
+			// The top ring's width belongs to whatever the limb hangs from — two
+			// thighs stand under one pelvis and the join has to be a join — so it is
+			// the one ring that is placed rather than held.
+			float wide = i == 0 ? upperX : step(halfX, shape.taper(), across[i]);
+			float mx = i == 0 ? upperMiddleX
+				: inner + outward * (wide + (halfX - wide) * INWARD);
+			loft.add(new SegmentMesh.Ring(y, share, mx, wide, front + thick, thick));
 		}
 		return List.copyOf(loft);
 	}
@@ -130,6 +160,21 @@ public final class BodyChain {
 
 	/** How far down a thigh the seat above it still shows. */
 	private static final float SEAT_REACH = 0.25f;
+
+	/**
+	 * How much of a limb's narrowing is taken off the inside after all.
+	 *
+	 * Not none, which is what holding the inner face exactly came to, and it was
+	 * worse than the fault it fixed: two legs that keep their inner faces on
+	 * vanilla's tenth-of-a-pixel overlap never part at all, and the pair of them
+	 * reads as one tapering column with a seam painted down it.
+	 *
+	 * The reference has a gap and it is a small one — its inner edges sit at 0.276,
+	 * so 0.55 of a pixel between the legs. A third of the narrowing taken inward
+	 * opens about that by the ankle and leaves the other two thirds where the shape
+	 * belongs, on the outside.
+	 */
+	private static final float INWARD = 0.35f;
 
 	/**
 	 * How far a turning limb's corner reaches from the joint it turns about.
@@ -331,7 +376,7 @@ public final class BodyChain {
 		// fault, turned front to back.
 		float seat = BodyField.torsoBack(shape, BodyField.HIP_Y) - BodyField.BODY_DEEP;
 		return limb(shape, top, bottom, ownMiddle, own, middleZ, own,
-			pelvis, BodyField.BODY_DEEP + lip, upperMiddle, true, seat);
+			pelvis, BodyField.BODY_DEEP + lip, upperMiddle, true, seat, side);
 	}
 
 	/**
@@ -348,7 +393,7 @@ public final class BodyChain {
 		float deep = BodyField.armDepth(shape) + lip;
 		float middle = side * BodyField.armMiddle(shape, base) - pivotX;
 		return limb(shape, top, bottom, middle, half, middleZ, deep,
-			half, deep, middle, false, 0f);
+			half, deep, middle, false, 0f, side);
 	}
 
 	/**

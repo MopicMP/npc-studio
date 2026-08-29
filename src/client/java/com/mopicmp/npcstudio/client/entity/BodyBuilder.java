@@ -369,11 +369,15 @@ public final class BodyBuilder {
 	 * a bolt-upright head forward reads as a head that has been shoved, not one that
 	 * is following its own neck.
 	 *
-	 * Neither takes the whole angle. An arm hangs under gravity, so it keeps most of
-	 * its own vertical and only rolls with the shoulder; a head lifts its gaze, which
-	 * is the difference between an old man walking and an old man studying his boots.
-	 * The two shares below are what is left of the argument that used to say they
-	 * should not turn at all — it was right about the amount and wrong about zero.
+	 * Neither takes much of the angle, and the arm's share had to come down twice
+	 * before it looked right. An arm hangs under gravity: strictly it stays vertical
+	 * whatever the shoulder does, so the physically exact share is nought — which is
+	 * what it was, and which read as an arm ignoring the body. A quarter is a
+	 * shoulder dragging its arm along without the character reaching for anything. At
+	 * six tenths the arm came out at fifty degrees from vertical, which is a swing.
+	 *
+	 * The head is the same quarter, for the other reason: it lifts its gaze. That is
+	 * the difference between an old man walking and an old man studying his boots.
 	 */
 	private static void stoop(PlayerModel model, com.mopicmp.npcstudio.entity.BodyShape shape) {
 		if (shape.stoop() == 0) return;
@@ -386,9 +390,25 @@ public final class BodyBuilder {
 
 		// Added to the pose, never assigned, like everything else in this class: an
 		// emote says where a limb is and this says how much further over.
+		//
+		// The head takes the angle as it is and a limb takes it negated, and that is
+		// not a taste — it is which way the game's own axis goes. A head is above its
+		// pivot and an arm below it, so one rotation sends them opposite ways: a
+		// positive turn looks down and swings a hand backwards. Vanilla says the same
+		// thing where it seats a rider, whose legs come forward at minus 1.41.
 		model.head.xRot += turned * HEAD_FOLLOWS;
-		model.rightArm.xRot += turned * ARM_FOLLOWS;
-		model.leftArm.xRot += turned * ARM_FOLLOWS;
+		model.rightArm.xRot -= turned * ARM_FOLLOWS;
+		model.leftArm.xRot -= turned * ARM_FOLLOWS;
+
+		// And the head has to sink as it tips, or it lifts off the neck. It turns
+		// about its own base, so tipping raises the back of that base by the depth
+		// times the sine — over the torso's own footprint, which is what has to stay
+		// covered, that is BODY_DEEP. Without it a stooped character has daylight
+		// between its head and its shoulders, which is exactly what the maximum
+		// setting showed.
+		float seated = com.mopicmp.npcstudio.entity.BodyField.BODY_DEEP
+			* (float) Math.sin(Math.abs(turned * HEAD_FOLLOWS)) / 16f;
+		model.head.y += seated;
 
 		// Everything that hangs off the top of the torso goes with it. Not the hat
 		// or the sleeves: they are children of the head and the arms — the model
@@ -410,7 +430,7 @@ public final class BodyBuilder {
 	 * forward, so it ends up somewhere between the shoulder's angle and the vertical.
 	 */
 	private static final float HEAD_FOLLOWS = 0.25f;
-	private static final float ARM_FOLLOWS = 0.6f;
+	private static final float ARM_FOLLOWS = 0.25f;
 
 	/**
 	 * Moves the limbs out to meet a body that has changed size.

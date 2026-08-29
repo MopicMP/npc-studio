@@ -144,6 +144,35 @@ class BodyChainTest {
 	}
 
 	@Test
+	@DisplayName("a limb is shaped on its outside and its back, not about its middle")
+	void theInnerFaceAndTheFrontAreHeld() {
+		// Measured on the reference: down its left leg the inner edge sits at 0.276
+		// and stays there while the outer goes 3.30, 2.61, 3.16, 3.02; front to back
+		// the front holds at -10.5 and the back does all the moving. The rings used
+		// to keep their middle and shrink both ways, which pulled the two legs apart
+		// down the inside and put a taper on a shin that has none.
+		BodyShape most = new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, 0f, 1f, BodyShape.MAX_TAPER);
+		List<SegmentMesh.Ring> loft = BodyChain.leg(most, 12, 24, 1f, 1.9f, 0, 0);
+
+		float front = loft.get(1).middleZ() - loft.get(1).halfZ();
+		float inner = loft.get(1).middleX() - loft.get(1).halfX();
+		float wandered = 0;
+		for (int i = 1; i < loft.size(); i++) {
+			SegmentMesh.Ring ring = loft.get(i);
+			assertEquals(front, ring.middleZ() - ring.halfZ(), 1e-3f,
+				"the shin is not a straight line at ring " + i);
+			wandered = Math.max(wandered, Math.abs(ring.middleX() - ring.halfX() - inner));
+		}
+
+		// The inside is held, but not exactly: two legs whose inner faces never move
+		// keep vanilla's tenth-of-a-pixel overlap for their whole length and read as
+		// one column. The reference has 0.55 of a pixel between its legs, so a share
+		// of the narrowing goes inward and this is how much of it arrives.
+		assertTrue(wandered > 0.1f && wandered < 0.45f,
+			"the inner face moved by " + wandered + ", which is a column or a cone");
+	}
+
+	@Test
 	@DisplayName("a ring reads where it says it reads, so the texture cannot slide")
 	void shareAndPlaceAgree() {
 		// The rule that replaced "the number of pieces must divide twelve". That one
