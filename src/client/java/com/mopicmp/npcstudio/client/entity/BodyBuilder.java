@@ -360,18 +360,35 @@ public final class BodyBuilder {
 	 * by however far the spine has leaned and dropped by the time it reaches the
 	 * shoulder line.
 	 *
-	 * They follow without turning. Arms hang and a head looks ahead; an old man
-	 * leaning on a stick does not study his own boots, and his hands do not swing
-	 * out in front of him.
+	 * <h2>And turned, which the first version left out</h2>
+	 *
+	 * That much was already here and it was not enough: reported back as the body
+	 * leaning while "голова и руки остаются на месте". They were moving, by exactly
+	 * as far as the shoulder moved — but a slide is not a lean. A shoulder that has
+	 * rolled forward is <em>angled</em>, and what hangs off it is angled too. Sliding
+	 * a bolt-upright head forward reads as a head that has been shoved, not one that
+	 * is following its own neck.
+	 *
+	 * Neither takes the whole angle. An arm hangs under gravity, so it keeps most of
+	 * its own vertical and only rolls with the shoulder; a head lifts its gaze, which
+	 * is the difference between an old man walking and an old man studying his boots.
+	 * The two shares below are what is left of the argument that used to say they
+	 * should not turn at all — it was right about the amount and wrong about zero.
 	 */
 	private static void stoop(PlayerModel model, com.mopicmp.npcstudio.entity.BodyShape shape) {
 		if (shape.stoop() == 0) return;
-		// The same two numbers the field gives every vertex of the torso, read at the
+		// The same numbers the field gives every vertex of the torso, read at the
 		// shoulder line — which is where the head and the arms are attached.
-		float forwards = com.mopicmp.npcstudio.entity.BodyField.spineLean(
-			shape, com.mopicmp.npcstudio.entity.BodyField.SHOULDER_Y) / 16f;
-		float downwards = com.mopicmp.npcstudio.entity.BodyField.spineDrop(
-			shape, com.mopicmp.npcstudio.entity.BodyField.SHOULDER_Y) / 16f;
+		float shoulder = com.mopicmp.npcstudio.entity.BodyField.SHOULDER_Y;
+		float forwards = com.mopicmp.npcstudio.entity.BodyField.spineLean(shape, shoulder) / 16f;
+		float downwards = com.mopicmp.npcstudio.entity.BodyField.spineDrop(shape, shoulder) / 16f;
+		float turned = com.mopicmp.npcstudio.entity.BodyField.spineTurn(shape, shoulder);
+
+		// Added to the pose, never assigned, like everything else in this class: an
+		// emote says where a limb is and this says how much further over.
+		model.head.xRot += turned * HEAD_FOLLOWS;
+		model.rightArm.xRot += turned * ARM_FOLLOWS;
+		model.leftArm.xRot += turned * ARM_FOLLOWS;
 
 		// Everything that hangs off the top of the torso goes with it. Not the hat
 		// or the sleeves: they are children of the head and the arms — the model
@@ -383,6 +400,17 @@ public final class BodyBuilder {
 			carried.z += forwards;
 		}
 	}
+
+	/**
+	 * How much of the spine's own angle a head and an arm take.
+	 *
+	 * A head, less than half: a person whose back is bent still looks where they are
+	 * going, and taking the whole angle points the face at the floor. An arm, more
+	 * than half but not all: it hangs under gravity from a shoulder that has rolled
+	 * forward, so it ends up somewhere between the shoulder's angle and the vertical.
+	 */
+	private static final float HEAD_FOLLOWS = 0.4f;
+	private static final float ARM_FOLLOWS = 0.6f;
 
 	/**
 	 * Moves the limbs out to meet a body that has changed size.

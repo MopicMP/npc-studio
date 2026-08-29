@@ -63,10 +63,25 @@ public record BodyShape(
 	/**
 	 * How far the back may be bent, in radians either way.
 	 *
-	 * A little over a quarter turn of a right angle. Beyond that a character is
-	 * not stooped, it is folded, and the arms start arriving before the face.
+	 * <h2>Doubled when the stoop stopped being a hinge</h2>
+	 *
+	 * A half used to be right, because the whole torso turned by it at once: a rigid
+	 * rod twelve pixels long tipped by a half radian carries its top 5.75 pixels
+	 * forward. The bend is spread along the back now, and a spread bend is a shorter
+	 * reach for the same angle — the same half radian, spread, carries the top only
+	 * 2.94, because every part of the spine below the top has turned less than the
+	 * top has.
+	 *
+	 * So the number is the total turn of the spine rather than the tilt of a plank,
+	 * and it takes twice as much of it to arrive in the same place. The two happen to
+	 * agree closely across the whole range — a quarter as a hinge reaches 2.97 and a
+	 * half as an arc reaches 2.94 — which means a character saved before this looks
+	 * very nearly the same after it, and that is worth more here than a round number.
+	 *
+	 * Beyond one radian a character is not stooped, it is folded, and the arms start
+	 * arriving before the face.
 	 */
-	public static final float MAX_STOOP = 0.5f;
+	public static final float MAX_STOOP = 1f;
 
 	/**
 	 * How much taller or shorter a character may be built.

@@ -157,24 +157,35 @@ public final class BodyField {
 	 * Where the lower back begins, where it is hollowest, and where the seat is full.
 	 *
 	 * Spread rather than chosen for looks. The torso is drawn in sixteen bands, and
-	 * the seat has to arrive over enough of them that no one band carries a visible
-	 * jump — the same rule the limbs are held to, applied front to back. Four and a
-	 * half pixels of rise is what keeps the steepest band under a third of a pixel at
-	 * the widest hips the sliders allow.
+	 * the seat has to arrive over enough of them that no one band tilts more steeply
+	 * than a limb's outline is allowed to — the same rule, applied front to back. A
+	 * limb may move 0.6 of a pixel across a pixel of height; a band of torso is
+	 * three quarters of a pixel tall, so its share of that is 0.45.
+	 *
+	 * Seven pixels of rise is what keeps the steepest band inside it at the widest
+	 * hips the sliders allow, and the seat is fullest at the hip line itself, which
+	 * is where a buttock is — below that it is the thigh's, and {@code BodyChain}
+	 * carries it down.
 	 */
-	private static final float SMALL_TOP = 4f;
-	private static final float SMALL_Y = 6.5f;
-	private static final float SEAT_Y = 11f;
+	private static final float SMALL_TOP = 3f;
+	private static final float SMALL_Y = 5f;
+	private static final float SEAT_Y = HIP_Y;
 
 	/**
 	 * How deep the seat gets, per unit of hip.
 	 *
-	 * Half. At the widest hips the sliders allow, that puts the back 0.6 pixels
-	 * further out, which is what the reference measures at 0.55 — so this is the
-	 * measurement rather than a taste, and it is written as a ratio so that it stays
-	 * the measurement when the torso is not four deep.
+	 * The reference measures 0.55 pixels on a torso four deep, and the first attempt
+	 * put that at the <em>end</em> of the slider's travel. Reported back: invisible
+	 * unless the slider is at maximum and you are looking for it. That is the right
+	 * complaint about the wrong number — a slider people actually move has to say
+	 * something in the middle of its range, not only at its end.
+	 *
+	 * So the reference's depth is what a middling setting gives, not an extreme one:
+	 * at hips of 1.3 the back stands 0.6 out, which is the measurement, and the rest
+	 * of the travel goes further. Written as a ratio so it stays the measurement when
+	 * the torso is not four deep.
 	 */
-	private static final float SEAT_GAIN = 0.5f;
+	private static final float SEAT_GAIN = 1f;
 
 	/** How far into the seat the hollow above it cuts, as a share of the seat. */
 	private static final float SMALL_SHARE = 0.3f;
@@ -205,8 +216,9 @@ public final class BodyField {
 	 * of the angle, and it still does.
 	 */
 	public static float spineLean(BodyShape shape, float y) {
-		if (shape.stoop() == 0) return 0f;
-		return -WAIST_Y * (float) Math.sin(shape.stoop()) * leaned(y);
+		float turn = shape.stoop();
+		if (turn == 0) return 0f;
+		return -SPINE * (1f - (float) Math.cos(turn * leaned(y))) / turn;
 	}
 
 	/**
@@ -218,14 +230,51 @@ public final class BodyField {
 	 * failure mode of every shear that forgets it.
 	 */
 	public static float spineDrop(BodyShape shape, float y) {
-		if (shape.stoop() == 0) return 0f;
-		return (HIP_Y - SHOULDER_Y) * (1f - (float) Math.cos(shape.stoop())) * leaned(y);
+		float turn = shape.stoop();
+		if (turn == 0) return 0f;
+		float s = leaned(y);
+		return SPINE * (s - (float) Math.sin(turn * s) / turn);
 	}
 
-	/** How much of the lean has happened by a height: none at the hips, all at the neck. */
-	private static float leaned(float y) {
-		return smooth(Math.clamp((HIP_Y - y) / (HIP_Y - SHOULDER_Y), 0f, 1f));
+	/**
+	 * How far the spine has turned by a height, in radians.
+	 *
+	 * <h2>Why anything outside the torso needs this</h2>
+	 *
+	 * Because the first version of the bend did not have it, and the report was that
+	 * the body leans while "голова и руки остаются на месте". They were being moved —
+	 * by exactly as far as the top of the torso moved — and it still read as staying
+	 * put, because a translation is not a lean. A shoulder that has rolled forward is
+	 * <em>angled</em>, and a head and an arm hanging off an angled shoulder are angled
+	 * with it. That is what the eye is looking for and a slide cannot give it.
+	 *
+	 * The angle is the spine's own: a bend spread evenly along the back has turned
+	 * through {@code stoop × share} by the time it reaches a height, so at the
+	 * shoulders it has turned through the whole of the stoop.
+	 */
+	public static float spineTurn(BodyShape shape, float y) {
+		return shape.stoop() * leaned(y);
 	}
+
+	/**
+	 * How much of the bend has happened by a height: none at the hips, all at the neck.
+	 *
+	 * Plain and linear, and that is the correction. It used to be {@link #smooth},
+	 * which is flat at <em>both</em> ends — so the spine came out vertical at the
+	 * shoulders as well as at the hips, and the torso translated forward without ever
+	 * tilting. An S where an arc was wanted, and the reason nothing above the torso
+	 * looked like it was leaning.
+	 *
+	 * Linear here means the back turns at the same rate all the way up, which is a
+	 * circular arc, and {@link #spineLean} and {@link #spineDrop} are that arc's
+	 * offsets written out rather than approximated.
+	 */
+	private static float leaned(float y) {
+		return Math.clamp((HIP_Y - y) / (HIP_Y - SHOULDER_Y), 0f, 1f);
+	}
+
+	/** The length of the spine, which is the torso: neck to hip. */
+	private static final float SPINE = HIP_Y - SHOULDER_Y;
 
 	// --------------------------------------------------------------- the legs
 
@@ -272,15 +321,49 @@ public final class BodyField {
 	 * Where the middle of a leg sits at a height.
 	 *
 	 * At the hip the two of them fill the pelvis exactly, less the overlap vanilla
-	 * gives them. Lower down each returns to standing under its own share of the
-	 * body, so a wide pelvis flares the thighs rather than moving the whole leg out
-	 * from under the character.
+	 * gives them. Lower down each moves towards standing under its own share of the
+	 * body — towards, and not all the way, which is {@link #legStance}.
 	 */
 	public static float legMiddle(BodyShape shape, float y) {
-		return fromHip(shape, y,
-			torsoHalf(shape, HIP_Y) / 2f - LEG_OVERLAP,
-			Math.max(1.9f, legGirth(shape) - LEG_OVERLAP));
+		return fromHip(shape, y, torsoHalf(shape, HIP_Y) / 2f - LEG_OVERLAP, legStance(shape));
 	}
+
+	/**
+	 * Where a leg stands, below the thigh, once the pelvis has had its say.
+	 *
+	 * <h2>The fault this answers</h2>
+	 *
+	 * This used to be the leg's own girth and nothing else, so a wide pelvis flared
+	 * the top of each thigh out and then funnelled it straight back to where vanilla
+	 * put it. Reported back as hips that "становятся шире, а ноги остаются на том же
+	 * месте" — and that is exactly what it was: three pixels of thigh doing all the
+	 * widening and nine pixels of leg ignoring it.
+	 *
+	 * <h2>Why part of the way and not all of it</h2>
+	 *
+	 * A wide-hipped person's legs are further apart, all the way down — but not as
+	 * far apart as the hips are. The thigh bone runs inwards from the hip to the
+	 * knee, so the knees end up closer together than the hip joints they hang from
+	 * and the feet closer still. {@link #STANCE} is how much of the hip's offset
+	 * survives to the bottom of the leg.
+	 *
+	 * The floor of 1.9 is vanilla's own pitch and stays: two legs of ordinary girth
+	 * on an ordinary pelvis come back exactly where the game put them.
+	 */
+	public static float legStance(BodyShape shape) {
+		float own = Math.max(1.9f, legGirth(shape) - LEG_OVERLAP);
+		float atHip = torsoHalf(shape, HIP_Y) / 2f - LEG_OVERLAP;
+		return atHip <= own ? own : mix(own, atHip, STANCE);
+	}
+
+	/**
+	 * How much of the hips' width the legs below the thigh keep.
+	 *
+	 * Three fifths. Wide hips are wide legs and a leg that came all the way back
+	 * would be a funnel; a leg that stayed under the hip joint would be a pair of
+	 * stilts. The femur converges and this is how much of the way.
+	 */
+	private static final float STANCE = 0.6f;
 
 	/** Whatever the pelvis says at the top, whatever the leg says below the joint. */
 	private static float fromHip(BodyShape shape, float y, float atHip, float own) {

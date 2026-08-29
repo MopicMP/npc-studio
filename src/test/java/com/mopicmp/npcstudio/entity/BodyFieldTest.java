@@ -218,11 +218,19 @@ class BodyFieldTest {
 		// wide-hipped character was a wider plank seen from the front and the same
 		// plank seen from the side. Measured on the reference, the back of the torso
 		// stands 0.55 pixels further out at the seat than at the shoulders.
-		BodyShape wide = shape(1.6f, 1f);
-		float shoulders = BodyField.torsoBack(wide, BodyField.SHOULDER_Y);
-		float seat = BodyField.torsoBack(wide, BodyField.HIP_Y);
+		// Read at a middling setting rather than at the end of the slider's travel.
+		// The first version put the reference's depth at the maximum, and the report
+		// was that you cannot see it unless you wind the slider all the way up and go
+		// looking. A slider has to say something in the middle of its range.
+		BodyShape middling = shape(1.3f, 1f);
+		float shoulders = BodyField.torsoBack(middling, BodyField.SHOULDER_Y);
+		float seat = BodyField.torsoBack(middling, BodyField.HIP_Y);
 		assertEquals(BodyField.BODY_DEEP, shoulders, 1e-4f, "the shoulders are not a seat");
 		assertEquals(0.55f, seat - shoulders, 0.1f, "the seat is not the reference's depth");
+
+		BodyShape wide = shape(1.6f, 1f);
+		assertTrue(BodyField.torsoBack(wide, BodyField.HIP_Y) > seat,
+			"the rest of the slider's travel does nothing");
 
 		// And it turns round on the way, or it is a wedge rather than a seat.
 		float least = Float.MAX_VALUE;
@@ -236,16 +244,16 @@ class BodyFieldTest {
 	@Test
 	@DisplayName("the seat arrives gradually, like everything else on this model")
 	void theSeatHasNoStep() {
-		// The bar is looser than a limb's, and deliberately. A limb's outline is a
-		// smooth run and its bar is 0.6 of a pixel of width per pixel of height; a
-		// seat is a feature, and the reference's own features are steeper than its
-		// runs — its wrist steps 1.1 pixels. At the widest hips the sliders allow,
-		// the seat is a whole pixel deep and it arrives over three and a half.
+		// The bar is the limb's, converted. A limb may move 0.6 of a pixel across a
+		// pixel of its height; a band of torso is only three quarters of a pixel
+		// tall, so its share of the same slope is 0.6 times the band. Stating it as a
+		// slope rather than as a step is what keeps the two comparable when one of
+		// them is cut more finely than the other.
 		BodyShape wide = shape(2f, 2f);
 		float was = BodyField.torsoBack(wide, 0);
 		for (float y = BAND; y <= BodyField.HIP_Y; y += BAND) {
 			float now = BodyField.torsoBack(wide, y);
-			assertTrue(Math.abs(now - was) <= 0.4f,
+			assertTrue(Math.abs(now - was) <= 0.6f * BAND,
 				"the back steps by " + (now - was) + " at " + y);
 			was = now;
 		}

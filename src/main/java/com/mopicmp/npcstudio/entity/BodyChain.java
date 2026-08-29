@@ -320,8 +320,11 @@ public final class BodyChain {
 		float own = BodyField.legGirth(shape) + lip;
 		float pelvis = BodyField.torsoHalf(shape, BodyField.HIP_Y) / 2f + lip;
 		float upperMiddle = side * (BodyField.legMiddle(shape, BodyField.HIP_Y)) - pivotX;
-		float ownMiddle = side * Math.max(1.9f, BodyField.legGirth(shape) - BodyField.LEG_OVERLAP)
-			- pivotX;
+		// Where the leg stands once the pelvis has had its say, which is not simply
+		// where vanilla put it: a wide-hipped character's legs are further apart the
+		// whole way down. Asked of the field rather than worked out again here — the
+		// two answering separately is the fault this whole class exists to stop.
+		float ownMiddle = side * BodyField.legStance(shape) - pivotX;
 		// The seat the torso grew behind the hips, handed down so the thigh under it
 		// starts where the buttock ended. Without this a wide-hipped character has a
 		// ledge across the back of each leg — the same "one wider, another narrower"
