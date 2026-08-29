@@ -41,7 +41,8 @@ public record BodyShape(
 		float softness,
 		float stoop,
 		float height,
-		float taper) {
+		float taper,
+		float seat) {
 
 	/**
 	 * A build described by its girths alone, as everything was before limbs had
@@ -53,7 +54,22 @@ public record BodyShape(
 	 */
 	public BodyShape(float shoulders, float hips, float belly, float arms, float legs,
 			float chest, float head, float softness, float stoop) {
-		this(shoulders, hips, belly, arms, legs, chest, head, softness, stoop, 1f, 0f);
+		this(shoulders, hips, belly, arms, legs, chest, head, softness, stoop, 1f, 0f, 0f);
+	}
+
+	/**
+	 * A build described without a seat, which is everything written before there was
+	 * a slider for one.
+	 *
+	 * Added at the end of the record rather than beside the hips it used to hang off,
+	 * and that is worth a sentence. A new component in the middle changes the meaning
+	 * of every positional call in the codebase without changing one of them enough to
+	 * fail to compile — a preset would quietly become a different character. At the
+	 * end it cannot, and this constructor keeps the old arity working.
+	 */
+	public BodyShape(float shoulders, float hips, float belly, float arms, float legs,
+			float chest, float head, float softness, float stoop, float height, float taper) {
+		this(shoulders, hips, belly, arms, legs, chest, head, softness, stoop, height, taper, 0f);
 	}
 
 	/** What a scale may be. One is the vanilla model, untouched. */
@@ -63,25 +79,26 @@ public record BodyShape(
 	/**
 	 * How far the back may be bent, in radians either way.
 	 *
-	 * <h2>Doubled when the stoop stopped being a hinge</h2>
+	 * <h2>Tripled when the stoop stopped being a hinge</h2>
 	 *
 	 * A half used to be right, because the whole torso turned by it at once: a rigid
 	 * rod twelve pixels long tipped by a half radian carries its top 5.75 pixels
-	 * forward. The bend is spread along the back now, and a spread bend is a shorter
-	 * reach for the same angle — the same half radian, spread, carries the top only
-	 * 2.94, because every part of the spine below the top has turned less than the
-	 * top has.
+	 * forward. The bend is spread along the back now, and weighted towards the top of
+	 * it, so the same angle carries the shoulders a good deal less far — every piece
+	 * of spine below the shoulders has turned less than the shoulders have, and the
+	 * lowest pieces have barely turned at all.
 	 *
 	 * So the number is the total turn of the spine rather than the tilt of a plank,
-	 * and it takes twice as much of it to arrive in the same place. The two happen to
-	 * agree closely across the whole range — a quarter as a hinge reaches 2.97 and a
-	 * half as an arc reaches 2.94 — which means a character saved before this looks
-	 * very nearly the same after it, and that is worth more here than a round number.
+	 * and it takes three times as much of it to arrive in the same place. Which it
+	 * does, closely, across the whole range: a quarter as a hinge reached 2.97 pixels
+	 * and three quarters as this bend reaches 2.85; a half reached 5.75 and one and a
+	 * half reaches 5.38. A character saved before this looks very nearly the same
+	 * after it, and that is worth more here than a round number.
 	 *
-	 * Beyond one radian a character is not stooped, it is folded, and the arms start
+	 * Beyond this a character is not stooped, it is folded, and the arms start
 	 * arriving before the face.
 	 */
-	public static final float MAX_STOOP = 1f;
+	public static final float MAX_STOOP = 1.5f;
 
 	/**
 	 * How much taller or shorter a character may be built.
@@ -126,18 +143,24 @@ public record BodyShape(
 	// height and taper are new. They are worth revisiting once a segmented body has
 	// been seen in the game — a blacksmith is short and thick, an old man is short
 	// and thin, and neither of those is expressible by width alone.
+	// The stoop in each of these is a literal angle, and the angle stopped meaning
+	// what it meant: it is the spine's whole turn now rather than a plank's tilt, and
+	// the bend it drives is weighted towards the shoulders. Every one below has been
+	// multiplied by three so that the character it was written for still stands the
+	// way its author meant. A slider scales itself; a number written in a file does
+	// not, and this is the sort of thing that silently straightens out an old man.
 	public static final java.util.List<Preset> PRESETS = java.util.List.of(
 		new Preset("обычный", DEFAULT),
 		// Shoulders and arms, and a slight lean back: the weight is in the top half.
-		new Preset("кузнец", new BodyShape(1.35f, 1.05f, 1.1f, 1.3f, 1.1f, 1.3f, 1, 0f, -0.06f)),
+		new Preset("кузнец", new BodyShape(1.35f, 1.05f, 1.1f, 1.3f, 1.1f, 1.3f, 1, 0f, -0.18f)),
 		// The weight is in the bottom half instead, and the back gives a little.
-		new Preset("трактирщик", new BodyShape(1.05f, 1.25f, 1.8f, 1.1f, 1.1f, 1.1f, 1, 0f, 0.08f)),
+		new Preset("трактирщик", new BodyShape(1.05f, 1.25f, 1.8f, 1.1f, 1.1f, 1.1f, 1, 0f, 0.24f)),
 		// Narrow everywhere and a head still a size too big for the body.
-		new Preset("подросток", new BodyShape(0.85f, 0.85f, 0.9f, 0.8f, 0.85f, 0.9f, 1.08f, 0f, 0.04f)),
+		new Preset("подросток", new BodyShape(0.85f, 0.85f, 0.9f, 0.8f, 0.85f, 0.9f, 1.08f, 0f, 0.12f)),
 		// The stoop is the whole character; the thin arms only agree with it.
-		new Preset("старик", new BodyShape(0.9f, 1f, 1.25f, 0.8f, 0.85f, 0.85f, 1, 0f, 0.3f)),
+		new Preset("старик", new BodyShape(0.9f, 1f, 1.25f, 0.8f, 0.85f, 0.85f, 1, 0f, 0.9f)),
 		// Upright, square, and deliberately the least softened of them.
-		new Preset("стражник", new BodyShape(1.25f, 1, 0.95f, 1.15f, 1.1f, 1.15f, 1, 0f, -0.1f)),
+		new Preset("стражник", new BodyShape(1.25f, 1, 0.95f, 1.15f, 1.1f, 1.15f, 1, 0f, -0.3f)),
 		// Not a shape so much as an answer to "what does a woman look like here",
 		// which is the case the mod this grew out of exists for. One preset among
 		// several, which is the whole argument for building the general thing.
@@ -155,6 +178,7 @@ public record BodyShape(
 		stoop = Float.isFinite(stoop) ? Math.clamp(stoop, -MAX_STOOP, MAX_STOOP) : 0f;
 		height = Float.isFinite(height) ? Math.clamp(height, MIN_HEIGHT, MAX_HEIGHT) : 1f;
 		taper = Float.isFinite(taper) ? Math.clamp(taper, 0f, MAX_TAPER) : 0f;
+		seat = clampShare(seat);
 	}
 
 	private static float clampShare(float value) {
@@ -196,7 +220,11 @@ public record BodyShape(
 	public long packedPosture() {
 		return signedByteOf(stoop, MAX_STOOP)
 			| (long) byteOf(height, MIN_HEIGHT, MAX_HEIGHT) << 8
-			| (long) byteOf(taper, 0f, MAX_TAPER) << 16;
+			| (long) byteOf(taper, 0f, MAX_TAPER) << 16
+			// The fourth byte, which was zero before a seat existed — and nought is
+			// the bottom of this range as well as its "leave it alone", so an old
+			// character reads back with no seat, which is what it had.
+			| (long) byteOf(seat, 0f, 1f) << 24;
 	}
 
 	public long packed() {
@@ -246,7 +274,8 @@ public record BodyShape(
 			floatOf(packed, 56, 0f, 1f),
 			signedFloatOf(posture, 0, MAX_STOOP),
 			floatOf(posture, 8, MIN_HEIGHT, MAX_HEIGHT),
-			floatOf(posture, 16, 0f, MAX_TAPER));
+			floatOf(posture, 16, 0f, MAX_TAPER),
+			floatOf(posture, 24, 0f, 1f));
 	}
 
 	private static int byteOf(float value, float low, float high) {
@@ -303,6 +332,7 @@ public record BodyShape(
 		if (stoop != 0) json.addProperty("stoop", stoop);
 		if (height != 1) json.addProperty("height", height);
 		if (taper != 0) json.addProperty("taper", taper);
+		if (seat != 0) json.addProperty("seat", seat);
 		return json;
 	}
 
@@ -319,7 +349,8 @@ public record BodyShape(
 			json.has("softness") ? number(json, "softness", 0) : number(json, "roundness", 0),
 			number(json, "stoop", 0),
 			number(json, "height", 1),
-			number(json, "taper", 0));
+			number(json, "taper", 0),
+			number(json, "seat", 0));
 	}
 
 	private static float number(com.google.gson.JsonObject json, String key, float fallback) {

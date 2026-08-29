@@ -409,7 +409,7 @@ public final class BodyBuilder {
 	 * than half but not all: it hangs under gravity from a shoulder that has rolled
 	 * forward, so it ends up somewhere between the shoulder's angle and the vertical.
 	 */
-	private static final float HEAD_FOLLOWS = 0.4f;
+	private static final float HEAD_FOLLOWS = 0.25f;
 	private static final float ARM_FOLLOWS = 0.6f;
 
 	/**

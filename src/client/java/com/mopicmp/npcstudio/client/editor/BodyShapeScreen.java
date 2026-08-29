@@ -156,6 +156,12 @@ public class BodyShapeScreen extends Screen {
 		addRenderableWidget(new FlatSlider(x, y, panelWidth(), 18, "мягкость",
 			0, 1, 0.02, GOOD, () -> shape.softness(), v -> take(with(SOFTNESS, v.floatValue()))));
 		y += ROW;
+		// Its own slider rather than a passenger on the hips, and never on the legs:
+		// thickening a calf was growing a backside, which is the sort of thing that
+		// only looks reasonable to whoever wired it.
+		addRenderableWidget(new FlatSlider(x, y, panelWidth(), 18, "ягодицы",
+			0, 1, 0.02, GOOD, () -> shape.seat(), v -> take(with(SEAT, v.floatValue()))));
+		y += ROW;
 		addRenderableWidget(new FlatSlider(x, y, panelWidth(), 18, "осанка",
 			-BodyShape.MAX_STOOP, BodyShape.MAX_STOOP, 0.01, GOOD,
 			() -> shape.stoop(), v -> take(with(STOOP, v.floatValue()))));
@@ -199,12 +205,13 @@ public class BodyShapeScreen extends Screen {
 			which == SOFTNESS ? v : shape.softness(),
 			which == STOOP ? v : shape.stoop(),
 			which == HEIGHT ? v : shape.height(),
-			which == TAPER ? v : shape.taper());
+			which == TAPER ? v : shape.taper(),
+			which == SEAT ? v : shape.seat());
 	}
 
 	private static final int SHOULDERS = 0, HIPS = 1, BELLY = 2, ARMS = 3, LEGS = 4;
 	private static final int CHEST = 5, HEAD = 6, SOFTNESS = 7, STOOP = 8;
-	private static final int HEIGHT = 9, TAPER = 10;
+	private static final int HEIGHT = 9, TAPER = 10, SEAT = 11;
 
 	// ---------------------------------------------------------- the actions
 

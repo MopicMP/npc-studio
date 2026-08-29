@@ -192,6 +192,27 @@ class BodyFieldTest {
 
 	// ------------------------------------------------- the back, and the spine
 
+	/** A character with a backside and nothing else changed. */
+	private static BodyShape seated(float much) {
+		return new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, 0f, 1f, 0f, much);
+	}
+
+	@Test
+	@DisplayName("thickening a leg does not grow a backside")
+	void theLegsAreNotTheSeat() {
+		// The whole of the report. The seat used to be driven by hipsUsed, which is
+		// the wider of the hips and the legs, so a slider about calves was quietly
+		// also a slider about buttocks.
+		BodyShape thick = shape(1f, 1.8f);
+		for (float y = 0; y <= BodyField.HIP_Y; y += 0.5f) {
+			assertEquals(BodyField.BODY_DEEP, BodyField.torsoBack(thick, y), 1e-4f,
+				"thick legs moved the back at " + y);
+		}
+		// And the pelvis still widens for them, which is a different question and
+		// still has to be true.
+		assertTrue(BodyField.torsoHalf(thick, BodyField.HIP_Y) > BodyField.BODY_HALF);
+	}
+
 	/** A stooped character and nothing else, so a failure can only be the stoop. */
 	private static BodyShape stooped(float radians) {
 		return new BodyShape(1, 1, 1, 1, 1, 1, 1, 0f, radians);
@@ -223,10 +244,17 @@ class BodyFieldTest {
 		// was that you cannot see it unless you wind the slider all the way up and go
 		// looking. A slider has to say something in the middle of its range.
 		BodyShape middling = shape(1.3f, 1f);
+		assertTrue(BodyField.torsoBack(seated(1f), BodyField.HIP_Y) > BodyField.BODY_DEEP,
+			"the seat slider does nothing on its own");
 		float shoulders = BodyField.torsoBack(middling, BodyField.SHOULDER_Y);
 		float seat = BodyField.torsoBack(middling, BodyField.HIP_Y);
 		assertEquals(BodyField.BODY_DEEP, shoulders, 1e-4f, "the shoulders are not a seat");
-		assertEquals(0.55f, seat - shoulders, 0.1f, "the seat is not the reference's depth");
+		// The hips alone land near the reference's 0.55 without anybody touching the
+		// seat slider, which is the point of their keeping a share of it.
+		assertEquals(0.45f, seat - shoulders, 0.1f, "the hips carry no seat of their own");
+		assertTrue(BodyField.torsoBack(seated(1f), BodyField.HIP_Y)
+				- BodyField.BODY_DEEP > 1.4f,
+			"the seat slider at its top is still shallower than a pixel and a half");
 
 		BodyShape wide = shape(1.6f, 1f);
 		assertTrue(BodyField.torsoBack(wide, BodyField.HIP_Y) > seat,
@@ -249,7 +277,7 @@ class BodyFieldTest {
 		// tall, so its share of the same slope is 0.6 times the band. Stating it as a
 		// slope rather than as a step is what keeps the two comparable when one of
 		// them is cut more finely than the other.
-		BodyShape wide = shape(2f, 2f);
+		BodyShape wide = new BodyShape(1, 2f, 1, 1, 1, 1, 1, 0f, 0f, 1f, 0f, 1f);
 		float was = BodyField.torsoBack(wide, 0);
 		for (float y = BAND; y <= BodyField.HIP_Y; y += BAND) {
 			float now = BodyField.torsoBack(wide, y);
@@ -268,6 +296,13 @@ class BodyFieldTest {
 		// the hips is what keeps that junction square.
 		BodyShape old = stooped(BodyShape.MAX_STOOP);
 		assertEquals(0f, BodyField.spineLean(old, BodyField.HIP_Y), 1e-4f, "the hips moved");
+		// And the small of the back is nearly upright: the bend belongs to the
+		// shoulders. Read as how much of the whole lean has happened by the waist.
+		float atWaist = BodyField.spineLean(old, BodyField.WAIST_Y);
+		float whole = BodyField.spineLean(old, BodyField.SHOULDER_Y);
+		assertTrue(Math.abs(atWaist) < 0.15f * Math.abs(whole),
+			"a third of the way up the back has already spent " + (atWaist / whole)
+				+ " of its lean, which tips the lumbar spine");
 		assertEquals(0f, BodyField.spineDrop(old, BodyField.HIP_Y), 1e-4f, "the hips dropped");
 		assertTrue(BodyField.spineLean(old, BodyField.SHOULDER_Y) < -1f,
 			"the shoulders did not come forward");
@@ -283,25 +318,33 @@ class BodyFieldTest {
 	@Test
 	@DisplayName("and it bends on the way rather than hinging")
 	void theSpineIsACurveNotAHinge() {
-		// A hinge puts all its turn in one place; a bend spreads it. Read as the
-		// change per band, a hinge is one big number among zeroes and a bend is a
-		// hump. So: every band moves, and no band moves more than twice the average.
+		// A hinge puts all its turn in one place and leaves every other band at
+		// nought; this bend is deliberately top-heavy, because a stoop lives in the
+		// upper back, so the bar is not "even" but "spread". Sixteen bands, and the
+		// busiest of them carries a few times the average rather than all of it — a
+		// real hinge would be sixteen times the average with fifteen zeroes beside
+		// it.
 		BodyShape old = stooped(BodyShape.MAX_STOOP);
 		float most = 0;
 		float total = 0;
 		int bands = 0;
+		int quiet = 0;
 		float was = BodyField.spineLean(old, BodyField.HIP_Y);
 		for (float y = BodyField.HIP_Y - BAND; y >= BodyField.SHOULDER_Y - 1e-4f; y -= BAND) {
 			float now = BodyField.spineLean(old, y);
 			float step = Math.abs(now - was);
 			most = Math.max(most, step);
 			total += step;
+			if (step <= 1e-4f) quiet++;
 			bands++;
 			was = now;
 		}
 		assertTrue(bands >= 15, "only " + bands + " bands of spine");
-		assertTrue(most <= 2f * total / bands,
+		assertTrue(most <= 4f * total / bands,
 			"one band takes " + most + " of the lean where the average is " + total / bands
 				+ ", which is a hinge");
+		// And nothing is left out: sixteen zeroes with one number among them is the
+		// failure this is really watching for.
+		assertEquals(0, quiet, "a band of the spine does not bend at all");
 	}
 }

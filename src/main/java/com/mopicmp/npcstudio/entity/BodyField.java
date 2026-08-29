@@ -127,16 +127,27 @@ public final class BodyField {
 	 * stating: the reference wears a waistband exactly where the hollow would be, so
 	 * the measurement cannot show one.
 	 *
-	 * <h2>What it is driven by</h2>
+	 * <h2>What it is driven by, after being asked</h2>
 	 *
-	 * The hips, which is the same slider that widens them, so the two cannot
-	 * disagree — and at the defaults both terms are nought, which is what keeps an
-	 * untouched character byte-for-byte the vanilla torso.
+	 * Its own slider, and the hips underneath it. The first version had only the
+	 * hips — and not even the hips, but {@link #hipsUsed}, which is the wider of the
+	 * hips and the legs, so <b>thickening a calf grew a backside</b>. Reported back
+	 * as "то что ты добавил в ползунок ног это и есть они? Тогда это очень фигово",
+	 * and rightly.
+	 *
+	 * So the legs are out of it entirely, the hips keep a share — a wider pelvis
+	 * genuinely does carry more behind it, and leaving that out would be the same
+	 * mistake pointing the other way — and the slider says how much more on top.
+	 * Capped at one between them, because past that the surface starts arriving in
+	 * steps and a step is the thing this whole model is trying not to have.
+	 *
+	 * At the defaults every term is nought, which is what keeps an untouched
+	 * character byte-for-byte the vanilla torso.
 	 */
 	public static float torsoBack(BodyShape shape, float y) {
-		float seat = BODY_DEEP * (hipsUsed(shape) - 1f) * SEAT_GAIN;
-		if (seat == 0) return BODY_DEEP;
-		return BODY_DEEP + seat * seatShare(y);
+		float much = Math.min(1f, shape.seat() + Math.max(0f, shape.hips() - 1f));
+		if (much <= 0) return BODY_DEEP;
+		return BODY_DEEP + BODY_DEEP * SEAT_GAIN * much * seatShare(y);
 	}
 
 	/**
@@ -180,12 +191,11 @@ public final class BodyField {
 	 * complaint about the wrong number — a slider people actually move has to say
 	 * something in the middle of its range, not only at its end.
 	 *
-	 * So the reference's depth is what a middling setting gives, not an extreme one:
-	 * at hips of 1.3 the back stands 0.6 out, which is the measurement, and the rest
-	 * of the travel goes further. Written as a ratio so it stays the measurement when
-	 * the torso is not four deep.
+	 * Three quarters, so that hips of 1.3 alone put the back 0.45 out, near enough
+	 * the measurement, and the seat slider on its own reaches one and a half pixels.
+	 * Written as a ratio so it stays the measurement when the torso is not four deep.
 	 */
-	private static final float SEAT_GAIN = 1f;
+	private static final float SEAT_GAIN = 0.75f;
 
 	/** How far into the seat the hollow above it cuts, as a share of the seat. */
 	private static final float SMALL_SHARE = 0.3f;
@@ -216,9 +226,7 @@ public final class BodyField {
 	 * of the angle, and it still does.
 	 */
 	public static float spineLean(BodyShape shape, float y) {
-		float turn = shape.stoop();
-		if (turn == 0) return 0f;
-		return -SPINE * (1f - (float) Math.cos(turn * leaned(y))) / turn;
+		return walk(shape, y, true);
 	}
 
 	/**
@@ -230,11 +238,49 @@ public final class BodyField {
 	 * failure mode of every shear that forgets it.
 	 */
 	public static float spineDrop(BodyShape shape, float y) {
+		return walk(shape, y, false);
+	}
+
+	/**
+	 * Where the spine has got to by a height, walked one short piece at a time.
+	 *
+	 * <h2>Why a loop and not a formula</h2>
+	 *
+	 * Because the back does not bend evenly, and an unevenly bent curve has no
+	 * closed form. A stoop lives in the <em>upper</em> back: the lumbar spine stays
+	 * near upright and the thoracic does the folding, which is why an old man's
+	 * shoulders come forward over hips that are still under him.
+	 *
+	 * The first version bent evenly, which is a circular arc, and that has a closed
+	 * form — but it also tips the small of the back, so reading the silhouette
+	 * downwards the spine visibly travelled backwards from the shoulders to the
+	 * hips. Reported as exactly that: "позвоночник буквально уходит назад при
+	 * высоких показателях".
+	 *
+	 * Bending as {@code turn × s²} instead puts no curvature at all at the hips and
+	 * all of it at the top. Its offsets are Fresnel integrals, which is to say a
+	 * sum, and sixteen pieces is one per band of the torso — finer than anything
+	 * downstream can draw.
+	 *
+	 * @param forward the offset across, which is negative; otherwise the drop, which
+	 *                is positive because a bent back is a shorter one
+	 */
+	private static float walk(BodyShape shape, float y, boolean forward) {
 		float turn = shape.stoop();
 		if (turn == 0) return 0f;
-		float s = leaned(y);
-		return SPINE * (s - (float) Math.sin(turn * s) / turn);
+		float top = leaned(y);
+		float step = top / STEPS;
+		float out = 0;
+		for (int i = 0; i < STEPS; i++) {
+			float s = (i + 0.5f) * step;
+			float angle = turn * s * s;
+			out += forward ? -(float) Math.sin(angle) : 1f - (float) Math.cos(angle);
+		}
+		return out * step * SPINE;
 	}
+
+	/** One piece of spine per band of torso, which is finer than anything drawn. */
+	private static final int STEPS = 16;
 
 	/**
 	 * How far the spine has turned by a height, in radians.
@@ -253,21 +299,20 @@ public final class BodyField {
 	 * shoulders it has turned through the whole of the stoop.
 	 */
 	public static float spineTurn(BodyShape shape, float y) {
-		return shape.stoop() * leaned(y);
+		float s = leaned(y);
+		return shape.stoop() * s * s;
 	}
 
 	/**
 	 * How much of the bend has happened by a height: none at the hips, all at the neck.
 	 *
-	 * Plain and linear, and that is the correction. It used to be {@link #smooth},
-	 * which is flat at <em>both</em> ends — so the spine came out vertical at the
-	 * shoulders as well as at the hips, and the torso translated forward without ever
-	 * tilting. An S where an arc was wanted, and the reason nothing above the torso
-	 * looked like it was leaning.
+	 * Plain and linear, and the bending is what is shaped, not this. It used to be
+	 * {@link #smooth}, which is flat at <em>both</em> ends — so the spine came out
+	 * vertical at the shoulders as well as at the hips and the torso slid forward
+	 * without ever tilting, which is why nothing above it looked like it was leaning.
 	 *
-	 * Linear here means the back turns at the same rate all the way up, which is a
-	 * circular arc, and {@link #spineLean} and {@link #spineDrop} are that arc's
-	 * offsets written out rather than approximated.
+	 * How much of the bend happens where is {@link #walk}'s business: the square of
+	 * this, so the small of the back stays upright and the shoulders do the folding.
 	 */
 	private static float leaned(float y) {
 		return Math.clamp((HIP_Y - y) / (HIP_Y - SHOULDER_Y), 0f, 1f);
