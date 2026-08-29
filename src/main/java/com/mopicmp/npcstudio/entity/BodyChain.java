@@ -106,10 +106,13 @@ public final class BodyChain {
 		float length = (bottom - top) * shape.height();
 		boolean parted = upperX != halfX || upperZ != halfZ || upperMiddleX != middleX
 			|| seat != 0;
-		// Everything is measured from the two faces that do not move: the limb's
-		// inner side and its front. See #hold below for why those two.
-		float inner = middleX - outward * halfX;
-		float front = middleZ - halfZ;
+		// The front does not move, and it is the one the parent hands down rather than
+		// the limb's own. A leg thicker than the torso above it has to grow somewhere,
+		// and growing forwards off a pelvis that has not moved leaves a ledge across
+		// the front of the hip — which is what a thick-legged build showed. It grows
+		// backwards instead, and the shin stays the straight line the reference
+		// measures it to be.
+		float front = middleZ - upperZ;
 
 		// Nothing asked for and nothing to say: two rings, the part's own size, and the
 		// mesh gives the model straight back. A plain box is a loft of two.
@@ -127,18 +130,24 @@ public final class BodyChain {
 			// as the thigh becomes itself. It is depth added behind, which is why it
 			// lands on the half and the front stays where it was.
 			float behind = seat * seatFade(share) / 2f;
+			// How much of itself the limb has become. At the top it is entirely the
+			// parent's — two thighs stand under one pelvis and the join has to be a
+			// join — and a quarter of the way down it is entirely its own. Ramped
+			// rather than switched: a leg an inch thicker than the pelvis above it
+			// used to take the whole difference in one band, and a whole difference
+			// in one band is the step this model exists to avoid.
+			float own = 1f - seatFade(share);
+			float rootX = upperX + (halfX - upperX) * own;
+			float rootZ = upperZ + (halfZ - upperZ) * own;
+			float mid = upperMiddleX + (middleX - upperMiddleX) * own;
 			// Across and through are read from separate tables on purpose. A calf is
 			// no wider than the shin above it and is markedly deeper — the muscle
 			// bulges backwards, not sideways — and one number for both cannot say
 			// that. Measured on the reference: down one leg the width holds at 2.317
 			// while the depth goes 2.573 to 3.458.
-			float thick = (i == 0 ? upperZ : step(halfZ, shape.taper(), through[i])) + behind;
-			// The top ring's width belongs to whatever the limb hangs from — two
-			// thighs stand under one pelvis and the join has to be a join — so it is
-			// the one ring that is placed rather than held.
-			float wide = i == 0 ? upperX : step(halfX, shape.taper(), across[i]);
-			float mx = i == 0 ? upperMiddleX
-				: inner + outward * (wide + (halfX - wide) * INWARD);
+			float thick = step(rootZ, shape.taper(), through[i]) + behind;
+			float wide = step(rootX, shape.taper(), across[i]);
+			float mx = mid - outward * rootX + outward * (wide + (rootX - wide) * INWARD);
 			loft.add(new SegmentMesh.Ring(y, share, mx, wide, front + thick, thick));
 		}
 		return List.copyOf(loft);

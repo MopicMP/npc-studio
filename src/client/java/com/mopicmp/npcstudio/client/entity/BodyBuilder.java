@@ -381,12 +381,18 @@ public final class BodyBuilder {
 	 */
 	private static void stoop(PlayerModel model, com.mopicmp.npcstudio.entity.BodyShape shape) {
 		if (shape.stoop() == 0) return;
-		// The same numbers the field gives every vertex of the torso, read at the
-		// shoulder line — which is where the head and the arms are attached.
-		float shoulder = com.mopicmp.npcstudio.entity.BodyField.SHOULDER_Y;
-		float forwards = com.mopicmp.npcstudio.entity.BodyField.spineLean(shape, shoulder) / 16f;
-		float downwards = com.mopicmp.npcstudio.entity.BodyField.spineDrop(shape, shoulder) / 16f;
-		float turned = com.mopicmp.npcstudio.entity.BodyField.spineTurn(shape, shoulder);
+		// The same numbers the field gives every vertex of the torso, each part read at
+		// the height it actually hangs from. The head sits on the neck, which is the
+		// shoulder line; an arm hangs two pixels lower, and two pixels of spine is
+		// more than a pixel of travel at a deep stoop. Reading both at the neck put
+		// the arms in front of the body they belong to.
+		float neck = com.mopicmp.npcstudio.entity.BodyField.SHOULDER_Y;
+		float joint = com.mopicmp.npcstudio.entity.BodyField.SHOULDER_PIVOT_Y;
+		float forwards = com.mopicmp.npcstudio.entity.BodyField.spineLean(shape, neck) / 16f;
+		float downwards = com.mopicmp.npcstudio.entity.BodyField.spineDrop(shape, neck) / 16f;
+		float armForwards = com.mopicmp.npcstudio.entity.BodyField.spineLean(shape, joint) / 16f;
+		float armDownwards = com.mopicmp.npcstudio.entity.BodyField.spineDrop(shape, joint) / 16f;
+		float turned = com.mopicmp.npcstudio.entity.BodyField.spineTurn(shape, neck);
 
 		// Added to the pose, never assigned, like everything else in this class: an
 		// emote says where a limb is and this says how much further over.
@@ -415,9 +421,11 @@ public final class BodyBuilder {
 		// builds them as head.getChild("hat") — so they have moved already, and
 		// moving them again puts them twice as far. Confirmed against the class
 		// rather than remembered; the same trap took the sleeves once before.
-		for (ModelPart carried : new ModelPart[] { model.head, model.rightArm, model.leftArm }) {
-			carried.y += downwards;
-			carried.z += forwards;
+		model.head.y += downwards;
+		model.head.z += forwards;
+		for (ModelPart arm : new ModelPart[] { model.rightArm, model.leftArm }) {
+			arm.y += armDownwards;
+			arm.z += armForwards;
 		}
 	}
 

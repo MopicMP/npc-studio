@@ -1150,6 +1150,42 @@ public abstract class ModelPartMixin implements BendablePart {
 		float vz = corners[3].z() - corners[0].z();
 		out.set(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx);
 		if (out.lengthSquared() > 1e-8f) out.normalize();
+		npcStudio$square(out);
+	}
+
+	/**
+	 * Snaps a band's normal to the face it belongs to.
+	 *
+	 * <h2>What this is for</h2>
+	 *
+	 * A lofted limb is one continuous surface, but it is drawn as twelve bands and
+	 * each band was lit by its own tilt. A band that narrows by a fifth of a pixel
+	 * leans about ten degrees; the one below it, where the calf comes back out,
+	 * leans ten the other way. Twenty degrees apart is a visible step in brightness,
+	 * and twelve of them down a leg read as a stack of segments — which is precisely
+	 * the look the loft was built to get rid of. The silhouette was smooth and the
+	 * shading said otherwise.
+	 *
+	 * <h2>Why flat is right rather than a compromise</h2>
+	 *
+	 * Because the models this is measured against are made of axis-aligned boxes, so
+	 * every side of a limb faces exactly sideways and is lit as one flat tone all
+	 * the way down. That is the look. Minecraft shades a face at a time and always
+	 * has; a surface that shades continuously would read as smooth plastic in a
+	 * world that does not have any.
+	 *
+	 * So the shape lives in the outline, where an eye reads it, and the light stays
+	 * where the game puts it. Snapped rather than replaced, so a cap still faces up
+	 * or down and the caller does not have to know which face it has.
+	 */
+	@Unique
+	private void npcStudio$square(Vector3f out) {
+		float x = Math.abs(out.x());
+		float y = Math.abs(out.y());
+		float z = Math.abs(out.z());
+		if (y >= x && y >= z) out.set(0, Math.signum(out.y()), 0);
+		else if (x >= z) out.set(Math.signum(out.x()), 0, 0);
+		else out.set(0, 0, Math.signum(out.z()));
 	}
 
 	@Unique
