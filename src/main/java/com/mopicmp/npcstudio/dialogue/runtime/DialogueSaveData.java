@@ -85,7 +85,14 @@ public class DialogueSaveData extends SavedData {
 		Progress.CODEC.listOf().optionalFieldOf("players", List.of())
 			.forGetter(DialogueSaveData::progressList),
 		Codec.unboundedMap(Codec.STRING, DialogueCodecs.VALUE)
-			.optionalFieldOf("world_vars", Map.of()).forGetter(data -> data.worldVars)
+			.optionalFieldOf("world_vars", Map.of()).forGetter(data -> data.worldVars),
+		// What each place remembers. Last, so that every argument before it keeps the
+		// position it had — and absent in every save written before a place could hold
+		// a conversation, which is every save so far.
+		Codec.unboundedMap(Codec.STRING,
+				Codec.unboundedMap(Codec.STRING, DialogueCodecs.VALUE))
+			.optionalFieldOf("zones", Map.of())
+			.forGetter(data -> data.zoneVars)
 	).apply(instance, DialogueSaveData::new));
 
 	private static final SavedDataType<DialogueSaveData> TYPE = new SavedDataType<>(
@@ -96,16 +103,42 @@ public class DialogueSaveData extends SavedData {
 	private final Map<UUID, Set<String>> visited = new HashMap<>();
 	private final Map<String, Value> worldVars = new HashMap<>();
 
+	/**
+	 * What each place remembers, where a character would remember it herself.
+	 *
+	 * A conversation a zone started has no character, and character-scoped variables
+	 * have to live somewhere or a whole scope silently stops working in exactly the
+	 * scenes most likely to use it — "have they been told this before" is the first
+	 * thing anybody writes on a trigger.
+	 *
+	 * Keyed by the zone's own name rather than by its identifier, so the file is
+	 * readable by the person whose map it is.
+	 */
+	private final Map<String, Map<String, Value>> zoneVars = new HashMap<>();
+
+	/**
+	 * What this place remembers, as a map that can be written into.
+	 *
+	 * Handed out live rather than copied, because the engine is given it, changes it,
+	 * and hands it back — the same bargain a character's own memory strikes.
+	 */
+	public Map<String, Value> zoneVars(String zone) {
+		return zoneVars.computeIfAbsent(zone, ignored -> new HashMap<>());
+	}
+
 	public DialogueSaveData() { }
 
 	private DialogueSaveData(List<BookmarkEntry> bookmarks, List<Progress> players,
-			Map<String, Value> worldVars) {
+			Map<String, Value> worldVars, Map<String, Map<String, Value>> zones) {
 		for (BookmarkEntry entry : bookmarks) this.bookmarks.put(entry.where(), entry.node());
 		for (Progress progress : players) {
 			playerVars.put(progress.player(), new HashMap<>(progress.vars()));
 			visited.put(progress.player(), new HashSet<>(progress.visited()));
 		}
 		this.worldVars.putAll(worldVars);
+		for (var zone : zones.entrySet()) {
+			zoneVars.put(zone.getKey(), new HashMap<>(zone.getValue()));
+		}
 	}
 
 	private List<BookmarkEntry> bookmarkList() {
@@ -147,6 +180,26 @@ public class DialogueSaveData extends SavedData {
 		if (bookmarks.remove(new Bookmark(player, npc)) != null) setDirty();
 	}
 
+	/**
+	 * Every bookmark one player holds, dropped.
+	 *
+	 * <h2>Why all of them and not this document's</h2>
+	 *
+	 * Because a bookmark is not filed under a document. It is filed under who was
+	 * talking — a player and a character — and which script that character happens to
+	 * be running is a fact about the character, in the world, possibly in a chunk
+	 * nobody has loaded. So "this document's bookmarks" is a question the save cannot
+	 * answer, and answering it by scanning whichever characters happen to be loaded
+	 * would clear some of them and quietly leave the rest.
+	 *
+	 * Clearing all of them for the one person who pressed the button is both honest
+	 * and, for what the button is for, right: somebody about to replay a scene from the
+	 * top does not want to be standing in the middle of a different one either.
+	 */
+	public void clearBookmarks(UUID player) {
+		if (bookmarks.keySet().removeIf(at -> at.player().equals(player))) setDirty();
+	}
+
 	public Map<String, Value> varsOf(UUID player) {
 		return Map.copyOf(playerVars.getOrDefault(player, Map.of()));
 	}
@@ -183,5 +236,13 @@ public class DialogueSaveData extends SavedData {
 			changed = true;
 		}
 		if (changed) setDirty();
+	}
+
+	/** A place has changed its mind about something it remembers. */
+	public void rememberZone(String zone, Map<String, Value> vars) {
+		Map<String, Value> was = zoneVars.get(zone);
+		if (vars.equals(was)) return;
+		zoneVars.put(zone, new HashMap<>(vars));
+		setDirty();
 	}
 }

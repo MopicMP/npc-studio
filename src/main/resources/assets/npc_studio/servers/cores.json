@@ -1,0 +1,141 @@
+{
+  "_comment": [
+    "Where server cores come from. Addresses are data on purpose: they belong to",
+    "other people, they move, and a moved address should cost a catalogue update",
+    "rather than a release of the mod. The shape of each API is code — see the",
+    "provider classes — because the three of them do not agree on anything but",
+    "'here is a jar'.",
+    "",
+    "'allowed' is the list of hosts this mod may reach at all, redirects included.",
+    "Adding a core means adding its hosts here too, and nothing else can be",
+    "reached whatever a catalogue says.",
+    "",
+    "Paper's api.papermc.io/v2 is retired and answers 410 to everything. It is",
+    "not listed here on purpose: the replacement changed the shape of every",
+    "answer as well as the address, so this entry and PaperCore move together.",
+    "",
+    "We never host a jar ourselves: the download comes from whoever publishes it.",
+    "Re-hosting Mojang's server is against their agreement, and re-hosting anybody",
+    "else's is how a mod ends up shipping a version its author has withdrawn."
+  ],
+  "version": 1,
+  "cores": [
+    {
+      "id": "vanilla",
+      "name": "Vanilla",
+      "provider": "mojang",
+      "accepts": "datapacks",
+      "endpoint": "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
+    },
+    {
+      "id": "fabric",
+      "name": "Fabric",
+      "provider": "fabric",
+      "accepts": "mods",
+      "endpoint": "https://meta.fabricmc.net/v2"
+    },
+    {
+      "id": "paper",
+      "name": "Paper",
+      "provider": "paper",
+      "accepts": "plugins",
+      "endpoint": "https://fill.papermc.io/v3"
+    }
+  ],
+  "browse": "https://api.modrinth.com/v2",
+  "_sources": [
+    "Where plugins and mods can be looked for. Data, so that a new one is a",
+    "catalogue update — but only where the shape of its API is already known to",
+    "the code: see Modrinth and CurseForge beside Catalogue.",
+    "",
+    "CurseForge is marked as needing a key, and there is no key in this file or",
+    "anywhere else in the mod. Their terms allow an application to use the API",
+    "with a key issued to whoever runs it; one key shipped to everybody is one",
+    "account's quota and one account's name on the whole world's requests, and",
+    "it gets revoked. So the flag means 'ask the person for theirs', and until",
+    "they give one this source is listed, chooseable, and refuses to search.",
+    "",
+    "The colours are the sites' own, so that the button reads as the place it",
+    "goes to rather than as another blue word.",
+    "",
+    "'kinds' is which shelves a site actually stocks. CurseForge has a Bukkit",
+    "plugins section in its numbering, but it was left behind years ago — plugin",
+    "authors publish on SpigotMC, Hangar and Modrinth. Listing it here would mean",
+    "offering a shop with nothing on that shelf, and an empty answer reads as",
+    "'there is nothing like that' rather than 'you are asking in the wrong shop'."
+  ],
+  "sources": [
+    {
+      "id": "modrinth",
+      "name": "Modrinth",
+      "colour": "1BD96A",
+      "api": "https://api.modrinth.com/v2",
+      "kinds": [
+        "mods",
+        "plugins"
+      ]
+    },
+    {
+      "id": "curseforge",
+      "name": "CurseForge",
+      "colour": "F16436",
+      "api": "https://api.curseforge.com/v1",
+      "needsKey": true,
+      "keys": "https://console.curseforge.com/#/api-keys",
+      "kinds": [
+        "mods"
+      ]
+    },
+    {
+      "id": "npc_studio",
+      "name": "NPC Studio",
+      "colour": "4FC3F7",
+      "api": "",
+      "kinds": [
+        "mods",
+        "plugins"
+      ]
+    }
+  ],
+  "allowed": [
+    "api.modrinth.com",
+    "cdn.modrinth.com",
+    "api.curseforge.com",
+    "edge.forgecdn.net",
+    "mediafilez.forgecdn.net",
+    "media.forgecdn.net",
+    "piston-meta.mojang.com",
+    "piston-data.mojang.com",
+    "launcher.mojang.com",
+    "launchermeta.mojang.com",
+    "meta.fabricmc.net",
+    "maven.fabricmc.net",
+    "fill.papermc.io",
+    "fill-data.papermc.io"
+  ],
+  "_pictures": [
+    "Hosts pictures inside a description may be fetched from, on top of 'allowed'.",
+    "",
+    "Two lists rather than one because the two risks are not the same size. A jar",
+    "is code and is run; a picture is bytes that go through a decoder and are",
+    "drawn. So the list a jar may come from stays as short as it can be, and this",
+    "one may hold the places mod authors actually put their screenshots.",
+    "",
+    "It is still a list. A description is written by a stranger, and fetching",
+    "whatever address it names would hand this player's address to whoever wrote",
+    "it — a picture is the oldest way there is to do that. Anything not here is",
+    "shown as a line naming the host, with a button that opens it in a browser,",
+    "where the person has already decided to go."
+  ],
+  "pictures": [
+    "cdn.modrinth.com",
+    "media.forgecdn.net",
+    "edge.forgecdn.net",
+    "github.com",
+    "raw.githubusercontent.com",
+    "user-images.githubusercontent.com",
+    "objects.githubusercontent.com",
+    "i.imgur.com",
+    "imgur.com"
+  ]
+}

@@ -45,6 +45,23 @@ public final class DialogueIcon {
 	}
 
 	/**
+	 * The player's own head, for a line the player is the one saying.
+	 *
+	 * Their real skin, whatever it is, and nothing here decides otherwise. A line
+	 * spoken by the player is spoken by the person holding the keyboard, and drawing
+	 * somebody else's face over it would be the one thing that reads as a bug rather
+	 * than as a scene.
+	 */
+	public static void draw(GuiGraphicsExtractor graphics,
+			net.minecraft.client.player.AbstractClientPlayer player, int x, int y, int size) {
+		graphics.fill(x - 1, y - 1, x + size + 1, y + size + 1, FRAME);
+		// The resolved skin rather than the profile, which is what the client already
+		// holds for a player standing in the world — and which is right while a skin is
+		// still being fetched, where a profile lookup would draw Steve for a moment.
+		PlayerFaceExtractor.extractRenderState(graphics, player.getSkin(), x, y, size);
+	}
+
+	/**
 	 * Crops a face out of a skin by hand.
 	 *
 	 * The same two patches the game uses: the face at (8, 8) and the hat over it

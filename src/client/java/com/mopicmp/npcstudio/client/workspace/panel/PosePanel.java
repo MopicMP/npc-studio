@@ -424,9 +424,13 @@ public class PosePanel extends WorkspacePanel {
 			return;
 		}
 
-		graphics.text(font, Component.literal(role), 6, 5, ACCENT);
+		// The role is whatever the author called the part, so it is unbounded and the
+		// tick beside it is not. When they meet, the tick wins: it is the answer to
+		// "where am I", which the role does not help with, and it is four characters.
 		String when = Playing.head().tick() + Component.translatable("npc_studio.pose.tick").getString();
-		graphics.text(font, Component.literal(when), width - 6 - font.width(when), 5, TEXT_DIM);
+		int end = width - 6 - font.width(when);
+		graphics.text(font, Component.literal(shortened(role, end - 6 - 4)), 6, 5, ACCENT);
+		graphics.text(font, Component.literal(when), end, 5, TEXT_DIM);
 
 		drawBoneChoice(graphics, mouseX, mouseY);
 		if (bone().isEmpty()) {

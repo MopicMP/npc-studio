@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.mopicmp.npcstudio.dialogue.text.Words;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -50,12 +51,13 @@ class DialogueEngineTest {
 				.build();
 
 			var first = begin(d);
-			assertEquals(new DialogueEngine.Screen.Line("", "Good evening.", Presentation.SUBTITLE, null),
+			assertEquals(new DialogueEngine.Screen.Line("", Words.of("Good evening."),
+					Presentation.SUBTITLE, null),
 				first.screen());
 
 			var second = DialogueEngine.step(d, first.state(), new DialogueEngine.Input.Advance(), EMPTY_POCKETS);
 			assertInstanceOf(DialogueEngine.Screen.Line.class, second.screen());
-			assertEquals("Cold, is it not?", ((DialogueEngine.Screen.Line) second.screen()).text());
+			assertEquals("Cold, is it not?", ((DialogueEngine.Screen.Line) second.screen()).text().plain());
 
 			var third = DialogueEngine.step(d, second.state(), new DialogueEngine.Input.Advance(), EMPTY_POCKETS);
 			assertInstanceOf(DialogueEngine.Screen.Finished.class, third.screen());
@@ -76,7 +78,7 @@ class DialogueEngineTest {
 
 			var step = begin(d);
 
-			assertEquals("Take this.", ((DialogueEngine.Screen.Line) step.screen()).text());
+			assertEquals("Take this.", ((DialogueEngine.Screen.Line) step.screen()).text().plain());
 			assertEquals(List.of(new Effect.GiveItem("minecraft:bread", 3)), step.effects());
 			assertEquals(Value.of(true), step.state().get("met", Scope.PLAYER));
 		}
@@ -140,7 +142,7 @@ class DialogueEngineTest {
 
 			var shown = ((DialogueEngine.Screen.Choice) poor.screen()).options();
 			assertEquals(1, shown.size());
-			assertEquals("Turn back.", shown.get(0).label());
+			assertEquals("Turn back.", shown.get(0).label().plain());
 		}
 
 		@Test
@@ -156,7 +158,7 @@ class DialogueEngineTest {
 
 			var after = DialogueEngine.step(toll(), poor.state(),
 				new DialogueEngine.Input.Pick(shown.get(0).index()), EMPTY_POCKETS);
-			assertEquals("Suit yourself.", ((DialogueEngine.Screen.Line) after.screen()).text());
+			assertEquals("Suit yourself.", ((DialogueEngine.Screen.Line) after.screen()).text().plain());
 		}
 
 		@Test
@@ -273,7 +275,7 @@ class DialogueEngineTest {
 				.build();
 
 			assertEquals("I do not believe we have met.",
-				((DialogueEngine.Screen.Line) begin(d).screen()).text());
+				((DialogueEngine.Screen.Line) begin(d).screen()).text().plain());
 		}
 
 		@Test
@@ -382,7 +384,7 @@ class DialogueEngineTest {
 			}
 			b.add(line("done", "Finally.", "end")).add(new Node.End("end"));
 
-			assertEquals("Finally.", ((DialogueEngine.Screen.Line) begin(b.build()).screen()).text());
+			assertEquals("Finally.", ((DialogueEngine.Screen.Line) begin(b.build()).screen()).text().plain());
 		}
 	}
 }

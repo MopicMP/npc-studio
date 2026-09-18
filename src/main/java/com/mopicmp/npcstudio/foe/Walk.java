@@ -36,6 +36,48 @@ public final class Walk {
 	/** How little movement in a tick counts as none. */
 	private static final double CREEPING = 0.01;
 
+	/**
+	 * How many times a place is tried again before it is given up on.
+	 *
+	 * <h2>Why trying again is worth anything at all</h2>
+	 *
+	 * Because a walk that ended without arriving nearly always ended somewhere else
+	 * — she is wedged on a corner, or was shoved — and the path was worked out from
+	 * where she used to be. Asking again from where she now stands is a different
+	 * search over different ground, and it is the search that goes round the thing
+	 * she is stuck on.
+	 *
+	 * <h2>And why it is a small number</h2>
+	 *
+	 * Because the other reason a walk ends short is that the place cannot be reached
+	 * at all — somebody built a wall across the round since it was drawn — and there
+	 * is no number of tries that fixes that. Each one costs a search and a second and
+	 * a half of pushing at whatever is in the way, so three is about five seconds of
+	 * trying before she gives up on that point and goes on to the next. Long enough
+	 * to get round a corner, short enough not to look like a character who has
+	 * forgotten what she was doing.
+	 */
+	public static final int TRIES = 3;
+
+	/**
+	 * Whether a body at this position counts as having got to this block.
+	 *
+	 * The same two questions {@link #heading} asks of the last waypoint, in one place
+	 * so that "she arrived" and "the walk ended" cannot drift apart. They did: the
+	 * route treated every ending as an arrival, so a character who gave up one step
+	 * short of her last point stopped there and her graph moved on believing she had
+	 * made it.
+	 *
+	 * The height matters as much as the floor does. Somebody on the roof is not at
+	 * the doorway underneath it, and a route up a tower would otherwise call every
+	 * landing the top.
+	 */
+	public static boolean reached(int[] mark, double x, double y, double z, double within) {
+		double dx = mark[0] + 0.5 - x;
+		double dz = mark[2] + 0.5 - z;
+		return Math.sqrt(dx * dx + dz * dz) < within && Math.abs(mark[1] - y) < 1.6;
+	}
+
 	private List<int[]> path = List.of();
 	private int at;
 	private int stuck;
@@ -61,6 +103,25 @@ public final class Walk {
 
 	public boolean stuck() {
 		return stuck >= STUCK_AFTER;
+	}
+
+	/**
+	 * The waypoint she was pushing at when she stopped getting anywhere, or null.
+	 *
+	 * <h2>Why the walk has to say this and not merely that it failed</h2>
+	 *
+	 * Because a second search told only "the first one did not work" is the first
+	 * search again, and produces the same path, which fails the same way. It is not a
+	 * retry at that point; it is the same attempt made twice more slowly.
+	 *
+	 * This is the one thing the walking knows that the finding does not: which block
+	 * looked passable from a distance and turned out not to be. A gate that is shut, a
+	 * fence post the body is a hair too wide for, a mob standing in a doorway — none of
+	 * them are visible to a search of the blocks, and all of them are obvious to the
+	 * legs after a second and a half of getting nowhere.
+	 */
+	public int[] stoppedAt() {
+		return at < path.size() ? path.get(at) : null;
 	}
 
 	/** How far along, for a readout: which waypoint out of how many. */

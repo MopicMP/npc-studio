@@ -4,11 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
@@ -22,7 +18,20 @@ import com.mopicmp.npcstudio.NpcStudio;
 import net.minecraft.server.MinecraftServer;
 
 /**
- * Every costume the world knows, and where each one is filed.
+ * Every picture of one kind the world knows, and where each one is filed.
+ *
+ * <h2>Why this is not called a wardrobe any more</h2>
+ *
+ * Because it was never about clothes. What it does is keep pictures in a world's own
+ * folder, under names that are their own fingerprints, with a small list beside them
+ * saying what each is called and which shelf it is on — and that is exactly what
+ * portraits need too. The name said skins because skins were the first thing to want
+ * it.
+ *
+ * A second shelf is a second instance over a different folder. It is written that way
+ * rather than as one shared pile because the two are picked from in different windows
+ * and must not appear in each other's: a costume list full of portraits is a costume
+ * list nobody can find a costume in.
  *
  * Shared rather than kept per character, because dressing ten guards alike
  * should not mean doing the same thing ten times. It lives with the world for
@@ -49,20 +58,7 @@ import net.minecraft.server.MinecraftServer;
  * same reason — it costs almost nothing and it is the difference between an
  * afternoon and a project.
  */
-public final class SkinLibrary {
-
-	/**
-	 * Down to the millisecond, and still checked for collisions.
-	 *
-	 * Seconds were not enough and the tests said so: several changes inside one
-	 * second all wrote the same filename, so each quietly replaced the last and
-	 * the history was one entry deep. A safety net with one strand is not one.
-	 */
-	private static final DateTimeFormatter WHEN =
-		DateTimeFormatter.ofPattern("yyyy-MM-dd HH-mm-ss-SSS").withZone(ZoneId.systemDefault());
-
-	/** How many past versions of the list to keep. Generous: they are tiny. */
-	private static final int VERSIONS = 40;
+public final class PictureLibrary {
 
 	/**
 	 * One costume as the library records it.
@@ -104,28 +100,81 @@ public final class SkinLibrary {
 	}
 
 	private final Path root;
+
+	/**
+	 * What this shelf is called on disk: its pictures, its list, and its old lists.
+	 *
+	 * Three names rather than one, because the folder of pictures and the folder of
+	 * past versions cannot be the same folder and the list is a file beside both.
+	 * Passed in rather than derived from one word, so that the wardrobe keeps the
+	 * exact names it has always had — a world already holds {@code skins/} and
+	 * {@code wardrobe.json}, and renaming somebody's folders to tidy up a constructor
+	 * would be losing their work to a refactor.
+	 */
+	private final String shelf;
+
 	private final List<Entry> entries = new ArrayList<>();
 
-	public SkinLibrary(Path root) {
+	public PictureLibrary(Path root, String pictures, String list, String versions) {
 		this.root = root;
+		this.shelf = pictures;
+		this.listName = list;
+		this.versionsName = versions;
 		read();
 	}
 
-	public static SkinLibrary of(MinecraftServer server) {
-		return new SkinLibrary(server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
-			.resolve("npcstudio"));
+	private final String listName;
+	private final String versionsName;
+
+	/** The costumes: what this was for before there was anything else on a shelf. */
+	public static PictureLibrary wardrobeOf(MinecraftServer server) {
+		return wardrobeShelf(worldFolder(server));
+	}
+
+	/**
+	 * The costume shelf under a folder given by name.
+	 *
+	 * Named rather than spelled out at each call, because the three names are the
+	 * folders somebody already has pictures in — a world holds {@code skins/} and
+	 * {@code wardrobe.json} today, and a tidy-up that renamed them would be losing
+	 * their work to a refactor. One place says what they are.
+	 */
+	public static PictureLibrary wardrobeShelf(Path root) {
+		return new PictureLibrary(root, "skins", "wardrobe.json", "wardrobe");
+	}
+
+	/** The portrait shelf under a folder given by name, for the same reason. */
+	public static PictureLibrary portraitShelf(Path root) {
+		return new PictureLibrary(root, "portraits", "portraits.json", "portraits-past");
+	}
+
+	/**
+	 * The portraits, on a shelf of their own beside the costumes.
+	 *
+	 * Same folder of the world, same fingerprint naming, same never-deleted pictures,
+	 * same versioned list. What differs is only which window picks from it — see the
+	 * note at the top, which is the whole reason there are two shelves rather than one
+	 * pile with a label on each picture.
+	 */
+	public static PictureLibrary portraitsOf(MinecraftServer server) {
+		return portraitShelf(worldFolder(server));
+	}
+
+	private static Path worldFolder(MinecraftServer server) {
+		return server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+			.resolve("npcstudio");
 	}
 
 	private Path pictures() {
-		return root.resolve("skins");
+		return root.resolve(shelf);
 	}
 
 	private Path list() {
-		return root.resolve("wardrobe.json");
+		return root.resolve(listName);
 	}
 
 	private Path versions() {
-		return root.resolve("wardrobe");
+		return root.resolve(versionsName);
 	}
 
 	public List<Entry> entries() {
@@ -296,30 +345,19 @@ public final class SkinLibrary {
 
 	/** The saved versions of the list, newest first. */
 	public List<String> history() {
-		if (!Files.isDirectory(versions())) return List.of();
-		try (var files = Files.list(versions())) {
-			return files.map(path -> path.getFileName().toString())
-				.filter(name -> name.endsWith(".json"))
-				.map(name -> name.substring(0, name.length() - 5))
-				.sorted(Comparator.reverseOrder())
-				.toList();
-		} catch (Exception failed) {
-			NpcStudio.LOGGER.warn("Could not list wardrobe versions: {}", failed.toString());
-			return List.of();
-		}
+		return Kept.history(versions());
 	}
 
-	/** Puts a past version back. The pictures it names are still on disk. */
+	/**
+	 * Puts a past version back. The pictures it names are still on disk.
+	 *
+	 * The name arrives over the network and is checked by {@link Kept#find} before it is
+	 * allowed anywhere near a path — see the note there, which is the whole reason that
+	 * check is not a path join.
+	 */
 	public boolean restore(String version) {
-		// The name of a version arrives from whoever clicked, which means it
-		// arrives over the network, which means it is not to be trusted with a
-		// filesystem. A name like "../../../server" resolved happily before this
-		// check existed. Two locks: the shape of the name, and the fact that the
-		// resolved path still sits inside the folder it was supposed to.
-		if (!version.matches("[0-9 :-]{1,40}")) return false;
-		Path file = versions().resolve(version + ".json").normalize();
-		if (!file.startsWith(versions().normalize())) return false;
-		if (!Files.isRegularFile(file)) return false;
+		Path file = Kept.find(versions(), version);
+		if (file == null) return false;
 		try {
 			// Read before anything is written. Keeping the current state aside first
 			// was the obvious order and the wrong one: the copy could land on the
@@ -348,32 +386,7 @@ public final class SkinLibrary {
 	}
 
 	private void keepVersion() {
-		try {
-			if (!Files.isRegularFile(list())) return;
-			Files.createDirectories(versions());
-			// Never over an existing version, whatever the clock says. A name that
-			// collides is a version silently lost.
-			String stamp = WHEN.format(Instant.now());
-			Path target = versions().resolve(stamp + ".json");
-			for (int attempt = 1; Files.exists(target); attempt++) {
-				target = versions().resolve(stamp + "-" + attempt + ".json");
-			}
-			Files.copy(list(), target);
-			prune();
-		} catch (Exception failed) {
-			NpcStudio.LOGGER.warn("Could not keep a wardrobe version: {}", failed.toString());
-		}
-	}
-
-	private void prune() {
-		List<String> kept = history();
-		for (int i = VERSIONS; i < kept.size(); i++) {
-			try {
-				Files.deleteIfExists(versions().resolve(kept.get(i) + ".json"));
-			} catch (Exception ignored) {
-				// An old version that will not delete is nobody's problem.
-			}
-		}
+		Kept.aside(list(), versions());
 	}
 
 	private void writeList() {

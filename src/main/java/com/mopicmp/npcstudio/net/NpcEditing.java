@@ -91,6 +91,23 @@ public final class NpcEditing {
 	}
 
 	/**
+	 * Moves where a character belongs, without moving the character.
+	 *
+	 * Through the same gate as everything else here — {@link #reachable}, which is
+	 * the permission check and the distance check in one — because a packet naming an
+	 * entity and a block is a packet that must not be a way to reach across a map.
+	 */
+	public static void post(ServerPlayer player, NpcPayloads.Post order) {
+		NpcEntity npc = reachable(player, order.entityId());
+		if (npc == null) return;
+		if (!Float.isFinite(order.yaw())) return;
+		// Bounded to the world it is in. A block outside it is not somewhere anybody
+		// can stand, and it would be written into the save as though it were.
+		if (npc.level().isOutsideBuildHeight(order.at())) return;
+		npc.markPost(order.at(), order.yaw());
+	}
+
+	/**
 	 * Takes a skin from a player and gives it to the character.
 	 *
 	 * The picture is examined here before it goes anywhere, and that is a
@@ -171,7 +188,7 @@ public final class NpcEditing {
 		// a resolved profile would show them a UUID.
 		return new NpcPayloads.Details(npc.getId(), npc.getProfile().name().orElse(""),
 			npc.dialogueId(), animations, List.of(held(npc, HANDS[0]), held(npc, HANDS[1])),
-			npc.scale(), npc.watchful(), npc.endless());
+			npc.scale(), npc.watchful(), npc.endless(), npc.floating());
 	}
 
 	/** Main hand, then off hand, in the order the packet expects. */
@@ -221,8 +238,28 @@ public final class NpcEditing {
 		}
 		npc.setScale(edit.scale());
 		npc.setWatchful(edit.watchful());
+		npc.setFloating(edit.floating());
 		npc.setEndless(edit.endless());
-		player.sendOverlayMessage(Component.literal("NPC updated."));
+
+		// And a word about the one field here that can name nothing.
+		//
+		// A graph is given to a character by name. A name nothing answers to is not an
+		// error and cannot be made one — the field is legitimately empty for a
+		// character who has not been given a brain yet, and a graph may be written
+		// after the character it is for. So the character simply does nothing, which is
+		// the symptom this mod is worst at telling apart from a dozen others.
+		//
+		// The moment to say it is this one: the panel is open, the name is on the
+		// screen, and the difference between a graph and a graph misspelt is visible
+		// only while both are in front of somebody.
+		String graph = npc.dialogueId();
+		if (!graph.isEmpty()
+				&& com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry.get(graph).isEmpty()) {
+			player.sendOverlayMessage(
+				Component.translatable("npc_studio.npc.no_such_graph", graph));
+			return;
+		}
+		player.sendOverlayMessage(Component.translatable("npc_studio.npc.updated"));
 	}
 
 	/**

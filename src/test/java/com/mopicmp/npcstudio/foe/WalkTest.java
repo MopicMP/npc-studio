@@ -1,6 +1,7 @@
 package com.mopicmp.npcstudio.foe;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -179,5 +180,72 @@ class WalkTest {
 		Walk walk = new Walk();
 		for (int i = 0; i < 100; i++) walk.moved(0.5, 0.5);
 		assertTrue(!walk.stuck());
+	}
+
+	// ------------------------------------------------- arriving, and giving up
+
+	/**
+	 * Whether she is there.
+	 *
+	 * <h2>Why this question is worth a test of its own</h2>
+	 *
+	 * Because the route used not to ask it. A walk ends two ways — she gets there,
+	 * or she has been pushing at a wall for a second and a half — and the route
+	 * treated both as arriving. So a character caught on a corner stepped on to the
+	 * next point; caught on the <em>last</em> point she stopped where she stood, and
+	 * the graph moved on believing the round was walked.
+	 *
+	 * That is the shape of the report: she catches on the walls and then stands still
+	 * without reaching the end. Nothing in it looks like an error, which is why the
+	 * arithmetic is out here where it can be read.
+	 */
+	@Test
+	@DisplayName("standing on the block is being there")
+	void onIt() {
+		int[] mark = { 10, 64, 10 };
+		// The middle of the block, which is where a body ends up.
+		assertTrue(Walk.reached(mark, 10.5, 64, 10.5, Walk.ARRIVED));
+	}
+
+	@Test
+	@DisplayName("a block away is still being there, because nobody stands on a point")
+	void nearEnough() {
+		int[] mark = { 10, 64, 10 };
+		// ARRIVED is deliberately loose — a character who stops a foot short of a
+		// doorway has arrived at the doorway — and this is the number the route uses
+		// to decide the same thing, so the two cannot drift.
+		assertTrue(Walk.reached(mark, 11.5, 64, 10.5, Walk.ARRIVED));
+	}
+
+	@Test
+	@DisplayName("wedged against the wall two blocks short is not being there")
+	void shortOfIt() {
+		int[] mark = { 10, 64, 10 };
+		// The case the whole thing is about. She stopped because she could not get
+		// any further, and calling that an arrival is what lost the rest of the round.
+		assertFalse(Walk.reached(mark, 7.5, 64, 10.5, Walk.ARRIVED));
+	}
+
+	@Test
+	@DisplayName("standing on the roof is not being at the doorway underneath")
+	void aboveIt() {
+		int[] mark = { 10, 64, 10 };
+		// Flat distance alone says she is there. A route up a tower would then call
+		// every landing the top, and one over a bridge would call the water under it
+		// the far bank.
+		assertTrue(Walk.reached(mark, 10.5, 64, 10.5, Walk.ARRIVED));
+		assertFalse(Walk.reached(mark, 10.5, 68, 10.5, Walk.ARRIVED));
+		assertFalse(Walk.reached(mark, 10.5, 60, 10.5, Walk.ARRIVED));
+	}
+
+	@Test
+	@DisplayName("trying again is bounded, because some places cannot be reached at all")
+	void triesAreBounded() {
+		// A wall built across a round since it was drawn is a point no number of
+		// searches reaches. The retry has to be worth having and has to end: three is
+		// about five seconds of trying, and then she goes on to the next point rather
+		// than standing there for the life of the world.
+		assertTrue(Walk.TRIES >= 1, "one try is no retry at all");
+		assertTrue(Walk.TRIES <= 5, "more than this is a character who looks lost");
 	}
 }

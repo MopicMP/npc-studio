@@ -45,9 +45,28 @@ public final class DockLayout {
 	}
 
 	public static final class SavedDock {
+
+		/**
+		 * Which arrangement this was written by.
+		 *
+		 * Absent — nought, since Gson leaves an unmentioned int alone — in every file
+		 * written before the workspace stopped being columns. Those files describe a
+		 * thing that no longer exists: a saved arrangement of twelve tabs in a
+		 * column, restored faithfully, would put back exactly the arrangement the
+		 * work is getting rid of.
+		 *
+		 * So they are not read. Not deleted either — {@link #before} keeps the last
+		 * one, unread, because throwing away somebody's arrangement without asking
+		 * is a different thing from not using it.
+		 */
+		public int version;
+
 		public Saved root;
 		public List<SavedFloater> floating = new ArrayList<>();
 	}
+
+	/** What this code writes, and what it agrees to read. */
+	public static final int VERSION = 1;
 
 	private DockLayout() { }
 
@@ -55,6 +74,7 @@ public final class DockLayout {
 
 	public static SavedDock of(Dock dock) {
 		SavedDock written = new SavedDock();
+		written.version = VERSION;
 		written.root = write(dock.root());
 		for (Dock.Floater floater : dock.floaters()) {
 			SavedFloater one = new SavedFloater();
@@ -95,6 +115,9 @@ public final class DockLayout {
 	 */
 	public static Dock read(SavedDock written) {
 		if (written == null || written.root == null) return null;
+		// An arrangement from before the workspace stopped being columns. Reading it
+		// would restore the thing being got rid of — see the note on the field.
+		if (written.version != VERSION) return null;
 
 		Set<String> placed = new LinkedHashSet<>();
 		Dock.Node root = build(written.root, placed);
@@ -110,14 +133,20 @@ public final class DockLayout {
 			}
 		}
 
-		// Everything the saved layout never heard of, put where it belongs. This is
-		// what lets a panel be added to the mod without silently going missing for
-		// everyone who has ever moved a panel.
-		for (String id : Panels.known()) {
-			if (placed.contains(id)) continue;
-			WorkspacePanel fresh = Panels.make(id);
-			if (fresh != null) dock.send(fresh, Panels.homeOf(id));
-		}
+		// And nothing else. A panel the layout does not mention is a panel that is not
+		// open, which is now the ordinary state of nearly all of them.
+		//
+		// This used to add every unmentioned panel to its home side, so that a panel
+		// added to the mod would not go missing for anyone who had ever dragged
+		// something. Under columns that was right. Under this workspace it is a
+		// trapdoor: the shipped arrangement is the world and nothing else, so the first
+		// reload after the first save would put all seventeen back down the sides —
+		// rebuilding by hand the exact arrangement that could not fit, and calling it
+		// restoring.
+		//
+		// Nothing goes missing now because nothing needed the layout to be found: the
+		// strips down the edges, the two buttons in the top bar, the ring in the world
+		// and the panels list all reach a panel that is not open.
 		return dock;
 	}
 

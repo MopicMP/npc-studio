@@ -48,6 +48,36 @@ public final class Sense {
 	/** Whether she is on her way somewhere. */
 	public static final String WALKING = "walking";
 
+	/**
+	 * The name of the route she is walking, or empty when she is not on one.
+	 *
+	 * <h2>Why this exists beside {@link #WALKING}</h2>
+	 *
+	 * Because a flag cannot say <em>whose</em> walk. {@link Node.Walk} has to wait
+	 * for the route it ordered and no other, and a character crossing a courtyard
+	 * for some entirely different reason answers yes to "are you walking" — so a
+	 * node reading the flag would move on the moment anything at all stopped moving.
+	 *
+	 * The name is the id of the node that ordered it, which is why it is worth
+	 * offering to authors as well: {@code walking_to = "патруль"} is a readable way
+	 * of asking whether she is on her round, and there was no way to ask it before.
+	 */
+	public static final String WALKING_TO = "walking_to";
+
+	/**
+	 * The name of the route she has just finished, or empty.
+	 *
+	 * Set when the last point is reached — and also when the route is abandoned
+	 * because there is no way through or she is wedged. That is deliberate and it is
+	 * the difference between a character who gives up and a graph that hangs:
+	 * "finished" here means she is no longer at it, not that she succeeded. A wall
+	 * built across a patrol overnight should leave the guard doing the next thing
+	 * her graph says, not standing in a doorway for ever.
+	 *
+	 * Cleared once the graph has taken it — see {@link Effect.Arrived}.
+	 */
+	public static final String WALKED = "walked";
+
 	/** Whether there is anything in her main hand. Not which weapon it is. */
 	public static final String ARMED = "armed";
 
@@ -132,8 +162,8 @@ public final class Sense {
 
 	public static final List<String> KNOWN = List.of(
 		ALARM, MOOD, LEAD, LEAD_STRENGTH, LEAD_URGENCY, LEAD_SEEN, LEAD_DISTANCE,
-		WALKING, ARMED, WEAPON, HAND, DOING, PLAYER_DISTANCE, KIN, KIN_DISTANCE,
-		TARGET, TARGET_DISTANCE, IN_REACH);
+		WALKING, WALKING_TO, WALKED, ARMED, WEAPON, HAND, DOING, PLAYER_DISTANCE,
+		KIN, KIN_DISTANCE, TARGET, TARGET_DISTANCE, IN_REACH);
 
 	/**
 	 * A distance meaning "nobody" or "nothing".
@@ -161,7 +191,7 @@ public final class Sense {
 		return switch (name) {
 			case ALARM, LEAD_STRENGTH, LEAD_URGENCY, LEAD_DISTANCE, PLAYER_DISTANCE,
 				KIN_DISTANCE, TARGET_DISTANCE -> "number";
-			case MOOD, WEAPON, HAND, DOING -> "text";
+			case MOOD, WEAPON, HAND, DOING, WALKING_TO, WALKED -> "text";
 			case LEAD, LEAD_SEEN, WALKING, ARMED, KIN, TARGET, IN_REACH -> "flag";
 			default -> null;
 		};

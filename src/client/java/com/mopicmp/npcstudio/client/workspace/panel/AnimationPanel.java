@@ -58,6 +58,9 @@ public class AnimationPanel extends ScreenPanel {
 	private int slot;
 	private boolean open;
 
+	/** Said when an answer arrives for a character nobody is looking at any more. */
+	private String refused = "";
+
 	/** What is being shown on the real character, and what it was doing before. */
 	private String previewing = "";
 	private int previewOn = -1;
@@ -102,6 +105,13 @@ public class AnimationPanel extends ScreenPanel {
 	 */
 	private void apply(String picked) {
 		if (answering != null) {
+			// Whoever asked decides whether the answer still means anything — they are
+			// the ones who know what it was for. A refusal is said out loud rather than
+			// swallowed: a button that does nothing teaches nobody why.
+			if (answering.about() >= 0 && answering.about() != Workspace.selected()) {
+				refused = Component.translatable("npc_studio.animation.moved_on").getString();
+				return;
+			}
 			answering.chose().accept(picked);
 			Workspace.answered();
 			answering = null;
@@ -119,6 +129,9 @@ public class AnimationPanel extends ScreenPanel {
 	public void tick() {
 		super.tick();
 		if (Workspace.animationPick() != answering) {
+			// A new question clears the last refusal: it was about the old one, and a
+			// warning left standing over a fresh question is a warning about nothing.
+			refused = "";
 			remake();
 			return;
 		}
@@ -126,10 +139,17 @@ public class AnimationPanel extends ScreenPanel {
 
 		String want = picker.selected();
 		if (want == null) want = "";
-		if (want.equals(previewing) && previewOn == Workspace.selected()) return;
+		// Shown on whoever the question is about, not on whoever happens to be selected.
+		// The two are the same nearly always, and when they are not it is because the
+		// selection has moved — and a preview playing on one character while the answer
+		// is destined for another is the fault this pair was reported as.
+		int on = answering != null && answering.about() >= 0
+			? answering.about() : Workspace.selected();
+		if (want.equals(previewing) && previewOn == on) return;
 
 		stopPreview();
-		NpcEntity npc = Workspace.selectedNpc();
+		NpcEntity npc = minecraft.level == null || on < 0 ? null
+			: minecraft.level.getEntity(on) instanceof NpcEntity found ? found : null;
 		if (npc == null || want.isEmpty()) return;
 
 		// Remembered before it is replaced, so leaving puts the character back the
@@ -171,6 +191,12 @@ public class AnimationPanel extends ScreenPanel {
 		if (answering == null) {
 			graphics.fill(width - 10, 8, width - 4, 9, hovered ? ACCENT : TEXT_DIM);
 			graphics.fill(width - 9, 9, width - 5, 10, hovered ? ACCENT : TEXT_DIM);
+		}
+		// Why the button just did nothing. Along the bottom, out of the way of the
+		// grid: it is an answer to something somebody pressed a moment ago, not a
+		// state of the panel.
+		if (!refused.isEmpty()) {
+			graphics.text(font, Component.literal(refused), 4, height - 10, 0xFFE0A34A);
 		}
 
 		super.draw(graphics, mouseX, mouseY, delta);

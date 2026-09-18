@@ -20,8 +20,49 @@ public final class DialogueNames {
 		known = List.copyOf(graphs);
 	}
 
+	/**
+	 * Lets go of the world's graphs on the way out of it.
+	 *
+	 * These are documents kept in a world save, so the list is a fact about one
+	 * world and about no other. Carried across, the dropdowns in the next world
+	 * would offer names from the last one — and a character given one of them would
+	 * be pointed at a document that is not there, which shows up as a character
+	 * standing still with a graph named on her panel.
+	 *
+	 * The list is asked for again on arrival, so the cost of this is one frame of an
+	 * empty dropdown against a whole world of wrong ones.
+	 */
+	public static void forget() {
+		known = List.of();
+	}
+
 	public static List<String> known() {
 		return known.stream().map(com.mopicmp.npcstudio.net.EditorPayloads.Known::name).toList();
+	}
+
+	/**
+	 * The ones of one sort, for the tab that shows that sort.
+	 *
+	 * <h2>Why the list is cut here rather than at the source</h2>
+	 *
+	 * Because the server sends one listing and several places read it for several
+	 * reasons — a character's field wants what can be carried, a call wants what has
+	 * skills, a tab wants what it is a tab of. Four listings would be four things to
+	 * keep in step, and they would go out of step on the day somebody adds a fifth
+	 * reason.
+	 *
+	 * <h2>Why absent means a conversation</h2>
+	 *
+	 * A document written before documents had sorts says nothing about what it is, and
+	 * what it is, is a conversation. Left to fall through to no tab at all, every such
+	 * document would vanish from the window that lists them — which is every document
+	 * on every map made so far.
+	 */
+	public static List<String> ofKind(String kind) {
+		return known.stream()
+			.filter(graph -> kind.equals(graph.kind() == null || graph.kind().isEmpty()
+				? "scene" : graph.kind()))
+			.map(com.mopicmp.npcstudio.net.EditorPayloads.Known::name).toList();
 	}
 
 	/**

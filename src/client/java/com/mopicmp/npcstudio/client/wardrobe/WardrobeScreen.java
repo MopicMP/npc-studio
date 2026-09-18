@@ -112,7 +112,15 @@ public class WardrobeScreen extends Screen {
 	private final Screen parent;
 
 	/** The character being dressed, or -1 when this was opened just to tidy up. */
-	private final int entityId;
+	/**
+	 * The character being dressed.
+	 *
+	 * Not final, and that is the point: in a workspace panel the selection changes
+	 * while the screen is open, and the panel used to answer that by building a new
+	 * screen — which reads as the window closing and opening again, and takes with
+	 * it whatever was typed, chosen or scrolled to. Told rather than rebuilt.
+	 */
+	private int entityId;
 
 	private EditBox search;
 	private EditBox nameBox;
@@ -162,9 +170,31 @@ public class WardrobeScreen extends Screen {
 		this.entityId = entityId;
 	}
 
+	/**
+	 * Dress somebody else with this same screen.
+	 *
+	 * Returns whether anything changed, so a caller can leave the widgets alone
+	 * when nothing did — this is asked every tick.
+	 */
+	public boolean dressing(int wanted) {
+		if (wanted == entityId) return false;
+		// Whatever the last one was being shown in comes off: a costume left on
+		// follows whichever entity holds that id next.
+		TryingOn.stop();
+		entityId = wanted;
+		return true;
+	}
+
+	public int dressing() {
+		return entityId;
+	}
+
 	@Override
 	protected void init() {
-		Costumes.refresh();
+		// Only when there is nothing to show. This runs on every relayout — every
+		// drag of a splitter, every change of dock — and a request to the server per
+		// layout is a request per frame while somebody is dragging.
+		if (Costumes.all().isEmpty()) Costumes.refresh();
 		refilter();
 
 		if (search == null) {

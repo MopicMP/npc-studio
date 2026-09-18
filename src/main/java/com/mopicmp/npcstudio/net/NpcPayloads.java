@@ -126,6 +126,35 @@ public final class NpcPayloads {
 	 * the pose panel writes wherever it has ended up into the scene when somebody
 	 * actually wants it animated.
 	 */
+	/**
+	 * Where a character belongs, put somewhere by pointing at it.
+	 *
+	 * <h2>Why this is not {@link Place}</h2>
+	 *
+	 * Because it moves the post and not the character. Those look alike and are
+	 * opposite: walking her to the spot and saying "here" is two acts and leaves her
+	 * standing there, which is exactly wrong when the point of the post is the place
+	 * she will come <em>back</em> to after doing something else.
+	 *
+	 * A block rather than a position, for the same reason a named place is one: this
+	 * is somewhere to stand, and the middle of a block is what that means. The facing
+	 * is the player's own at the moment of the click — the map's start is chosen the
+	 * same way, and for the same reason: which way somebody stands is said by looking
+	 * that way, not by typing a number.
+	 */
+	public record Post(int entityId, net.minecraft.core.BlockPos at, float yaw)
+			implements CustomPacketPayload {
+		public static final Type<Post> TYPE = new Type<>(NpcStudio.id("npc_post"));
+		public static final StreamCodec<io.netty.buffer.ByteBuf, Post> CODEC =
+			StreamCodec.composite(
+				ByteBufCodecs.VAR_INT, Post::entityId,
+				net.minecraft.core.BlockPos.STREAM_CODEC, Post::at,
+				ByteBufCodecs.FLOAT, Post::yaw,
+				Post::new);
+
+		@Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+	}
+
 	public record Place(int entityId, double x, double y, double z, float yaw)
 			implements CustomPacketPayload {
 		public static final Type<Place> TYPE = new Type<>(NpcStudio.id("npc_place"));
@@ -160,7 +189,8 @@ public final class NpcPayloads {
 	 * hand, as item identifiers.
 	 */
 	public record Details(int entityId, String skin, String dialogue, List<String> animations,
-			List<String> held, float scale, boolean watchful, boolean endless)
+			List<String> held, float scale, boolean watchful, boolean endless,
+			boolean floating)
 			implements CustomPacketPayload {
 
 		public static final Type<Details> TYPE = new Type<>(NpcStudio.id("npc_details"));
@@ -182,6 +212,10 @@ public final class NpcPayloads {
 				// only thing that calls a skill is the dialogue above.
 				ByteBufCodecs.BOOL, Details::watchful,
 				ByteBufCodecs.BOOL, Details::endless,
+				// Whether she stays where she is put. A setting of one character like
+				// the two above it, and it is vanilla's own no-gravity flag underneath
+				// — see NpcEntity#floating for why nothing new is stored for it.
+				ByteBufCodecs.BOOL, Details::floating,
 				Details::new);
 
 		@Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
@@ -270,7 +304,8 @@ public final class NpcPayloads {
 
 	/** Client sends the edited NPC back. Same shape, on purpose. */
 	public record Apply(int entityId, String skin, String dialogue, List<String> animations,
-			List<String> held, float scale, boolean watchful, boolean endless)
+			List<String> held, float scale, boolean watchful, boolean endless,
+			boolean floating)
 			implements CustomPacketPayload {
 
 		public static final Type<Apply> TYPE = new Type<>(NpcStudio.id("npc_apply"));
@@ -284,6 +319,7 @@ public final class NpcPayloads {
 				ByteBufCodecs.FLOAT, Apply::scale,
 				ByteBufCodecs.BOOL, Apply::watchful,
 				ByteBufCodecs.BOOL, Apply::endless,
+				ByteBufCodecs.BOOL, Apply::floating,
 				Apply::new);
 
 		@Override public Type<? extends CustomPacketPayload> type() { return TYPE; }

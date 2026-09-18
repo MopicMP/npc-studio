@@ -85,6 +85,25 @@ public class IconTextButton extends AbstractWidget {
 		if (active) onPress.run();
 	}
 
+	/**
+	 * Enter and space press it, as they do on every other button anywhere.
+	 *
+	 * This is built on the plain widget rather than on the game's own button,
+	 * which brings the drawing and nothing else — so keyboard use has to be
+	 * written in, and it was not. Tab reached a control and then there was no way
+	 * to use it.
+	 */
+	@Override
+	public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+		if (active && (event.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
+			|| event.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER
+			|| event.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_SPACE)) {
+			onPress.run();
+			return true;
+		}
+		return super.keyPressed(event);
+	}
+
 	@Override
 	protected void updateWidgetNarration(NarrationElementOutput output) {
 		defaultButtonNarrationText(output);
@@ -109,12 +128,40 @@ public class IconTextButton extends AbstractWidget {
 	 */
 	public static int row(int left, int top, int across, int height, java.util.List<Spec> specs,
 			java.util.function.Consumer<IconTextButton> add) {
+		return row(left, top, across, height, specs, add, false);
+	}
+
+	/**
+	 * The same, for a row anchored to the bottom of a screen rather than to the top.
+	 *
+	 * <h2>Why this had to be told</h2>
+	 *
+	 * A wrapped row grows downwards, which is right for a row that starts at the top and
+	 * exactly wrong for one that sits along the bottom: the second row lands below the
+	 * screen and its buttons cannot be pressed at all. Which is the failure the wrapping
+	 * was added to prevent, arriving from the other direction.
+	 *
+	 * It is a flag rather than a guess from the coordinates, because a row four pixels
+	 * from the bottom of a panel is not the same thing as a row four pixels from the
+	 * bottom of the window, and only the caller knows which it is.
+	 *
+	 * @param upwards true when {@code top} is where the <em>last</em> row should sit
+	 */
+	public static int row(int left, int top, int across, int height, java.util.List<Spec> specs,
+			java.util.function.Consumer<IconTextButton> add, boolean upwards) {
 		if (specs.isEmpty()) return 0;
 		int gap = 4;
+		if (upwards) {
+			// Measured first, then placed: how many rows it comes to is what decides
+			// where the first one starts, and that cannot be known until it is laid out.
+			int rows = rowsFor(across, specs, gap);
+			top -= (rows - 1) * (height + gap);
+		}
 
 		int wanted = 0;
 		for (Spec spec : specs) wanted += wide(spec.label()) + gap;
 		boolean words = wanted - gap <= across;
+
 
 		int perRow = words ? 0 : Math.max(1, (across + gap) / (FOLDED + gap));
 		int x = left;
@@ -134,5 +181,14 @@ public class IconTextButton extends AbstractWidget {
 			x += span + gap;
 		}
 		return rows * height + (rows - 1) * gap;
+	}
+
+	/** How many rows a set of buttons will come to in the width there is. */
+	private static int rowsFor(int across, java.util.List<Spec> specs, int gap) {
+		int wanted = 0;
+		for (Spec spec : specs) wanted += wide(spec.label()) + gap;
+		if (wanted - gap <= across) return 1;
+		int perRow = Math.max(1, (across + gap) / (FOLDED + gap));
+		return (specs.size() + perRow - 1) / perRow;
 	}
 }

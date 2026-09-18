@@ -354,6 +354,18 @@ public final class MoveHandles {
 		if (moved && !keying && who != null) {
 			ClientPlayNetworking.send(new NpcPayloads.Place(who.getId(),
 				who.getX(), who.getY(), who.getZ(), yawOf(who)));
+
+			// One entry per gesture, made here rather than while dragging: this is the
+			// moment both ends are known, and `began` was already being kept and
+			// thrown away. A record per frame would make undo mean "back one pixel".
+			//
+			// Not for a drag that keyed the scene. That went into the document, which
+			// saves itself and has its own idea of what a step back is; telling the
+			// server to teleport the character instead would undo the animation.
+			var placing = new com.mopicmp.npcstudio.client.edit.Doings.Placing(who.getId(),
+				began.x, began.y, began.z, beganYaw,
+				who.getX(), who.getY(), who.getZ(), yawOf(who));
+			if (placing.anything()) com.mopicmp.npcstudio.client.edit.History.did(placing);
 		}
 		moved = false;
 	}

@@ -135,7 +135,21 @@ public final class Marks {
 				yield other == null ? null : other.position();
 			}
 			case Mark.POST -> npc.post();
-			default -> null;
+			// A place somebody put down on this map. The bottom middle of the block,
+			// which is where a body stands — the same reading the start point takes of
+			// the block it is stored in.
+			default -> {
+				String place = Mark.place(mark);
+				if (place == null) yield null;
+				if (!(npc.level() instanceof net.minecraft.server.level.ServerLevel level)) {
+					yield null;
+				}
+				var at = com.mopicmp.npcstudio.map.WorldSpots.of(level).at(place);
+				// A name nobody has placed, or one that has been taken away since the
+				// graph was written. Not an error: it behaves exactly as a lead that is
+				// not there, which every graph acting on a mark already has to survive.
+				yield at == null ? null : Vec3.atBottomCenterOf(at);
+			}
 		};
 	}
 
@@ -143,11 +157,23 @@ public final class Marks {
 	public static Vec3 eyes(NpcEntity npc, String mark) {
 		LivingEntity somebody = creature(npc, mark);
 		if (somebody != null) return somebody.getEyePosition();
+
+		Vec3 at = feet(npc, mark);
+		// A place is stored as the block somebody clicked on, which is a floor. The
+		// file says it above and it applies here: you walk to feet and look at faces,
+		// and a character told to look at the gate should not study its doorstep. So a
+		// place is looked at about head height, the same figure the start marker's own
+		// arrow is drawn from.
+		if (at != null && Mark.place(told(npc, mark)) != null) return at.add(0, EYE, 0);
+
 		// A lead is a guess at a place rather than a creature, and it has already
 		// been levelled to her own eye height by the watching — looking at the
 		// ground under a noise is not what anybody means by looking at it.
-		return feet(npc, mark);
+		return at;
 	}
+
+	/** About head height, for a place stored as the floor under it. */
+	private static final double EYE = 1.62;
 
 	private static Player nearest(NpcEntity npc) {
 		Player best = null;

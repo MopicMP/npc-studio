@@ -128,6 +128,13 @@ public final class Costumes {
 		return heights.getOrDefault(fingerprint, 64);
 	}
 
+	/** How wide and how tall a picture really is, or null until it has arrived. */
+	private static final Map<String, int[]> sizes = new HashMap<>();
+
+	public static int[] sizeOf(String fingerprint) {
+		return sizes.get(fingerprint);
+	}
+
 	/** The raw picture, for the code that composites rather than draws. */
 	public static byte[] pixels(String fingerprint) {
 		return pictures.get(fingerprint);
@@ -174,6 +181,11 @@ public final class Costumes {
 		try {
 			NativeImage image = NativeImage.read(new ByteArrayInputStream(png));
 			heights.put(fingerprint, image.getHeight() * 2 <= image.getWidth() ? 32 : 64);
+			// The real size, beside the skin-layout guess above it. A skin is one of two
+			// shapes and can be inferred; a portrait is whatever somebody drew, and a
+			// texture on the card cannot be asked how big it is — so it is written down
+			// while the picture is still in hand.
+			sizes.put(fingerprint, new int[] { image.getWidth(), image.getHeight() });
 			Identifier where = NpcStudio.id("costumes/" + fingerprint);
 			Minecraft.getInstance().getTextureManager()
 				.register(where, new DynamicTexture(() -> fingerprint, image));
@@ -231,6 +243,18 @@ public final class Costumes {
 	 * get right, and a small skin is a transfer of a single piece.
 	 */
 	public static void add(String label, String category, String group, byte[] png) {
+		add(label, category, group, png, WardrobePayloads.Shelves.WARDROBE);
+	}
+
+	/**
+	 * The same, onto a named shelf.
+	 *
+	 * Here rather than in a second class, because sending a picture in pieces is one
+	 * act whatever it is a picture of — and the guards on the far side are the reason
+	 * it must stay one act. See {@code WardrobePayloads.Shelves}.
+	 */
+	public static void add(String label, String category, String group, byte[] png,
+			String shelf) {
 		String upload = java.util.UUID.randomUUID().toString();
 		int part = com.mopicmp.npcstudio.net.WardrobePayloads.PART;
 		int count = Math.max(1, (png.length + part - 1) / part);
@@ -238,7 +262,7 @@ public final class Costumes {
 			int from = i * part;
 			int to = Math.min(png.length, from + part);
 			ClientPlayNetworking.send(new WardrobePayloads.AddPart(upload, i, count,
-				label, category, group, java.util.Arrays.copyOfRange(png, from, to)));
+				label, category, group, java.util.Arrays.copyOfRange(png, from, to), shelf));
 		}
 	}
 

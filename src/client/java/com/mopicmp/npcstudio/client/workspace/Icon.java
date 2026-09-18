@@ -63,16 +63,31 @@ public enum Icon {
 	RAIN(6, 5),
 	CLEAR(2, 2),
 	FOCUS(7, 5),
+	START(0, 6),
+	SPOT(1, 6),
+	MOVE_TOOL(2, 6),
+	TURN_TOOL(3, 6),
+	BRING_HERE(4, 6),
+	POSE(5, 6),
+	BENCH(6, 6),
+	SHADERS(7, 6),
 	EYES(1, 1),
-	SCALE(0, 6),
-	COPY(1, 6),
-	FOLDER(2, 6),
-	TOOL_MOVE(3, 6),
-	TOOL_ROTATE(4, 6),
-	TOOL_SCALE(5, 6),
-	HANDLES(6, 6),
-	SOLID(7, 6),
-	CLOSED(0, 7);
+	SCALE(0, 7),
+	COPY(1, 7),
+	FOLDER(2, 7),
+	TOOL_MOVE(3, 7),
+	TOOL_ROTATE(3, 6),
+	TOOL_SCALE(4, 7),
+	HANDLES(2, 6),
+	SOLID(5, 7),
+	CLOSED(6, 7),
+	SERVER(7, 7),
+	CONSOLE(0, 8),
+	POWER(1, 8),
+	STOP(2, 8),
+	ADDRESS(3, 8),
+	WARNING(4, 8),
+	SEND(5, 8);
 
 	public static final Identifier SHEET =
 		com.mopicmp.npcstudio.NpcStudio.id("textures/gui/icons.png");
@@ -81,7 +96,7 @@ public enum Icon {
 	public static final int SIZE = 16;
 
 	public static final int SHEET_WIDTH = 128;
-	public static final int SHEET_HEIGHT = 128;
+	public static final int SHEET_HEIGHT = 144;
 
 	public final int u;
 	public final int v;

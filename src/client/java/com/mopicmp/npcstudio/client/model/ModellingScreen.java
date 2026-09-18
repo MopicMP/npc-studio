@@ -444,6 +444,15 @@ public class ModellingScreen extends Screen {
 		Modelling.lightPlaced(false);
 		WorkspaceCamera.release();
 		dock.closed();
+
+		// This window has a dock of its own, and a dock is what remembers how wide a
+		// panel was pulled to. Without this the modelling window's widths were kept in
+		// memory and written down only if somebody happened to open and close the
+		// workspace afterwards — which is a setting that survives some evenings and
+		// not others, and looks from outside like it saves at random.
+		var config = com.mopicmp.npcstudio.client.NpcStudioConfig.get();
+		config.panelWidth = com.mopicmp.npcstudio.client.workspace.PanelWidths.all();
+		config.save();
 	}
 
 	@Override

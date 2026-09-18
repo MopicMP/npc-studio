@@ -79,6 +79,65 @@ public final class DialogueRegistry {
 			.distinct().sorted().toList();
 	}
 
+	/**
+	 * The ones somebody standing in a given place can see.
+	 *
+	 * <h2>What a place means here</h2>
+	 *
+	 * Empty is the map's own documents, which is every document that existed before
+	 * locations did and every document an author writes on their own world. A name is a
+	 * location's, and inside one only that location's documents answer.
+	 *
+	 * <h2>Why this cuts both ways and has to</h2>
+	 *
+	 * The obvious half is that a guest in a lesson should not see the map's documents.
+	 * The half that is easy to forget is the other one: the map's rules must not fire on
+	 * somebody standing in a lesson. A document of rules watches every player on the
+	 * server, so without this a guest walking into a lesson would drag the whole map's
+	 * ground triggers in with them — and what that looks like is a lesson behaving
+	 * strangely for reasons that are written down somewhere they will never think to
+	 * look.
+	 *
+	 * <h2>Why names stay unique across all of them</h2>
+	 *
+	 * Because a character holds the name of her document as a plain word, and a call
+	 * reaches across documents by name. Letting two places each have a "greeting" would
+	 * make every one of those words mean two things, and the place it was asked from
+	 * would have to be carried everywhere a name goes. Visibility is what was asked for;
+	 * ambiguity was not.
+	 */
+	public static List<String> names(String where) {
+		String place = where == null ? "" : where;
+		return names().stream()
+			.filter(name -> get(name).map(graph -> graph.visibleFrom(place)).orElse(false))
+			.toList();
+	}
+
+	/**
+	 * Which graphs point anything at this mark.
+	 *
+	 * Asked before a named place is taken away. A place is referred to by name and
+	 * by nothing else, so removing one leaves every graph that named it aiming at
+	 * nothing — which is deliberately not an error while a scene plays, because a
+	 * lead that is not there behaves the same and every graph has to survive that.
+	 *
+	 * At the moment of removal the silence is the wrong answer. The person taking
+	 * the gate away is the only one who can still fix the three graphs that walk to
+	 * it, and the only time they can is before they have forgotten which three.
+	 *
+	 * Both libraries are searched, and the world's copy wins over the shipped one of
+	 * the same name — the same rule {@link #get} uses, so the answer is about the
+	 * graphs that would actually run rather than about every document on the disk.
+	 */
+	public static List<String> pointedAt(String mark) {
+		List<String> found = new java.util.ArrayList<>();
+		for (String name : names()) {
+			get(name).filter(graph -> graph.marksUsed().contains(mark))
+				.ifPresent(graph -> found.add(name));
+		}
+		return List.copyOf(found);
+	}
+
 	public static void putWorld(Dialogue dialogue) {
 		WORLD.put(dialogue.id(), dialogue);
 	}
@@ -119,6 +178,127 @@ public final class DialogueRegistry {
 		register(sentry());
 		register(fighting());
 		register(duel());
+		register(errand());
+		register(errandFirst());
+		register(errandSecond());
+	}
+
+	/**
+	 * Three documents that are one errand: go and speak to two others, then come back.
+	 *
+	 * <h2>Why three and not one</h2>
+	 *
+	 * Because a character holds one dialogue and a conversation always begins at its
+	 * {@code start} — there is no per-character way in. Three characters on one document
+	 * would all begin at the same node, and there is nothing to tell them apart with:
+	 * the conditions are variables, items, boxes and visited nodes, and none of them
+	 * asks "who am I". So one document per character is the shape, not a preference.
+	 *
+	 * <h2>What ties them together</h2>
+	 *
+	 * A player variable, and that works because a player's variables are kept under the
+	 * player and nothing else — see {@code DialogueSaveData.playerVars}. What one
+	 * document writes, another reads, with no wiring between them.
+	 *
+	 * The price is one line of declaration in each of the three, and it has to say the
+	 * same type in all three. That is the whole cost of the arrangement.
+	 *
+	 * <h2>Why not "has he visited that node"</h2>
+	 *
+	 * Because visited nodes are <b>not</b> kept per document. They are bare node ids
+	 * under the player, so two documents that both have a node called {@code end} — as
+	 * several of the ones above do — see each other's. A named variable says what it
+	 * means and cannot collide by accident.
+	 *
+	 * <h2>Why two flags rather than a count of two</h2>
+	 *
+	 * Because "you have been to one of them" is a line anybody writing this will want,
+	 * and a counter cannot say which one. Two flags cost nothing and answer both.
+	 */
+	private static Dialogue errand() {
+		return Dialogue.builder("errand")
+			// All three declare all three. A document may only use names it declares,
+			// so this block is the same in each of them.
+			.variable("errand_sent", "flag")
+			.variable("errand_first_done", "flag")
+			.variable("errand_second_done", "flag")
+			.start("where?")
+			// The whole of the arrangement, in one node. Every click re-enters here,
+			// because a conversation that ended cleared its bookmark — so the errand
+			// answers for itself without anything having to remember where it was.
+			.add(new Node.Branch("where?", List.of(
+				new Node.Arm(new Condition.All(List.of(
+					new Condition.Compare("errand_first_done", Scope.PLAYER,
+						Condition.Op.EQ, Value.of(true)),
+					new Condition.Compare("errand_second_done", Scope.PLAYER,
+						Condition.Op.EQ, Value.of(true)))), "done"),
+				// One of the two. Above the plain "still waiting" arm, because the
+				// first arm that holds wins and this one is the more particular.
+				new Node.Arm(new Condition.Any(List.of(
+					new Condition.Compare("errand_first_done", Scope.PLAYER,
+						Condition.Op.EQ, Value.of(true)),
+					new Condition.Compare("errand_second_done", Scope.PLAYER,
+						Condition.Op.EQ, Value.of(true)))), "halfway"),
+				new Node.Arm(new Condition.Compare("errand_sent", Scope.PLAYER,
+					Condition.Op.EQ, Value.of(true)), "waiting")),
+				"asking"))
+
+			.add(new Node.Line("asking", "", "Speak to both of them, then come back to me.",
+				Presentation.SUBTITLE, null, "sent"))
+			// Written down before the conversation can end, so that leaving mid-sentence
+			// is not the difference between having been asked and not.
+			.add(new Node.Set("sent", "errand_sent", Scope.PLAYER, Value.of(true), "end"))
+
+			.add(new Node.Line("waiting", "", "Neither of them yet? Off you go.",
+				Presentation.SUBTITLE, null, "end"))
+			.add(new Node.Line("halfway", "", "One down. There is still the other.",
+				Presentation.SUBTITLE, null, "end"))
+			.add(new Node.Line("done", "", "Both of them. Good — now, where were we.",
+				Presentation.SUBTITLE, null, "end"))
+			.add(new Node.End("end"))
+			.build();
+	}
+
+	/** The first of the two to be visited. The second is the same with one name changed. */
+	private static Dialogue errandFirst() {
+		return errandStop("errand_first", "errand_first_done");
+	}
+
+	private static Dialogue errandSecond() {
+		return errandStop("errand_second", "errand_second_done");
+	}
+
+	/**
+	 * One of the two people the errand sends you to.
+	 *
+	 * Written once for both, because they differ by a name. That is worth doing here
+	 * and worth <em>not</em> doing in the editor: two graphs that look alike are two
+	 * graphs somebody can edit apart, and this pair is meant to be edited apart — they
+	 * are different people saying different things.
+	 */
+	private static Dialogue errandStop(String id, String flag) {
+		return Dialogue.builder(id)
+			.variable("errand_sent", "flag")
+			.variable("errand_first_done", "flag")
+			.variable("errand_second_done", "flag")
+			.start("expected?")
+			// Nothing to say until the first one has sent you. Without this arm, walking
+			// up to these two before the errand exists gives away the scene.
+			.add(new Node.Branch("expected?", List.of(
+				new Node.Arm(new Condition.Compare(flag, Scope.PLAYER,
+					Condition.Op.EQ, Value.of(true)), "again"),
+				new Node.Arm(new Condition.Compare("errand_sent", Scope.PLAYER,
+					Condition.Op.EQ, Value.of(true)), "expecting")),
+				"stranger"))
+
+			.add(new Node.Line("stranger", "", "Mm.", Presentation.SUBTITLE, null, "end"))
+			.add(new Node.Line("expecting", "", "Ah — you were sent. Here is what I know.",
+				Presentation.SUBTITLE, null, "told"))
+			.add(new Node.Set("told", flag, Scope.PLAYER, Value.of(true), "end"))
+			.add(new Node.Line("again", "", "I have told you what I know.",
+				Presentation.SUBTITLE, null, "end"))
+			.add(new Node.End("end"))
+			.build();
 	}
 
 	/**

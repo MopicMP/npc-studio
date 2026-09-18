@@ -22,19 +22,19 @@ import net.minecraft.server.level.ServerPlayer;
  */
 public final class Wardrobes {
 
-	private static SkinLibrary library;
+	private static PictureLibrary library;
 
 	private Wardrobes() { }
 
 	public static void open(MinecraftServer server) {
-		library = SkinLibrary.of(server);
+		library = PictureLibrary.wardrobeOf(server);
 	}
 
 	public static void close() {
 		library = null;
 	}
 
-	public static SkinLibrary library() {
+	public static PictureLibrary library() {
 		return library;
 	}
 
@@ -60,7 +60,7 @@ public final class Wardrobes {
 	public static void send(ServerPlayer player) {
 		if (library == null) return;
 		List<WardrobePayloads.Costume> costumes = new ArrayList<>();
-		for (SkinLibrary.Entry entry : library.entries()) {
+		for (PictureLibrary.Entry entry : library.entries()) {
 			costumes.add(describe(entry));
 		}
 		ServerPlayNetworking.send(player, new WardrobePayloads.Library(costumes));
@@ -82,7 +82,7 @@ public final class Wardrobes {
 	private static void sendMarks(ServerPlayer player) {
 		List<WardrobePayloads.Mark> batch = new ArrayList<>();
 		int weight = 0;
-		for (SkinLibrary.Entry entry : library.entries()) {
+		for (PictureLibrary.Entry entry : library.entries()) {
 			if (entry.face().isNone()) continue;
 			String mask = entry.face().encode();
 			int size = mask.length() * 2 + entry.id().length() * 2 + 8;
@@ -106,7 +106,7 @@ public final class Wardrobes {
 	 * a few dozen bytes rather than a few thousand — so a screen can say "blinking
 	 * will work on this one" before anything has been downloaded.
 	 */
-	private static WardrobePayloads.Costume describe(SkinLibrary.Entry entry) {
+	private static WardrobePayloads.Costume describe(PictureLibrary.Entry entry) {
 		byte[] png = library.picture(entry.fingerprint());
 		int width = png == null ? 64 : SkinBytes.widthOf(png);
 		return new WardrobePayloads.Costume(entry.id(), entry.label(), entry.category(),
@@ -118,11 +118,16 @@ public final class Wardrobes {
 		// Only ever a name we already know. A fingerprint from the network is not
 		// allowed to become a path — that is how a request for a costume turns
 		// into a request for somebody's server files.
-		boolean known = library.entries().stream()
-			.anyMatch(entry -> entry.fingerprint().equals(fingerprint));
-		if (!known) return;
+		//
+		// Both shelves are looked on, and that widens the book rather than the door:
+		// what is allowed is still exactly "a picture this world has a record of". A
+		// portrait is asked for by the same packet because it is the same question,
+		// and refusing it here would have meant a second identical path with a second
+		// chance to get this check wrong.
+		PictureLibrary shelf = shelfHolding(fingerprint);
+		if (shelf == null) return;
 
-		byte[] png = library.picture(fingerprint);
+		byte[] png = shelf.picture(fingerprint);
 		if (png == null) return;
 
 		int count = Math.max(1, (png.length + WardrobePayloads.PART - 1) / WardrobePayloads.PART);
@@ -191,9 +196,30 @@ public final class Wardrobes {
 			player.sendOverlayMessage(Component.literal(refused));
 			return;
 		}
-		library.add(part.label().isBlank() ? "costume" : part.label().trim(),
+		// Which shelf it lands on, and which list comes back. The upload itself is
+		// one path for both, deliberately: its guards are the ones that stop a
+		// stranger filling a server's memory, and a second copy of them is a second
+		// copy to get wrong. See WardrobePayloads.Shelves.
+		PictureLibrary shelf = shelfNamed(part.shelf());
+		if (shelf == null) return;
+		shelf.add(part.label().isBlank() ? fallbackName(part.shelf()) : part.label().trim(),
 			part.category().trim(), part.group().trim(), png);
-		send(player);
+		tell(player, part.shelf());
+	}
+
+	/** The shelf a packet named, or null when this world has not opened it. */
+	private static PictureLibrary shelfNamed(String shelf) {
+		return WardrobePayloads.Shelves.portraits(shelf) ? Portraits.shelf() : library;
+	}
+
+	private static String fallbackName(String shelf) {
+		return WardrobePayloads.Shelves.portraits(shelf) ? "portrait" : "costume";
+	}
+
+	/** The whole list back, from whichever shelf was just changed. */
+	private static void tell(ServerPlayer player, String shelf) {
+		if (WardrobePayloads.Shelves.portraits(shelf)) Portraits.send(player);
+		else send(player);
 	}
 
 	/** A skin arriving a piece at a time, and who is sending it. */
@@ -211,12 +237,26 @@ public final class Wardrobes {
 		new java.util.concurrent.ConcurrentHashMap<>();
 
 	/** Dropped when a player leaves, so a transfer nobody finished is not kept. */
+	/** Whichever shelf has a record of this picture, or null when neither does. */
+	private static PictureLibrary shelfHolding(String fingerprint) {
+		if (has(library, fingerprint)) return library;
+		PictureLibrary portraits = Portraits.shelf();
+		return has(portraits, fingerprint) ? portraits : null;
+	}
+
+	private static boolean has(PictureLibrary shelf, String fingerprint) {
+		return shelf != null && shelf.entries().stream()
+			.anyMatch(entry -> entry.fingerprint().equals(fingerprint));
+	}
+
 	public static void forget(ServerPlayer player) {
 		uploads.remove(player.getUUID());
 	}
 
 	public static void edit(ServerPlayer player, WardrobePayloads.Edit order) {
 		if (!allowed(player)) return;
+		PictureLibrary shelf = shelfNamed(order.shelf());
+		if (shelf == null) return;
 
 		switch (order.verb()) {
 			case ADD -> {
@@ -225,23 +265,23 @@ public final class Wardrobes {
 					player.sendOverlayMessage(Component.literal(refused));
 					return;
 				}
-				library.add(order.label().isBlank() ? "costume" : order.label().trim(),
+				shelf.add(order.label().isBlank() ? fallbackName(order.shelf()) : order.label().trim(),
 					order.category().trim(), order.group().trim(), order.pixels());
 			}
-			case REMOVE -> library.remove(order.ids());
-			case COPY -> library.copy(order.ids(), order.category().trim(), order.group().trim());
-			case REFILE -> library.refile(order.ids(), order.category().trim(), order.group().trim());
+			case REMOVE -> shelf.remove(order.ids());
+			case COPY -> shelf.copy(order.ids(), order.category().trim(), order.group().trim());
+			case REFILE -> shelf.refile(order.ids(), order.category().trim(), order.group().trim());
 			case RENAME -> {
-				if (!order.ids().isEmpty()) library.rename(order.ids().get(0), order.label().trim());
+				if (!order.ids().isEmpty()) shelf.rename(order.ids().get(0), order.label().trim());
 			}
-			case DROP_CATEGORY -> library.dropCategory(order.category().trim(), order.group().trim());
+			case DROP_CATEGORY -> shelf.dropCategory(order.category().trim(), order.group().trim());
 			case RESTORE -> {
-				if (!library.restore(order.label())) {
+				if (!shelf.restore(order.label())) {
 					player.sendOverlayMessage(Component.literal("No such version."));
 				}
 			}
 		}
-		send(player);
+		tell(player, order.shelf());
 	}
 
 	/**

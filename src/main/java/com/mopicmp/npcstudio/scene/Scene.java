@@ -191,6 +191,22 @@ public record Scene(String name, int length, List<Role> cast, List<Track> tracks
 	 *
 	 * The verb the editor uses for almost everything: moving a bone with the
 	 * cursor somewhere is this, three times.
+	 *
+	 * <h2>It does not ask whether the part exists, and that is on purpose</h2>
+	 *
+	 * Written down because it looks like an oversight and is not. A guard was added
+	 * here on the reasoning that a track naming nobody in the cast belongs to nobody,
+	 * and eight tests said otherwise at once — which was the right answer.
+	 *
+	 * The two lists are not one list. A {@link Role} binds a name to something in the
+	 * world: who is playing the guard. A {@link Track} moves a name. Animating "the
+	 * guard" before anybody has been cast as the guard is an ordinary way to work,
+	 * and {@code valueAt} answers for a name with no part on purpose for the same
+	 * reason.
+	 *
+	 * What {@link #withoutRole} and {@link #renaming} do — carrying tracks with the
+	 * part they name — is those operations being tidy about the thing they are doing,
+	 * not evidence of a rule holding across the whole document.
 	 */
 	public Scene keyed(String subject, String channel, Key key) {
 		Track track = track(subject, channel);

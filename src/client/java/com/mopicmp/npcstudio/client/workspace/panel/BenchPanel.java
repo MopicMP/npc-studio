@@ -38,6 +38,19 @@ import net.minecraft.network.chat.Component;
  */
 public class BenchPanel extends WorkspacePanel {
 
+	/**
+	 * The panel this was reported broken on.
+	 *
+	 * "Work in it full screen and it is fine; in a small window it is impossible."
+	 * That is not a complaint about this panel being badly laid out — it is what
+	 * blocks of a program are. They are read by seeing which sits inside which, and
+	 * a column two hundred pixels wide has no inside.
+	 */
+	@Override
+	public boolean wholeWindow() {
+		return true;
+	}
+
 	private static final int PAD = 8;
 	private static final int ROW = 18;
 	private static final int GAP = 4;

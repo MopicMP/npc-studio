@@ -24,7 +24,7 @@ import com.mopicmp.npcstudio.entity.EyeMap;
  * reading the code is what produced it. It was found by opening the file. This
  * test opens the file.
  */
-class SkinLibraryFaceTest {
+class PictureLibraryFaceTest {
 
 	@TempDir
 	Path root;
@@ -35,13 +35,13 @@ class SkinLibraryFaceTest {
 	@Test
 	@DisplayName("a marked face is still there after the wardrobe is written and read")
 	void aMarkedFaceSurvivesTheFile() throws Exception {
-		SkinLibrary library = new SkinLibrary(root);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
 		String id = library.add("a face", "", "", new byte[0]).id();
 
 		library.relook(id, com.mopicmp.npcstudio.entity.FaceMask.of(MARKED));
 		assertTrue(Files.exists(root.resolve("wardrobe.json")), "nothing was written");
 
-		SkinLibrary reopened = new SkinLibrary(root);
+		PictureLibrary reopened = PictureLibrary.wardrobeShelf(root);
 		EyeMap back = reopened.find(id).orElseThrow().eyes();
 
 		assertEquals(MARKED.eyes(), back.eyes(), "the eyes came back different");
@@ -60,12 +60,12 @@ class SkinLibraryFaceTest {
 	@Test
 	@DisplayName("a mask with every bit set comes back with every bit set")
 	void theTopBitSurvives() throws Exception {
-		SkinLibrary library = new SkinLibrary(root);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
 		String id = library.add("every pixel", "", "", new byte[0]).id();
 
 		library.relook(id, com.mopicmp.npcstudio.entity.FaceMask.of(
 			new EyeMap(-1L, -1L, -1L, true)));
-		EyeMap back = new SkinLibrary(root).find(id).orElseThrow().eyes();
+		EyeMap back = PictureLibrary.wardrobeShelf(root).find(id).orElseThrow().eyes();
 
 		assertEquals(-1L, back.eyes(), "the eyes lost a bit");
 		assertEquals(-1L, back.whites(), "the whites lost a bit");
@@ -83,7 +83,7 @@ class SkinLibraryFaceTest {
 	@Test
 	@DisplayName("a face marked at native size comes back at native size")
 	void aFineMaskSurvivesTheFile() throws Exception {
-		SkinLibrary library = new SkinLibrary(root);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
 		String id = library.add("an HD face", "", "", new byte[0]).id();
 
 		int size = 128;
@@ -103,7 +103,7 @@ class SkinLibraryFaceTest {
 		var fine = new com.mopicmp.npcstudio.entity.FaceMask(size, masks, true);
 
 		library.relook(id, fine);
-		var back = new SkinLibrary(root).find(id).orElseThrow().face();
+		var back = PictureLibrary.wardrobeShelf(root).find(id).orElseThrow().face();
 
 		assertEquals(fine, back, "the fine mask did not survive the file");
 		assertEquals(size, back.size(), "and it has to come back the size it was made");
@@ -127,7 +127,7 @@ class SkinLibraryFaceTest {
 	@Test
 	@DisplayName("renaming, refiling and copying a costume keep the face it was marked with")
 	void theFaceSurvivesEverythingElse() throws Exception {
-		SkinLibrary library = new SkinLibrary(root);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
 		String id = library.add("before", "shelf", "group", new byte[0]).id();
 		var marked = com.mopicmp.npcstudio.entity.FaceMask.of(MARKED);
 		library.relook(id, marked);
@@ -148,14 +148,14 @@ class SkinLibraryFaceTest {
 			"emptying a category lost the face");
 
 		// And all of it is still true once the file has been round-tripped.
-		assertEquals(marked, new SkinLibrary(root).find(id).orElseThrow().face());
+		assertEquals(marked, PictureLibrary.wardrobeShelf(root).find(id).orElseThrow().face());
 	}
 
 	/** A costume nobody has looked at stays as short in the file as it was. */
 	@Test
 	@DisplayName("a costume nobody marked writes no face at all")
 	void anUnmarkedCostumeWritesNothing() throws Exception {
-		SkinLibrary library = new SkinLibrary(root);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
 		library.add("plain", "", "", new byte[0]);
 		assertTrue(!Files.readString(root.resolve("wardrobe.json")).contains("\"face\""),
 			"an unmarked costume wrote a face anyway");

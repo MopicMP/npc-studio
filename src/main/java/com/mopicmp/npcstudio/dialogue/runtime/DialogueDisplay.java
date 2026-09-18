@@ -28,34 +28,84 @@ import net.minecraft.server.level.ServerPlayer;
  */
 public final class DialogueDisplay {
 
-	/**
-	 * How far a player can wander before the line is taken down.
-	 *
-	 * A little further than the reach for talking to an NPC, so that shuffling
-	 * about while reading does not make the text flicker away and back.
-	 */
-	private static final double RANGE = 12.0;
-	private static final double RANGE_SQUARED = RANGE * RANGE;
-
 	/** Checked four times a second: often enough to feel immediate, rarely enough to be free. */
 	private static final int EVERY_TICKS = 5;
 
-	/**
-	 * How long a line stays up with nobody touching it.
-	 *
-	 * Ten seconds is long enough to read a sentence twice and short enough that a
-	 * player who wandered off mentally is not left with text on their screen.
+	/*
+	 * There were two constants here — twelve blocks of wandering and ten seconds of
+	 * silence — and both were opinions dressed as facts. They still exist, to the
+	 * number, as the ordinary values in {@link com.mopicmp.npcstudio.dialogue.Manner},
+	 * so nothing anybody has already built changes. What has changed is who holds
+	 * them: the document, which is the only thing that knows whether this is a
+	 * shopkeeper's greeting or the last line of a quest.
 	 */
-	private static final long IDLE_MILLIS = 10_000;
 
-	private record Shown(int npcId, long since, boolean fullscreen) { }
+	/**
+	 * What is on somebody's screen, and the terms it is on.
+	 *
+	 * The terms are copied in rather than looked up when they are needed, and that is
+	 * deliberate: the line already left, and it should go away on the terms it arrived
+	 * under. Fetching them again would let somebody editing the document in another
+	 * window pull a line off a player's screen halfway through reading it.
+	 */
+	private record Shown(int npcId, long since, boolean fullscreen,
+			com.mopicmp.npcstudio.dialogue.Manner showing, int lasts, String zone) { }
 
 	private static final Map<UUID, Shown> SHOWING = new HashMap<>();
 
 	private DialogueDisplay() { }
 
-	public static void showing(ServerPlayer player, NpcEntity npc, boolean fullscreen) {
-		SHOWING.put(player.getUUID(), new Shown(npc.getId(), System.currentTimeMillis(), fullscreen));
+	public static void showing(ServerPlayer player, int npcId, boolean fullscreen,
+			com.mopicmp.npcstudio.dialogue.Manner showing) {
+		showing(player, npcId, fullscreen, showing,
+			com.mopicmp.npcstudio.dialogue.Node.Line.USES_DOCUMENT, "");
+	}
+
+	public static void showing(ServerPlayer player, int npcId, boolean fullscreen,
+			com.mopicmp.npcstudio.dialogue.Manner showing, String zone) {
+		showing(player, npcId, fullscreen, showing,
+			com.mopicmp.npcstudio.dialogue.Node.Line.USES_DOCUMENT, zone);
+	}
+
+	/**
+	 * The same, told what this one line asked for.
+	 *
+	 * @param lasts ticks, or nought to leave it to the document. A line may want its
+	 *              own answer because the last line before something happens is a
+	 *              different kind of line: it is not waiting to be read and clicked
+	 *              past, it is waiting for the scene to move.
+	 */
+	public static void showing(ServerPlayer player, int npcId, boolean fullscreen,
+			com.mopicmp.npcstudio.dialogue.Manner showing, int lasts) {
+		showing(player, npcId, fullscreen, showing, lasts, "");
+	}
+
+	/**
+	 * The same, told which place is speaking, when a place is.
+	 *
+	 * <h2>Why the screen has to know this</h2>
+	 *
+	 * Because a line is moved on by pointing at whoever said it, and a place cannot
+	 * be pointed at. So the gesture has to be "carry on with whatever is being said
+	 * to me", and the only thing that knows what that is, is the screen it is being
+	 * said on. Without the name here the server would receive "carry on" and have
+	 * nothing to carry on with — which is precisely the state a zone conversation
+	 * got stuck in: a line on screen, no character to click, and nothing anywhere
+	 * able to take it further.
+	 *
+	 * @param zone the document and the way in, or empty when a character is speaking
+	 */
+	public static void showing(ServerPlayer player, int npcId, boolean fullscreen,
+			com.mopicmp.npcstudio.dialogue.Manner showing, int lasts, String zone) {
+		SHOWING.put(player.getUUID(), new Shown(npcId, System.currentTimeMillis(),
+			fullscreen, showing == null ? com.mopicmp.npcstudio.dialogue.Manner.ORDINARY : showing,
+			Math.max(0, lasts), zone == null ? "" : zone));
+	}
+
+	/** Which place is speaking to this player, or empty when it is a character or nobody. */
+	public static String zoneOn(ServerPlayer player) {
+		Shown shown = SHOWING.get(player.getUUID());
+		return shown == null ? "" : shown.zone();
 	}
 
 	/**
@@ -67,6 +117,18 @@ public final class DialogueDisplay {
 	 * can no longer see. So the same line is spoken again, and only a click while
 	 * it is still up moves the conversation on.
 	 */
+	/**
+	 * Whether this player has anything on screen at all.
+	 *
+	 * Asked by a place before it speaks. A trigger waits for the bar rather than
+	 * taking it, so that walking past a doorway can never cut a character off in the
+	 * middle of a sentence — and waiting costs nothing, because the player is standing
+	 * in the box and will be asked again a quarter of a second later.
+	 */
+	public static boolean isShowing(ServerPlayer player) {
+		return SHOWING.containsKey(player.getUUID());
+	}
+
 	public static boolean isShowing(ServerPlayer player, NpcEntity npc) {
 		Shown shown = SHOWING.get(player.getUUID());
 		return shown != null && shown.npcId() == npc.getId();
@@ -111,12 +173,34 @@ public final class DialogueDisplay {
 	 * was left, repeating the line rather than skipping it.
 	 */
 	private static boolean stillWatching(ServerPlayer player, Shown shown, long now) {
+		var terms = shown.showing();
 		// The idle timer is for a line the player can walk away from. A full-screen
 		// conversation has their whole attention and no way to click the NPC, so
 		// timing it out would tear the screen away from someone still reading.
-		if (!shown.fullscreen() && now - shown.since() > IDLE_MILLIS) return false;
+		//
+		// A document may also say the line waits for ever, which is what a scene
+		// wants when the next thing that happens is the player answering. Expressed
+		// as nought rather than as an enormous number, so it is a decision in the
+		// file rather than a bet on nobody reading slowly.
+		// What the line itself asked for wins, and it wins even over "never" — a line
+		// that named a length named it on purpose, and the document's answer is the one
+		// for lines that said nothing.
+		//
+		// It applies in every mode, unlike the document's, because a line that asked to
+		// be taken away after four seconds means it whether it is a bar or a screen.
+		if (shown.lasts() > 0) {
+			if (now - shown.since() > shown.lasts() * 50L) return false;
+		} else if (!shown.fullscreen() && !terms.staysUp()
+				&& now - shown.since() > terms.idleTicks() * 50L) {
+			return false;
+		}
+		// A line a place is saying has no body to lose, so the questions about one are
+		// not asked of it. Minus one is how "nobody is speaking" has always been sent.
+		if (shown.npcId() < 0) return true;
 		var entity = player.level().getEntity(shown.npcId());
 		if (!(entity instanceof NpcEntity npc) || !npc.isAlive()) return false;
-		return npc.distanceToSqr(player) <= RANGE_SQUARED;
+		// And the same for walking away: a document may say the line does not care.
+		if (terms.survivesDistance()) return true;
+		return npc.distanceToSqr(player) <= terms.range() * terms.range();
 	}
 }

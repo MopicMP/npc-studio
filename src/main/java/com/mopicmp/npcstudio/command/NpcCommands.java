@@ -82,6 +82,12 @@ public final class NpcCommands {
 		float facing = caller == null ? 0f : caller.getYRot() + 180f;
 		npc.snapTo(where.x, where.y, where.z, facing, 0f);
 		npc.setSkin(skin);
+		// Where she belongs, said at the one moment it is unambiguous. It is otherwise
+		// settled on her first tick, which is the same answer for a character placed
+		// today and the wrong one for a character placed before that existed: her first
+		// tick after the update is wherever her graph had already walked her to, and a
+		// guard whose home is the end of her own round never comes back from it.
+		npc.markPost();
 		level.addFreshEntity(npc);
 
 		source.sendSuccess(() -> Component.literal("Placed an NPC wearing " + skin + "'s skin."), true);

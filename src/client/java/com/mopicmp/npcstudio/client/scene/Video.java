@@ -160,14 +160,20 @@ public final class Video {
 	}
 
 	private static boolean runs(String named) {
+		Process asked = null;
 		try {
-			Process asked = new ProcessBuilder(named, "-version")
-				.redirectErrorStream(true).start();
+			asked = new ProcessBuilder(named, "-version").redirectErrorStream(true).start();
 			asked.getInputStream().readAllBytes();
 			return asked.waitFor() == 0;
 		} catch (IOException | InterruptedException notThere) {
 			if (notThere instanceof InterruptedException) Thread.currentThread().interrupt();
 			return false;
+		} finally {
+			// Tidying rather than a fault anybody has met: asking a program for its
+			// version means it has already exited by the time we look. The one path that
+			// does not is the interrupted one, where the wait is abandoned and the
+			// process would be left running with nobody holding it.
+			if (asked != null && asked.isAlive()) asked.destroy();
 		}
 	}
 

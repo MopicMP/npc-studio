@@ -231,6 +231,20 @@ public abstract class ScreenPanel extends WorkspacePanel {
 		return inner != null && inner.keyPressed(event);
 	}
 
+	/**
+	 * Asked of the screen, not of this.
+	 *
+	 * A panel routes clicks straight to the screen inside rather than through the
+	 * container machinery, so this panel's own idea of what is focused is always
+	 * nothing — the screen keeps that. Left to the default, a workspace would think
+	 * nobody was ever typing in any of the five editors that live in here, which is
+	 * every place there is a text box.
+	 */
+	@Override
+	public boolean typing() {
+		return inner != null && Typing.into(inner);
+	}
+
 	@Override
 	public boolean keyReleased(KeyEvent event) {
 		return inner != null && inner.keyReleased(event);

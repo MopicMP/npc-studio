@@ -105,7 +105,13 @@ public final class WardrobePayloads {
 	 * than left to work it out.
 	 */
 	public record Edit(Verb verb, List<String> ids, String label, String category,
-			String group, byte[] pixels) implements CustomPacketPayload {
+			String group, byte[] pixels, String shelf) implements CustomPacketPayload {
+
+		/** Everything sent before there was more than one shelf meant the costumes. */
+		public Edit(Verb verb, List<String> ids, String label, String category,
+				String group, byte[] pixels) {
+			this(verb, ids, label, category, group, pixels, Shelves.WARDROBE);
+		}
 
 		public enum Verb { ADD, REMOVE, REFILE, RENAME, DROP_CATEGORY, RESTORE, COPY }
 
@@ -131,6 +137,7 @@ public final class WardrobePayloads {
 				ByteBufCodecs.STRING_UTF8, Edit::category,
 				ByteBufCodecs.STRING_UTF8, Edit::group,
 				ByteBufCodecs.byteArray(384 * 1024), Edit::pixels,
+				ByteBufCodecs.STRING_UTF8, Edit::shelf,
 				Edit::new);
 
 		@Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
@@ -167,7 +174,14 @@ public final class WardrobePayloads {
 	 * @param count  how many pieces there are altogether
 	 */
 	public record AddPart(String upload, int index, int count, String label,
-			String category, String group, byte[] part) implements CustomPacketPayload {
+			String category, String group, byte[] part, String shelf)
+			implements CustomPacketPayload {
+
+		/** Everything sent before there was more than one shelf meant the costumes. */
+		public AddPart(String upload, int index, int count, String label,
+				String category, String group, byte[] part) {
+			this(upload, index, count, label, category, group, part, Shelves.WARDROBE);
+		}
 
 		public static final Type<AddPart> TYPE = new Type<>(NpcStudio.id("wardrobe_part"));
 		public static final StreamCodec<io.netty.buffer.ByteBuf, AddPart> CODEC =
@@ -179,9 +193,34 @@ public final class WardrobePayloads {
 				ByteBufCodecs.STRING_UTF8, AddPart::category,
 				ByteBufCodecs.STRING_UTF8, AddPart::group,
 				ByteBufCodecs.byteArray(PART), AddPart::part,
+				ByteBufCodecs.STRING_UTF8, AddPart::shelf,
 				AddPart::new);
 
 		@Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+	}
+
+	/**
+	 * Which shelf of the world's cupboard a packet is about.
+	 *
+	 * A word rather than a number, because it appears in a packet from a stranger and
+	 * an unknown word has an obvious safe reading — the costumes, which is what every
+	 * packet meant before there was a second shelf. An unknown *number* would be an
+	 * index into an array.
+	 *
+	 * Two shelves, one upload path. Duplicating the chunked upload for portraits would
+	 * have meant duplicating its guards — the piece count, the index, the size, the
+	 * one-transfer-per-player rule — and those are the checks that stop a stranger
+	 * filling a server's memory. One of them written twice is one of them to get wrong.
+	 */
+	public static final class Shelves {
+		private Shelves() { }
+
+		public static final String WARDROBE = "";
+		public static final String PORTRAITS = "portraits";
+
+		public static boolean portraits(String shelf) {
+			return PORTRAITS.equals(shelf);
+		}
 	}
 
 	/**

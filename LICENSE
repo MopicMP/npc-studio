@@ -1,4 +1,4 @@
-NPC Studio License, version 1.0
+NPC Studio License, version 1.1
 
 Copyright (c) 2026 MopicMP. All rights reserved, except as granted below.
 
@@ -22,18 +22,52 @@ software and its associated files, to:
       under the same conditions as (b);
 
   (d) modify it for your own private use, and for the purpose of preparing
-      contributions to be offered back to this project.
+      contributions to be offered back to this project;
+
+  (e) copy parts of the source code into a mod of your own, including a mod you
+      sell, provided that:
+
+        (i)   your mod is its own work. This code may be an ingredient in it,
+              not its substance. A mod whose point is what NPC Studio does, and
+              which carries NPC Studio's code in order to do it, is a
+              republication under section 2(b) however much was rewritten;
+
+        (ii)  NPC Studio and its author are named where a person will find
+              them — your credits, your project page, or a header in the copied
+              file. This is a condition and not a courtesy: without it, the
+              permission in (e) does not apply;
+
+        (iii) you do not present the copied code as your own work.
+
+      This permission covers source code and the data formats defined in it. It
+      does not cover textures, models, icons, sounds or animations, and it never
+      covers third-party content (section 5);
+
+  (f) write add-ons, integrations and ports against this mod's API, and
+      distribute them on whatever terms you choose, including paid ones. A mod
+      that depends on NPC Studio without carrying its code is not restricted by
+      section 2.
+
+Ideas are outside this license, and could not be placed inside it: copyright
+covers this particular code and these particular assets, not the notions behind
+them. Branching dialogue, an editor for it inside the game, a wardrobe of
+skins — take the idea and build your own. No permission is given because none
+is required. Saying where an idea came from costs nothing and is appreciated;
+unlike (e)(ii), that one is a courtesy and not a condition.
 
 
 2. WHAT YOU MAY NOT DO WITHOUT WRITTEN PERMISSION
 
   (a) Sell it, charge for access to it, or make it part of any paid product,
       paid service, paid rank, paid modpack or paywalled download. Accepting
-      donations that are not required for access is not selling.
+      donations that are not required for access is not selling. Code borrowed
+      under 1(e) is the exception: it may travel into a paid mod, because what
+      is sold there is that mod and not this one.
 
   (b) Publish it, or any modified version of it, as a separate project of your
       own — on Modrinth, CurseForge, GitHub or anywhere else. Sharing a private
-      modification with the people you play with is not publishing.
+      modification with the people you play with is not publishing, and neither
+      is a mod of your own that borrows code under 1(e).
 
   (c) Remove, obscure or alter the authorship, the credits, or this license, or
       present the work as your own.
@@ -82,11 +116,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   - играть, ставить на любые серверы, снимать видео и стримы;
   - раздавать мод целиком и без изменений, бесплатно, с указанием автора;
   - включать в бесплатные сборки на тех же условиях;
-  - менять для себя и присылать правки в проект.
+  - менять для себя и присылать правки в проект;
+  - брать куски исходного кода в свой мод, в том числе платный, если твой мод
+    остаётся своей работой, а не переизданием этого, и если NPC Studio с
+    автором названы там, где их увидит человек: в кредитах, на странице проекта
+    или шапкой в самом файле. Упоминание здесь — обязательное условие, без него
+    разрешение не действует. На текстуры, модели, иконки и звуки оно не
+    распространяется, только на код;
+  - писать дополнения, интеграции и порты к API мода и раздавать их на любых
+    условиях, хоть за деньги.
+
+Идеи лицензия не держит и держать не может: авторское право защищает конкретный
+код и конкретные материалы, а не замысел. Диалоги с ветвлением, редактор к ним
+прямо в игре, гардероб скинов — бери и делай своё, разрешения на это не нужно.
+Сказать, откуда идея, ничего не стоит и приветствуется, но это вежливость, а не
+условие.
 
 Нельзя без письменного разрешения:
-  - продавать, брать деньги за доступ, класть в платные сборки и за пейволл
-    (пожертвования, которые не обязательны для доступа, продажей не считаются);
+  - продавать сам мод, брать деньги за доступ, класть в платные сборки и за
+    пейволл (пожертвования, которые не обязательны для доступа, продажей не
+    считаются; а вот код, взятый по пункту 1(e), в платный мод попасть может);
   - публиковать мод или его изменённую версию как свой отдельный проект;
   - убирать или менять авторство, кредиты и эту лицензию, выдавать за своё;
   - обучать на этом исходнике модель с целью его воспроизведения.

@@ -58,7 +58,16 @@ public record ConditionRows(boolean all, List<Row> rows) {
 	private static boolean isLeaf(Condition condition) {
 		return condition instanceof Condition.Compare
 			|| condition instanceof Condition.HasItem
-			|| condition instanceof Condition.Visited;
+			|| condition instanceof Condition.Visited
+			// A box the player is standing in: one question with one answer, so it is a
+			// row like the others. And it is the one that most wants turning round —
+			// "until they are inside" and "while they are still outside" are both
+			// ordinary things to write, and the second is this with the not.
+			|| condition instanceof Condition.Inside
+		// A block at a place: one question with one answer, so it is a row like the
+		// rest. It wants turning round quite as much as the box does — "while the fire
+		// is still out" is this with the not.
+		|| condition instanceof Condition.Block;
 	}
 
 	/** The row a part makes, or null if that part is itself a group. */
@@ -139,6 +148,39 @@ public record ConditionRows(boolean all, List<Row> rows) {
 	public ConditionRows without(int at) {
 		List<Row> now = new ArrayList<>(rows);
 		now.remove(at);
+		return new ConditionRows(all, now);
+	}
+
+	/** The same rows with one put in at a given place rather than at the end. */
+	public ConditionRows plusAt(int at, Row row) {
+		List<Row> now = new ArrayList<>(rows);
+		now.add(Math.max(0, Math.min(at, now.size())), row);
+		return new ConditionRows(all, now);
+	}
+
+	/**
+	 * The same rows with one moved.
+	 *
+	 * <h2>Why order matters here at all</h2>
+	 *
+	 * Under "all of" it does not: every row has to hold, and they hold in any order.
+	 * Under "any of" it does not either. So moving a row inside one condition changes
+	 * nothing about what it means — and that is exactly why it is worth allowing:
+	 * the rows are read by a person, and a person reads them top to bottom. Grouping
+	 * the two tests about the same errand together is a real edit to the document as
+	 * a thing that gets read, and no edit at all to the document as a thing that runs.
+	 *
+	 * Where order does decide the answer is one level up, between the arms of a
+	 * branch — see the panel, which is why both are draggable by the same gesture.
+	 *
+	 * @param to where it should end up once it has been taken out, so that dropping a
+	 *           row back where it started is not an off-by-one
+	 */
+	public ConditionRows moved(int from, int to) {
+		if (from < 0 || from >= rows.size()) return this;
+		List<Row> now = new ArrayList<>(rows);
+		Row carried = now.remove(from);
+		now.add(Math.max(0, Math.min(to, now.size())), carried);
 		return new ConditionRows(all, now);
 	}
 

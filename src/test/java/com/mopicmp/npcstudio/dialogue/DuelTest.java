@@ -386,8 +386,9 @@ class DuelTest {
 	@Test
 	@DisplayName("every graph that ships with the mod still loads")
 	void theBuiltInGraphsAreSound() {
-		for (String name : List.of("duel", "fighting", "sentry", "doorman", "torchbearer",
-				"example")) {
+		// From the registry, not from a list kept by hand here: a graph added without
+		// remembering this file would be a graph nothing checked.
+		for (String name : com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry.names()) {
 			Dialogue graph = com.mopicmp.npcstudio.dialogue.runtime.DialogueRegistry.get(name)
 				.orElseThrow(() -> new AssertionError(name + " was refused: it would not load"));
 			assertTrue(DialogueValidator.validate(graph).ok(),

@@ -67,6 +67,11 @@ public final class Senses {
 				lead == null ? Sense.OUT_OF_MIND : npc.position().distanceTo(lead.at()));
 
 			case Sense.WALKING -> new Value.Flag(npc.walking().walking());
+			// Which round she is on, and which she has just come off. A flag cannot
+			// say whose walk it is, and a route node waiting on the flag would move
+			// on the moment any unrelated walk in the graph happened to end.
+			case Sense.WALKING_TO -> new Value.Text(npc.walkingTo());
+			case Sense.WALKED -> new Value.Text(npc.walked());
 			// Whether there is anything in her main hand at all. Which weapon it is
 			// belongs to the classification step and is not guessed at here.
 			case Sense.ARMED -> new Value.Flag(!npc.getMainHandItem().isEmpty());

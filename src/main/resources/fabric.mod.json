@@ -10,7 +10,7 @@
 	"contact": {
 		"sources": "https://github.com/MopicMP"
 	},
-	"license": "LicenseRef-NpcStudio-1.0",
+	"license": "LicenseRef-NpcStudio-1.1",
 	"icon": "assets/npc_studio/icon.png",
 	"environment": "*",
 	"entrypoints": {

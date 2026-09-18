@@ -7,7 +7,7 @@ import java.nio.file.Path;
 import javax.imageio.ImageIO;
 
 import com.mopicmp.npcstudio.entity.EyeMap;
-import com.mopicmp.npcstudio.wardrobe.SkinLibrary;
+import com.mopicmp.npcstudio.wardrobe.PictureLibrary;
 
 /**
  * Takes the faces a person marked in game out of a save and into the repository.
@@ -40,7 +40,7 @@ public final class FaceMarksExport {
 			return;
 		}
 
-		SkinLibrary library = new SkinLibrary(save);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(save);
 		StringBuilder text = new StringBuilder();
 		text.append("""
 			# Faces marked by hand, with the pixels they were marked on.
@@ -66,7 +66,7 @@ public final class FaceMarksExport {
 
 		int written = 0;
 		int marks = 0;
-		for (SkinLibrary.Entry entry : library.entries()) {
+		for (PictureLibrary.Entry entry : library.entries()) {
 			if (entry.face().authored() && !entry.face().isNone()) {
 				fine.append("mask ").append(entry.fingerprint()).append(' ')
 					.append(entry.face().encode()).append('\n');

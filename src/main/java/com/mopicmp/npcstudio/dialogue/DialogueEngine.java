@@ -54,13 +54,48 @@ public final class DialogueEngine {
 
 		/** Picking option number {@code index} of the current choice. */
 		record Pick(int index) implements Input { }
+
+		/**
+		 * Somebody pressed the shown thing called {@code shown}.
+		 *
+		 * <h2>Why this moves nothing when the graph is not waiting for it</h2>
+		 *
+		 * Because it is delivered to every graph the presser has running, and most of them
+		 * are in the middle of something else. Unlike {@link Pick}, which is an answer to a
+		 * question this graph asked and is a fault if it arrives anywhere else, a press is
+		 * a thing that happened in the world: it is addressed to whoever cares.
+		 *
+		 * So a press at a node that is not {@link Node.Pressed}, or at one waiting on other
+		 * names, is the same as {@link Begin} — the graph is asked to carry on and stays
+		 * exactly where it was.
+		 */
+		record Pressed(String shown) implements Input { }
 	}
 
 	/** What the presentation layer should now show. */
 	public sealed interface Screen {
-		record Line(String speaker, String text, Presentation mode, String animation) implements Screen { }
+		/**
+		 * @param lasts what this line asked for in ticks, or nought for the document's
+		 *              answer. Carried rather than resolved, because the engine has no
+		 *              document — the thing that knows both is the runtime.
+		 */
+		record Line(String speaker, com.mopicmp.npcstudio.dialogue.text.Words text,
+			Presentation mode, String animation, int lasts, Node.Line.Face face,
+			String nameColour) implements Screen {
 
-		record Choice(String speaker, String prompt, Presentation mode, List<Shown> options) implements Screen { }
+			public Line(String speaker, com.mopicmp.npcstudio.dialogue.text.Words text,
+					Presentation mode, String animation) {
+				this(speaker, text, mode, animation, Node.Line.USES_DOCUMENT);
+			}
+
+			public Line(String speaker, com.mopicmp.npcstudio.dialogue.text.Words text,
+					Presentation mode, String animation, int lasts) {
+				this(speaker, text, mode, animation, lasts, Node.Line.Face.SPEAKER, "");
+			}
+		}
+
+		record Choice(String speaker, com.mopicmp.npcstudio.dialogue.text.Words prompt,
+			Presentation mode, List<Shown> options) implements Screen { }
 
 		/** The conversation ended; nothing more to show. */
 		record Finished() implements Screen { }
@@ -81,7 +116,7 @@ public final class DialogueEngine {
 		 * the dialogue, and renumbering here would silently pick a different
 		 * option the moment a condition hides one.
 		 */
-		record Shown(int index, String label, String colour) { }
+		record Shown(int index, com.mopicmp.npcstudio.dialogue.text.Words label, String colour) { }
 	}
 
 	/** The outcome of one step. */
@@ -116,10 +151,94 @@ public final class DialogueEngine {
 	 * @throws DialogueFault when the graph is broken in a way that cannot be
 	 *         recovered from mid-conversation — a missing node or a runaway loop
 	 */
+	/**
+	 * What a {@link Node.Set} actually writes.
+	 *
+	 * <h2>Why adding to something that is not a number changes nothing</h2>
+	 *
+	 * Rather than joining text, or counting a flag as one, or throwing. The first two
+	 * are things somebody could mean and could mean differently; the third would take a
+	 * conversation down over an edit that the validator has already refused at the
+	 * door. Leaving it alone is the answer that cannot be mistaken for having worked.
+	 */
+	private static Value written(DialogueState state, Node.Set set) {
+		if (set.how() != Node.Set.Change.ADD) return set.value();
+		if (!(state.get(set.variable(), set.scope()) instanceof Value.Num(double was))
+				|| !(set.value() instanceof Value.Num(double by))) {
+			return state.get(set.variable(), set.scope());
+		}
+		return Value.of(was + by);
+	}
+
+	/**
+	 * The state a {@link Node.Forget} leaves behind.
+	 *
+	 * <h2>Why a name this document does not declare is left alone</h2>
+	 *
+	 * Because there is nothing to put it back to. A variable's default comes from its
+	 * declared type, and the declaration lives in whichever document declares it —
+	 * writing a flag over what another document keeps as a number would be this node
+	 * quietly breaking a graph it cannot see. The validator says so at the door; this
+	 * is the same answer at run time for a document that got past it in a file.
+	 */
+	private static DialogueState forgetting(Dialogue dialogue, DialogueState state,
+			Node.Forget forget) {
+		DialogueState now = state;
+		java.util.Collection<String> names = forget.everything()
+			? dialogue.variableTypes().keySet()
+			: forget.naming();
+		for (String name : names) {
+			String type = dialogue.variableTypes().get(name);
+			if (type == null) continue;
+			now = now.with(name, forget.scope(), Value.defaultFor(type));
+		}
+		// This document's nodes and no others. The visited set belongs to the player and
+		// holds everywhere they have ever been, so emptying it to replay one errand
+		// would forget that they have met the innkeeper.
+		if (forget.visited()) now = now.forgetting(dialogue.nodes().keySet());
+		return now;
+	}
+
+	/** Nobody is watching, which is every step but the one somebody asked about. */
+	private static final java.util.function.Consumer<String> NOBODY = _ -> { };
+
 	public static Step step(Dialogue dialogue, DialogueState state, Input input, Condition.World world) {
+		return step(dialogue, state, input, world, NOBODY);
+	}
+
+	/**
+	 * The same, telling somebody what it did on the way.
+	 *
+	 * <h2>Why the account comes from the deciding pass</h2>
+	 *
+	 * Because a second evaluation can disagree with the first, and a debugging tool that
+	 * lies is worse than none — it sends somebody looking in the wrong place with
+	 * confidence. So there is one walk through the graph, and the watcher is handed what
+	 * it found as it found it.
+	 *
+	 * Nothing else changes. The watcher is called and the answer is thrown away when
+	 * nobody is watching, which is every step of every conversation on a running server
+	 * except the one somebody has asked about.
+	 *
+	 * @param watching told, line by line, what was decided and why
+	 */
+	public static Step step(Dialogue dialogue, DialogueState state, Input input,
+			Condition.World world, java.util.function.Consumer<String> watching) {
 		List<Effect> effects = new ArrayList<>();
 		List<Call> calls = new ArrayList<>();
 		DialogueState now = state;
+		if (watching != NOBODY) watching.accept("step from " + state.currentNode());
+
+		/*
+		 * The routes whose arrival has been taken during this step.
+		 *
+		 * Not state, and deliberately not on the bookmark: it lasts one step and one
+		 * step only. It exists because the orders in `effects` have not happened yet
+		 * — they leave when this returns — so within a step the world's answer to
+		 * "has this route finished" cannot change, and a route leading back to itself
+		 * would read the same yes for ever. See {@link Node.Walk}.
+		 */
+		java.util.Set<String> collected = new java.util.HashSet<>();
 
 		Node current = require(dialogue, now.currentNode());
 
@@ -150,6 +269,14 @@ public final class DialogueEngine {
 				}
 				yield picked.next();
 			}
+			// Standing still rather than throwing, and rather than being ignored earlier:
+			// this is the one input that is about the world instead of about this graph.
+			// See Input.Pressed.
+			case Input.Pressed(String shown) -> {
+				if (!(current instanceof Node.Pressed waiting)) yield now.currentNode();
+				String next = waiting.next(shown);
+				yield next == null ? now.currentNode() : next;
+			}
 		};
 
 		if (!(input instanceof Input.Begin)) {
@@ -167,7 +294,24 @@ public final class DialogueEngine {
 			now = now.withVisited(node.id());
 
 			switch (node) {
-				case Node.Set set -> now = now.with(set.variable(), set.scope(), set.value()).at(set.next());
+				case Node.Set set -> now = now.with(set.variable(), set.scope(),
+					written(now, set)).at(set.next());
+				// Putting back what this document remembers, so the scene can be played
+				// again. After the visit mark above rather than before it, which means it
+				// forgets its own visit too — right, and deliberately: a graph that has
+				// forgotten everything except that it passed through the forgetting is a
+				// graph with one node's worth of history in it, and that one node is the
+				// one nobody would think to look at.
+				case Node.Forget forget -> {
+					now = forgetting(dialogue, now, forget);
+					if (watching != NOBODY) {
+						watching.accept("forget at " + forget.id() + ": "
+							+ (forget.everything() ? "everything this document declares"
+								: String.join(", ", forget.naming()))
+							+ (forget.visited() ? ", and where it has been" : ""));
+					}
+					now = now.at(forget.next());
+				}
 				case Node.Act act -> { effects.add(act.effect()); now = now.at(act.next()); }
 				// A call goes out and the graph walks on in the same breath. What is
 				// waited for, if anything, the caller says for itself afterwards.
@@ -184,9 +328,43 @@ public final class DialogueEngine {
 					for (Node.Arm arm : branch.arms()) {
 						if (arm.condition().test(now, world)) { next = arm.next(); break; }
 					}
+					// Every arm, in order, and not only the one that won. Order is the
+					// thing people get wrong about branches — the first arm that holds
+					// takes it — so an arm that is true and never reached is a real fault
+					// and an invisible one until it is written out.
+					if (watching != NOBODY) {
+						watching.accept("branch " + branch.id() + ":");
+						for (var told : Explain.arms(branch, now, world)) {
+							watching.accept("  " + told.text());
+						}
+					}
 					now = now.at(next);
 				}
-				case Node.End _ -> {
+					// A fork nobody asked a question about. The throw comes from the world
+				// rather than from here, which is what keeps a step a function of what it
+				// was handed — see Condition.World.roll.
+				case Node.Chance chance -> {
+					String next = chance.chosen(world.roll(Math.max(1, chance.ways().size())));
+					now = now.at(next);
+				}
+				// Writing on the canvas, and the only way to arrive at one is for a
+				// document to name it as its start — every other route in is a way out
+				// of some node, and a comment is nobody's way out. Treated as an ending
+				// rather than as a fault, because the alternative is a conversation that
+				// refuses to run over a piece of somebody's writing.
+				case Node.Comment _ ->
+					{ return new Step(now, new Screen.Finished(), List.copyOf(effects),
+						List.copyOf(calls)); }
+				case Node.End(String _, Node.Homing homing) -> {
+					// Ordered here rather than left to whoever notices the graph has
+					// finished, because the finishing is not always noticed: a
+					// conversation's last node is reached with a player standing there,
+					// a behaviour graph's is reached alone, and both go through this.
+					switch (homing) {
+						case WALK -> effects.add(new Effect.GoHome(true));
+						case TELEPORT -> effects.add(new Effect.GoHome(false));
+						case STAY -> { }
+					}
 					return new Step(now, new Screen.Finished(), List.copyOf(effects), List.copyOf(calls));
 				}
 				// The bookmark is moved past the wait before parking, which is what
@@ -200,6 +378,42 @@ public final class DialogueEngine {
 					return new Step(now, new Screen.Waiting(Math.max(every.ticks(), 0)),
 						List.copyOf(effects), List.copyOf(calls));
 				}
+				// A route. Three answers out of two readings — not started, going,
+				// arrived — and no state on the bookmark at all; the count of which
+				// point she is on lives on the character, where the walking does.
+				//
+				// The order is re-sent on every entry while she is on it only if she
+				// is not: a character knocked off her round finds nothing carrying
+				// her order and is put back on it, which is what a patrol should do
+				// after being interrupted.
+				case Node.Walk walk -> {
+					if (walk.id().equals(said(world, Sense.WALKING_TO))) {
+						return new Step(now, new Screen.Waiting(0),
+							List.copyOf(effects), List.copyOf(calls));
+					}
+					// An arrival can be taken once, and the taking has to count from
+					// this instant rather than from when the orders reach the body.
+					//
+					// Effects leave only when the step ends, so a route whose exit
+					// leads back to itself would come round, ask again, and find its
+					// own arrival still lying there — for five hundred and twelve
+					// nodes, which is the runaway guard, on a graph that is not
+					// runaway. It cost two tests to see and one line to fix.
+					if (!collected.contains(walk.id())
+							&& walk.id().equals(said(world, Sense.WALKED))) {
+						collected.add(walk.id());
+						// And told to the body as well, for the other way round: a
+						// graph that goes away and comes back some ticks later would
+						// otherwise find an arrival that has been sitting there since,
+						// and walk straight past a route without walking it.
+						effects.add(new Effect.Arrived(walk.id()));
+						now = now.at(walk.next());
+						continue;
+					}
+					effects.add(new Effect.Follow(walk.id(), walk.route()));
+					return new Step(now, new Screen.Waiting(0),
+						List.copyOf(effects), List.copyOf(calls));
+				}
 				// Unlike the timer, this one stays where it is: the bookmark is the
 				// question, and it is asked again on every entry until it holds.
 				case Node.Until until -> {
@@ -209,13 +423,24 @@ public final class DialogueEngine {
 					}
 					return new Step(now, new Screen.Waiting(0), List.copyOf(effects), List.copyOf(calls));
 				}
+				// A press has already moved the bookmark on its way in, above, if this node
+				// was waiting for the one that arrived. Reaching here means it was not, so
+				// there is nothing to decide: stand still and be asked again.
+				//
+				// Nought ticks rather than a rest, because the graph is not waiting on a
+				// clock — the press arrives as an input of its own, and the beat is only
+				// what keeps the thread alive to receive it.
+				case Node.Pressed _ ->
+					{ return new Step(now, new Screen.Waiting(0),
+						List.copyOf(effects), List.copyOf(calls)); }
 				case Node.Line line -> {
 					// No length: a line's animation lasts as long as the line does, and
 					// the next line replaces it. Giving it one would mean guessing how
 					// long somebody takes to read.
 					if (line.animation() != null) effects.add(new Effect.PlayAnimation(line.animation(), 0));
 					return new Step(now,
-						new Screen.Line(line.speaker(), line.text(), line.mode(), line.animation()),
+						new Screen.Line(line.speaker(), line.text(), line.mode(), line.animation(),
+							line.lasts(), line.face(), line.nameColour()),
 						List.copyOf(effects), List.copyOf(calls));
 				}
 				case Node.Choice choice -> {
@@ -239,6 +464,19 @@ public final class DialogueEngine {
 				}
 			}
 		}
+	}
+
+	/**
+	 * A reading, as the word it is, or empty when it is anything else.
+	 *
+	 * Empty rather than null for the case that matters: a conversation is stepped
+	 * against a window that knows nothing about a character's legs and answers
+	 * every reading with false. A route node in a conversation therefore orders the
+	 * walk and stands there, which is the same thing {@code every} does in one, and
+	 * is a great deal better than a class cast on a graph somebody wrote by hand.
+	 */
+	private static String said(Condition.World world, String reading) {
+		return world.sense(reading) instanceof Value.Text(String word) ? word : "";
 	}
 
 	private static Node require(Dialogue dialogue, String id) {

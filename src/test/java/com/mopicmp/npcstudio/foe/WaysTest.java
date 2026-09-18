@@ -69,6 +69,154 @@ class WaysTest {
 		assertEquals(1, last[2]);
 	}
 
+	/**
+	 * A floor plan with a raised ledge along one side.
+	 *
+	 * {@code #} is wall as ever; {@code =} is a block at floor level with air above
+	 * it, which is a thing you can stand <em>on</em> — a step, a kerb, the edge of a
+	 * path, the top of a low wall. Every built place is full of them.
+	 */
+	private static Ways.Ground ledges(String... rows) {
+		return new Ways.Ground() {
+			private char at(int x, int z) {
+				if (z < 0 || z >= rows.length) return '#';
+				String row = rows[z];
+				if (x < 0 || x >= row.length()) return '#';
+				return row.charAt(x);
+			}
+
+			@Override
+			public boolean clear(int x, int y, int z) {
+				if (y == -1) return false;
+				char what = at(x, z);
+				if (what == '#') return y != 0 && y != 1;
+				// A ledge fills the walking level and leaves everything above it open.
+				if (what == '=') return y != 0;
+				return true;
+			}
+
+			@Override
+			public boolean solid(int x, int y, int z) {
+				if (y == -1) return true;
+				char what = at(x, z);
+				if (what == '#') return y == 0 || y == 1;
+				return what == '=' && y == 0;
+			}
+		};
+	}
+
+	/**
+	 * A floor with things lying on it that a body walks over rather than into.
+	 *
+	 * {@code ~} is a rug: a block with a collision an inch high, which is a carpet, a
+	 * layer of snow, a pressure plate. {@code =} is a ledge — a block filling the
+	 * walking level with air above, which is a step or a kerb. {@code #} is wall.
+	 *
+	 * The one that matters is the rug, because a body stands <em>in</em> that block
+	 * with its feet an inch off the floor, and the search has to agree with the body
+	 * about which block that is.
+	 */
+	private static Ways.Ground floor(String... rows) {
+		return new Ways.Ground() {
+			private char at(int x, int z) {
+				if (z < 0 || z >= rows.length) return '#';
+				String row = rows[z];
+				if (x < 0 || x >= row.length()) return '#';
+				return row.charAt(x);
+			}
+
+			@Override
+			public boolean clear(int x, int y, int z) {
+				if (y == -1) return false;
+				char what = at(x, z);
+				if (what == '#') return y != 0 && y != 1;
+				if (what == '=') return y != 0;
+				// A rug is walked onto rather than into: low enough that a body stands
+				// in this very block. That is the whole of the fix being checked here.
+				return true;
+			}
+
+			@Override
+			public boolean solid(int x, int y, int z) {
+				if (y == -1) return true;
+				char what = at(x, z);
+				if (what == '#') return y == 0 || y == 1;
+				if (what == '=') return y == 0;
+				// A rug holds you up as well as letting you stand in it, which is what
+				// makes two heights standable at once and the order of the loop matter.
+				return what == '~' && y == 0;
+			}
+		};
+	}
+
+	@Test
+	@DisplayName("a rug is walked over, not climbed onto")
+	void aRugIsNotAWall() {
+		// The fault this is written for, and the third telling of "he jumps all the
+		// time, and in great quantities".
+		//
+		// A carpet has a collision, so it counted as a wall, so the only place left to
+		// stand was the block above it. The route then said "stand at one" while the
+		// body stood at nought and a bit — and the walking, comparing those, found
+		// nearly a whole block of climb and jumped. Every tick, all the way across the
+		// rug.
+		Ways.Ground room = floor(
+			"~~~~~~~~~",
+			"~~~~~~~~~",
+			"~~~~~~~~~");
+		List<int[]> path = Ways.to(room, 0, 0, 1, 8, 0, 1);
+
+		assertTrue(!path.isEmpty(), "it is a floor with a rug on it, not a wall");
+		for (int[] step : path) {
+			assertEquals(0, step[1],
+				"she went up over the rug at " + step[0] + ", " + step[1] + ", " + step[2]);
+		}
+	}
+
+	@Test
+	@DisplayName("a walk along a kerb stays on the flat instead of climbing onto it")
+	void itDoesNotClimbTheFurniture() {
+		// The fault this is written for, reported as "he jumps all the time, and in
+		// great quantities". Only one height was ever offered per direction — the
+		// first that worked, and then the loop broke — and the loop counted down from
+		// a climb. So anywhere a neighbouring block stood at walking height, the route
+		// went over it rather than past it, and going up a block is a jump. In a built
+		// place that is a jump at very nearly every step.
+		//
+		// The comment beside the break said the order was arbitrary because the cost
+		// would decide. The cost cannot decide between things it is never shown.
+		Ways.Ground street = ledges(
+			"=========",
+			".........",
+			"=========");
+		List<int[]> path = Ways.to(street, 0, 0, 1, 8, 0, 1);
+
+		assertTrue(!path.isEmpty(), "there is a clear lane straight down the middle");
+		for (int[] step : path) {
+			assertEquals(0, step[1],
+				"she went up onto the kerb at " + step[0] + ", " + step[1] + ", " + step[2]);
+		}
+	}
+
+	@Test
+	@DisplayName("but a step that has to be climbed is still climbed")
+	void itStillClimbsWhenThereIsNoWayRound() {
+		// The other half, and the reason the fix is an order rather than a refusal to
+		// go up. Preferring the flat must not mean being unable to leave the ground.
+		Ways.Ground step = ledges(
+			"###########",
+			"...==......",
+			"###########");
+		List<int[]> path = Ways.to(step, 0, 0, 1, 10, 0, 1);
+
+		assertTrue(!path.isEmpty(), "the only way along the corridor is over the step");
+		assertTrue(path.stream().anyMatch(where -> where[1] == 1),
+			"she has to go up to get past it");
+		int[] last = path.get(path.size() - 1);
+		assertEquals(10, last[0]);
+		assertEquals(0, last[1], "and she comes down again on the far side");
+	}
+
 	@Test
 	@DisplayName("the path does not include where you already are")
 	void itStartsAtTheNextStep() {
@@ -255,5 +403,110 @@ class WaysTest {
 				return y <= heightAt(x, z);
 			}
 		};
+	}
+
+	// ------------------------------------- how far it reaches, and what it avoids
+
+	/** Open ground with a floor, as wide as anybody could want. */
+	private static Ways.Ground open() {
+		return new Ways.Ground() {
+			@Override public boolean clear(int x, int y, int z) { return y >= 0; }
+
+			@Override public boolean solid(int x, int y, int z) { return y == -1; }
+		};
+	}
+
+	@Test
+	@DisplayName("a walk across open ground reaches far further than the budget used to allow")
+	void reachesAcrossOpenGround() {
+		// The number that mattered and nothing else. A search ordered only by how far it
+		// had walked spreads out as a disc, so the budget was a radius — about thirty
+		// blocks — and beyond that it reported that there was no way at all.
+		//
+		// That is what the report was: half the route walked, half of it not, decided
+		// by nothing about the route except its length. Fifty blocks is an ordinary
+		// distance across a courtyard and used to be past the edge.
+		List<int[]> path = Ways.to(open(), 0, 0, 0, 50, 0, 0);
+		assertTrue(!path.isEmpty(), "fifty blocks of empty floor is not a hard question");
+		assertEquals(50, path.size(), "and the way across it is fifty steps");
+	}
+
+	@Test
+	@DisplayName("it still finds the shortest way, which is the thing pointing it could have cost")
+	void stillShortest() {
+		// A search pointed at its target finds the shortest route only while the
+		// pointing never overestimates what is left. If that ever stopped being true
+		// the paths would get quietly longer — never broken, never reported, and
+		// impossible to see. So it is asked here rather than trusted.
+		Ways.Ground room = plan(
+			".........",
+			"....#....",
+			".........");
+		List<int[]> path = Ways.to(room, 0, 0, 1, 8, 0, 1);
+		assertTrue(!path.isEmpty());
+		assertEquals(8, path.size(), "round one post, not round the room");
+	}
+
+	@Test
+	@DisplayName("a block that has already stopped her is gone round, not through")
+	void goesRoundWhatStoppedHer() {
+		// The doorway is passable as far as the blocks are concerned, and she has just
+		// spent a second and a half proving it is not — a gate that is shut, somebody
+		// standing in it, a post her body is a hair too wide for. None of that is
+		// visible to a search of the blocks, and all of it is obvious to the legs.
+		// Two ways through, one of them straight ahead. The plan's own edges count as
+		// wall, so the second gap has to be drawn rather than assumed — which the first
+		// version of this test did assume, and the test caught it.
+		Ways.Ground twoDoors = plan(
+			".........",
+			".........",
+			"###.###.#",
+			".........",
+			".........");
+		// Told nothing, she takes the near door, which is straight in front of her.
+		List<int[]> straight = Ways.to(twoDoors, 3, 0, 1, 3, 0, 3);
+		assertTrue(!straight.isEmpty());
+		assertTrue(straight.stream().anyMatch(step -> step[0] == 3 && step[2] == 2),
+			"the near gap is at 3, and nothing yet says not to use it");
+
+		// Told that the near gap stopped her, she goes the long way round to the far one.
+		List<int[]> around = Ways.to(twoDoors, 3, 0, 1, 3, 0, 3,
+			Ways.FURTHEST, Ways.LOOKED_AT,
+			java.util.Set.of(Ways.named(3, 0, 2)));
+		assertTrue(!around.isEmpty(), "there is still a way, and she should still take one");
+		assertTrue(around.stream().noneMatch(step -> step[0] == 3 && step[2] == 2),
+			"having been stopped there, she should not walk straight back into it");
+	}
+
+	@Test
+	@DisplayName("a block that stopped her is priced, not walled off")
+	void shunningIsAPriceAndNotAWall() {
+		// The important half. Sometimes the thing that stopped her is the only door
+		// there is, and a search forbidden to use it would report that there is no way
+		// — leaving a character who stands still for ever rather than one who waits a
+		// moment and goes through.
+		Ways.Ground oneDoor = plan(
+			".........",
+			"####.####",
+			".........");
+		List<int[]> only = Ways.to(oneDoor, 4, 0, 0, 4, 0, 2,
+			Ways.FURTHEST, Ways.LOOKED_AT,
+			java.util.Set.of(Ways.named(4, 0, 1)));
+		assertTrue(!only.isEmpty(), "the only door is still a door");
+		assertTrue(only.stream().anyMatch(step -> step[0] == 4 && step[2] == 1),
+			"and it is the way through, however dearly it is priced");
+	}
+
+	@Test
+	@DisplayName("what it costs to be avoided is enough to be worth a detour and not enough to forbid one")
+	void shunningIsPricedSensibly() {
+		// A number worth a test because both ways of getting it wrong are silent. Too
+		// low and the second attempt walks into the same post; too high and it is a
+		// wall by another name, with the character crossing a village to avoid a
+		// doorway somebody has since stepped out of.
+		assertTrue(Ways.SHUNNED > 2,
+			"cheaper than a couple of blocks and the detour never happens");
+		assertTrue(Ways.SHUNNED < Ways.FURTHEST / 2,
+			"dearer than this and it stops being a price");
 	}
 }

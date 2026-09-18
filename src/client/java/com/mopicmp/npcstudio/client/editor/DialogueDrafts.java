@@ -73,6 +73,58 @@ public final class DialogueDrafts {
 		}
 	}
 
+	/**
+	 * What the autosave writes when the graph cannot be sent, marked as its own.
+	 *
+	 * <h2>Why this is not simply {@link #keep}</h2>
+	 *
+	 * Because it happens once a second rather than once a session. A graph is
+	 * half-finished for as long as it takes to finish it, and every second of that
+	 * the server is refusing it — quite rightly, an unfinished wire is not something
+	 * other people's characters should be running. If each of those seconds wrote a
+	 * draft, the ten slots this keeps would hold the last ten seconds of typing, and
+	 * the copy from before the mistake — the one the whole folder exists for — would
+	 * have been pushed out by the mistake itself.
+	 *
+	 * So there is exactly one of these per dialogue and it is replaced in place. It
+	 * still carries the time it was written, because a draft you cannot date is a
+	 * draft you cannot decide about, and it says {@code (auto)} because whether a
+	 * copy was left deliberately or left behind is the first thing anybody wants to
+	 * know when looking at a list of them.
+	 */
+	public static void keepUnsent(String dialogueId, String json) {
+		if (dialogueId == null || dialogueId.isBlank() || json == null || json.isBlank()) return;
+		try {
+			Path folder = folder();
+			Files.createDirectories(folder);
+
+			String prefix = safe(dialogueId) + "__";
+			try (var files = Files.list(folder)) {
+				for (Path file : files.toList()) {
+					String name = file.getFileName().toString();
+					if (name.startsWith(prefix) && name.endsWith(AUTO)) Files.deleteIfExists(file);
+				}
+			}
+			Files.writeString(folder.resolve(prefix + WHEN.format(Instant.now()) + AUTO),
+				json, StandardCharsets.UTF_8);
+		} catch (Exception failed) {
+			// Same rule as above: insurance that fails must not cost more than it
+			// covers. The editor still has the graph; only the copy is missing.
+			NpcStudio.LOGGER.warn("Could not keep the unsent copy of {}: {}",
+				dialogueId, failed.toString());
+		}
+	}
+
+	/**
+	 * What marks the autosaved copy, and it is part of the name on purpose.
+	 *
+	 * Everything about a draft is read off its filename — which dialogue, and when —
+	 * so a second kind of draft has to be told apart there too, or it would need a
+	 * second file beside it saying so, and two files that can disagree is one file
+	 * too many.
+	 */
+	private static final String AUTO = " (auto).json";
+
 	/** Everything kept for one dialogue, newest first. */
 	public static List<Draft> of(String dialogueId) {
 		Path folder = folder();

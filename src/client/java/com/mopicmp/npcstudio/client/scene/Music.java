@@ -427,15 +427,53 @@ public final class Music {
 		thread.start();
 	}
 
+	/**
+	 * Opens a piece, and lets go of the file when it turns out not to be one.
+	 *
+	 * <h2>The leak this closes, and why it bites on Windows in particular</h2>
+	 *
+	 * The stream used to be opened inside the {@code try} and abandoned by the
+	 * {@code catch}. Anything that goes wrong after the file is open — a truncated
+	 * ogg, something that is not an ogg at all, a seek past the end — left the handle
+	 * held for the life of the game, and this is retried every time a scene reaches
+	 * the cue.
+	 *
+	 * On Windows an open handle also locks the file. So an author whose piece is a
+	 * little wrong gets the failure they can see, and then cannot replace the file to
+	 * fix it — which reads as the game holding their work hostage for no stated
+	 * reason, and is a far worse experience than the sound not playing.
+	 *
+	 * On success the decoder owns the stream and closes it with itself; closing an
+	 * already-closed stream is a no-op, so the one line below is right in every case
+	 * without having to know which of the two failed.
+	 */
 	private static AudioStream open(Path file, double seconds) {
+		InputStream bytes = null;
 		try {
-			InputStream bytes = new BufferedInputStream(Files.newInputStream(file));
+			bytes = new BufferedInputStream(Files.newInputStream(file));
 			JOrbisAudioStream stream = new JOrbisAudioStream(bytes);
 			if (seconds > 0.01) skip(stream, seconds);
 			return stream;
 		} catch (Exception unreadable) {
 			NpcStudio.LOGGER.warn("Could not play {}: {}", file, unreadable.toString());
+			letGo(bytes, file);
 			return null;
+		}
+	}
+
+	/**
+	 * Closes what was opened, saying nothing useful about a second failure.
+	 *
+	 * The interesting failure has already been reported by the caller. A warning
+	 * about being unable to close a file that could not be read is noise on top of
+	 * news, and burying the real line is how a log stops being read.
+	 */
+	private static void letGo(InputStream bytes, Path file) {
+		if (bytes == null) return;
+		try {
+			bytes.close();
+		} catch (IOException stubborn) {
+			NpcStudio.LOGGER.debug("Could not let go of {}: {}", file, stubborn.toString());
 		}
 	}
 

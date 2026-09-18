@@ -43,8 +43,29 @@ public final class Bench {
 
 	private Bench() { }
 
-	/** As far away as a character can be and still be the one meant. */
-	private static final double RANGE = 64.0;
+	/**
+	 * As far away as a character can be and still be the one meant.
+	 *
+	 * <h2>Why this is no longer a number of its own</h2>
+	 *
+	 * It was sixty-four, and it was written when the bench was a debug panel you
+	 * opened while standing next to somebody. Next door, {@link
+	 * com.mopicmp.npcstudio.net.NpcEditing#REACH_SQUARED} had already had this exact
+	 * argument and written the answer down: arm's length was right when editing meant
+	 * walking up to a character, and wrong once the workspace grew a camera that flies
+	 * and panels that follow whoever is chosen. It settled on the far end of a scene
+	 * rather than the far end of a world.
+	 *
+	 * Everything that reasoning covers is true here and more so, because the ring
+	 * points at whoever is on the screen. Two numbers meant a band between them where
+	 * a menu opened and every entry in it was refused — and refused with a line of
+	 * English from this file, written for a panel, arriving over the ordinary game.
+	 *
+	 * So there is one bound, it lives where the argument is, and it is not smaller
+	 * for these acts than for editing the same character's costume.
+	 */
+	public static final double RANGE_SQUARED =
+		com.mopicmp.npcstudio.net.NpcEditing.REACH_SQUARED;
 
 	public static void asked(ServerPlayer player, int entityId, String action) {
 		// The same gate the mod's own commands require, asked in the one place that
@@ -55,7 +76,7 @@ public final class Bench {
 			return;
 		}
 		if (!(player.level().getEntity(entityId) instanceof NpcEntity npc)
-				|| npc.distanceToSqr(player) > RANGE * RANGE) {
+				|| npc.distanceToSqr(player) > RANGE_SQUARED) {
 			tell(player, List.of("No character selected, or too far away."));
 			return;
 		}
@@ -68,10 +89,69 @@ public final class Bench {
 			case "fire" -> fire(npc, player);
 			case "forget" -> forget(npc);
 			case "tape" -> tape(npc);
+			case "restart" -> restart(npc);
+			case "post" -> post(npc);
 			default -> List.of("The bench has nothing called \"" + action + "\".");
 		});
 	}
 
+	/**
+	 * Puts her back at the top of her graph.
+	 *
+	 * <h2>Why this is the act a scene is built with</h2>
+	 *
+	 * Because a graph is judged by watching it run, and running it is the one thing
+	 * that had no button anywhere. Every change to a scenario was tried by reloading
+	 * the world or by waiting for whatever state she was in to end on its own — that
+	 * is, by luck and patience rather than by asking.
+	 *
+	 * There is no "stop" beside it and there should not be. She has one document and
+	 * it is always running; stopping it would be a state a finished map can never be
+	 * in, so a button for it would be a button that only exists while building. What
+	 * "stop" means in practice is either taking her graph off her, which is a fact
+	 * about the character and belongs on her panel, or a {@code Halt} in the graph
+	 * itself, which is the graph's own word for it.
+	 */
+	private static List<String> restart(NpcEntity npc) {
+		if (npc.graphId().isEmpty()) return List.of("She has no graph to run.");
+		npc.forgetWhereSheWas();
+		return List.of("Started \"" + npc.graphId() + "\" again from the top.");
+	}
+
+	/**
+	 * Fixes where she comes back to at where she is standing.
+	 *
+	 * The one relative mark an author sets by hand rather than the world setting it.
+	 * A graph that says "walk to the lead, then back to post" is a patrol, and until
+	 * now post was wherever she happened to be the first time the graph asked for it
+	 * — which is where she was dropped, not where she belongs.
+	 */
+	private static List<String> post(NpcEntity npc) {
+		npc.markPost();
+		var at = npc.position();
+		return List.of(String.format("Her post is here: %.1f, %.1f, %.1f", at.x, at.y, at.z));
+	}
+
+	/**
+	 * The answer, as plain English, and that has stopped being harmless.
+	 *
+	 * <h2>What changed under it</h2>
+	 *
+	 * These lines were written for a debug panel: readouts of sense values and
+	 * variable names, read by whoever was building the thing, and English was the
+	 * right register for a list of {@code kin.distance = 4.2}.
+	 *
+	 * Two of these acts are now on the ring in the world, where they are ordinary
+	 * authoring — "run her graph again", "her post is here" — and the answer arrives
+	 * as an overlay message over the game. So a Russian-speaking author gets an
+	 * English sentence at the one moment they are told whether anything happened.
+	 *
+	 * The honest fix is a translation key and arguments rather than a finished
+	 * sentence, which means changing {@link com.mopicmp.npcstudio.net.BenchPayloads}
+	 * to carry components. That is worth doing and is not worth doing quietly, so it
+	 * is written down here rather than half-done: the readouts should probably stay
+	 * as they are, and only the acts should be translated.
+	 */
 	private static void tell(ServerPlayer player, List<String> lines) {
 		net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player,
 			new com.mopicmp.npcstudio.net.BenchPayloads.Told(List.copyOf(lines)));
@@ -257,6 +337,18 @@ public final class Bench {
 		if (walk.walking()) {
 			lines.add("walking — waypoint " + walk.reached() + " of " + walk.waypoints()
 				+ (walk.stuck() ? ", STUCK" : ""));
+		}
+		if (!npc.walkingTo().isEmpty()) lines.add("on route \"" + npc.walkingTo() + "\"");
+		// The last climb she jumped for. Here because jumping has been reported three
+		// times in words and answered wrongly twice: a climb of about a block against a
+		// step of six tenths means the route is drawn a block too high, and nothing
+		// here at all while she is visibly hopping means the body never left the ground
+		// and what is wrong is the animation.
+		double[] jumped = npc.lastJump();
+		if (jumped != null) {
+			lines.add(String.format(java.util.Locale.ROOT,
+				"last jump — to y %.0f from %.2f, step %.2f",
+				jumped[0], jumped[1], jumped[2]));
 		}
 		return lines;
 	}

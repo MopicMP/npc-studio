@@ -4,7 +4,7 @@ import java.util.List;
 
 import com.mopicmp.npcstudio.client.editor.FlatSlider;
 import com.mopicmp.npcstudio.client.scene.Captions;
-import com.mopicmp.npcstudio.client.scene.Fonts;
+import com.mopicmp.npcstudio.client.text.Fonts;
 import com.mopicmp.npcstudio.client.scene.Playing;
 import com.mopicmp.npcstudio.client.workspace.Icon;
 import com.mopicmp.npcstudio.client.workspace.IconTextButton;
@@ -368,11 +368,15 @@ public class CaptionPanel extends WorkspacePanel {
 		String named = Fonts.shown(Captions.look().font());
 		boolean here = Fonts.loaded(Captions.look().font());
 		boolean over = mouseY >= fontTop && mouseY < fontTop + 12 && mouseX < width - PAD;
-		graphics.text(font, Component.literal("▾ " + named), PAD, fontTop + 2,
-			!here ? WARN : over || choosingFont ? ACCENT : TEXT);
+		// A font's name comes out of a resource pack, so its length is somebody else's
+		// decision. The count is one or two characters and is the part that says
+		// whether there is anything to choose from at all, so the name gives way.
 		String count = String.valueOf(found);
-		graphics.text(font, Component.literal(count),
-			width - PAD - font.width(count), fontTop + 2, found > 0 ? TEXT_DIM : WARN);
+		int end = width - PAD - font.width(count);
+		graphics.text(font, Component.literal(shortened("▾ " + named, end - PAD - 4)),
+			PAD, fontTop + 2, !here ? WARN : over || choosingFont ? ACCENT : TEXT);
+		graphics.text(font, Component.literal(count), end, fontTop + 2,
+			found > 0 ? TEXT_DIM : WARN);
 	}
 
 	private void swatch(GuiGraphicsExtractor graphics, int top, int colour) {

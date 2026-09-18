@@ -3,6 +3,7 @@ package com.mopicmp.npcstudio.client.dialogue;
 import java.util.List;
 
 import com.mopicmp.npcstudio.client.NpcStudioConfig;
+import com.mopicmp.npcstudio.client.text.Ink;
 import com.mopicmp.npcstudio.entity.NpcEntity;
 import com.mopicmp.npcstudio.net.AnswerPayload;
 import com.mopicmp.npcstudio.net.ShowChoicePayload;
@@ -35,6 +36,15 @@ public class DialogueScreen extends Screen {
 
 	private static final int MARGIN = 24;
 	private static final int PADDING = 10;
+
+	/**
+	 * Air under each row of the line.
+	 *
+	 * Two, which is what this screen has always put between rows — kept as a
+	 * number handed to the layout rather than added afterwards, so the height the
+	 * card is sized to and the height the text actually takes are the same sum.
+	 */
+	private static final int LEADING = 2;
 	private static final int ICON = 28;
 	private static final int LINE_PANEL = 64;
 	private static final int OPTION_HEIGHT = 22;
@@ -100,9 +110,9 @@ public class DialogueScreen extends Screen {
 	 * a ceiling keeps a long one from running off the edge.
 	 */
 	private void measure() {
-		int longest = Math.max(font.width(state.text()), font.width(state.speaker()));
+		int longest = Math.max(Ink.width(font, state.text()), font.width(state.speaker()));
 		for (ShowChoicePayload.Option option : state.options()) {
-			longest = Math.max(longest, font.width(option.label()));
+			longest = Math.max(longest, Ink.width(font, option.label()));
 		}
 		// Two thirds rather than a half. A half looked generous until a question ran
 		// past it, and then the card stopped growing while the words kept coming —
@@ -110,27 +120,61 @@ public class DialogueScreen extends Screen {
 		cardWidth = Math.clamp(longest + ICON + PADDING * 4, MIN_CARD, width * 2 / 3);
 	}
 
+	/**
+	 * Escape puts the conversation down; it does not throw it away.
+	 *
+	 * <h2>Why closing the screen was not enough</h2>
+	 *
+	 * Because the bar draws whatever the server has on this player's screen, and
+	 * closing a screen is something only the client can see. So escape took the card
+	 * away and the bar picked the same question straight up — one press, two
+	 * dialogues, the second appearing as the first went. Reported in those words.
+	 *
+	 * The server is told, takes the line off screen the ordinary way, and sends back
+	 * the same closing packet a timeout would have sent. The bookmark is untouched:
+	 * clicking again picks the same moment up.
+	 */
 	@Override
 	public void onClose() {
-		// Escape puts the conversation down; it does not throw it away. Nothing is
-		// sent, so the bookmark stays where it was and clicking the NPC picks the
-		// same moment back up.
+		ClientPlayNetworking.send(new com.mopicmp.npcstudio.net.PutDownPayload());
 		minecraft.setScreenAndShow(null);
 	}
 
+	/**
+	 * A click on this screen: pick an answer, finish the typing, or go on.
+	 *
+	 * <h2>The third of those was missing</h2>
+	 *
+	 * A line shown full screen said "click to go on" along the bottom, and clicking
+	 * never went on. The first click finished the typing and every click after it did
+	 * the same thing again — so a full-screen line was a dead end, with the only way
+	 * out being escape, which puts the conversation down rather than carrying it.
+	 *
+	 * The cutscene screen beside this one had the pair the right way round the whole
+	 * time. That is what a shared {@link SpeakingOn#carryOn} is for now: the two are
+	 * the same act and were written twice.
+	 */
 	@Override
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		int hovered = optionAt((int) event.x(), (int) event.y());
 		if (hovered >= 0) {
+			// Minus one when a place is asking, which the server now knows how to
+			// answer — before, an answer to a doorway's question was looked up as an
+			// entity, found nothing, and was dropped without a word.
 			ClientPlayNetworking.send(new AnswerPayload(
 				state.npcId(), state.options().get(hovered).index()));
 			return true;
 		}
-		if (state.options().isEmpty()) {
+		if (!state.options().isEmpty()) return super.mouseClicked(event, doubleClick);
+
+		// The rest of the sentence first. Somebody clicking at a line still arriving
+		// wants to read it now, not to skip it unread.
+		if (!state.finishedTyping(NpcStudioConfig.get().typingSpeed)) {
 			DialogueClientState.skipTyping();
 			return true;
 		}
-		return super.mouseClicked(event, doubleClick);
+		SpeakingOn.carryOn(state);
+		return true;
 	}
 
 	private int optionsTop() {
@@ -138,8 +182,9 @@ public class DialogueScreen extends Screen {
 	}
 
 	private int questionHeight() {
-		int rows = font.split(Component.literal(state.text()), questionWidth()).size();
-		int text = rows * (font.lineHeight + 2);
+		// The finished line, not the part typed so far: a card that grew letter by
+		// letter while the words arrived is the thing the typing effect must not do.
+		int text = Ink.lay(font, state.text(), questionWidth(), LEADING).height();
 		if (!state.speaker().isEmpty()) text += font.lineHeight + 6;
 		// Never shorter than the face it holds, or the icon hangs out of the box.
 		return Math.max(ICON, text) + PADDING * 2;
@@ -191,17 +236,28 @@ public class DialogueScreen extends Screen {
 				cursor + font.width(name), textTop + font.lineHeight + 3, ACCENT);
 			textTop += font.lineHeight + 8;
 		}
-		for (var row : font.split(Component.literal(visible()), right - PADDING - cursor)) {
-			graphics.text(font, row, cursor, textTop, TEXT);
-			textTop += font.lineHeight + 2;
-		}
+		Ink.draw(graphics, font, visible(), cursor, textTop,
+			right - PADDING - cursor, LEADING, TEXT);
 
 		String hint = "click to go on  ·  esc to step away";
 		graphics.text(font, Component.literal(hint),
 			right - PADDING - font.width(hint), top + LINE_PANEL - font.lineHeight - 4, TEXT_DIM);
 	}
 
-	/** A question: top left, answers stacked under it, both only as wide as needed. */
+	/**
+	 * A question: top left, answers stacked under it, both only as wide as needed.
+	 *
+	 * <h2>Who still sees this</h2>
+	 *
+	 * Only a question asked during a cutscene. An ordinary one goes in the bar, and
+	 * this card is no longer a staging anybody can choose — the reason is written out
+	 * in full at {@link com.mopicmp.npcstudio.dialogue.Node.Choice}, and the short of
+	 * it is that it appeared in the corner, escape swapped it for the bar version, and
+	 * the corner one was never the one being asked for.
+	 *
+	 * It stays because a cutscene has taken the screen: there is no bar under it to
+	 * put a question in, so this is the only layout that can hold one at all.
+	 */
 	private void drawQuestion(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
 		int left = MARGIN;
 		int top = MARGIN;
@@ -225,10 +281,7 @@ public class DialogueScreen extends Screen {
 				textLeft + font.width(name), textTop + font.lineHeight + 2, ACCENT);
 			textTop += font.lineHeight + 6;
 		}
-		for (var row : font.split(Component.literal(visible()), questionWidth())) {
-			graphics.text(font, row, textLeft, textTop, TEXT);
-			textTop += font.lineHeight + 2;
-		}
+		Ink.draw(graphics, font, visible(), textLeft, textTop, questionWidth(), LEADING, TEXT);
 
 		List<ShowChoicePayload.Option> options = state.options();
 		int at = optionsTop();
@@ -246,16 +299,17 @@ public class DialogueScreen extends Screen {
 				graphics.fill(left, y, left + cardWidth, y + 1, colour);
 				graphics.fill(left, y + OPTION_HEIGHT - 1, left + cardWidth, y + OPTION_HEIGHT, colour);
 			}
-			// Trimmed rather than allowed to run past the edge: an answer whose end
-			// is off-screen cannot be read, and a card that stretched to fit the
+			// Kept to one row rather than allowed to run past the edge: an answer whose
+			// end is off-screen cannot be read, and a card that stretched to fit the
 			// longest one would undo the point of sizing it to the question.
-			graphics.text(font, Component.literal(
-					font.plainSubstrByWidth(option.label(), cardWidth - PADDING * 2 - 8)),
-				left + PADDING + 4, y + (OPTION_HEIGHT - font.lineHeight) / 2, over ? colour : TEXT);
+			var laid = Ink.lay(font, option.label(), cardWidth - PADDING * 2 - 8);
+			Ink.draw(graphics, font, laid, left + PADDING + 4,
+				y + (OPTION_HEIGHT - Math.min(OPTION_HEIGHT, laid.height())) / 2,
+				over ? colour : TEXT);
 		}
 	}
 
-	private String visible() {
+	private com.mopicmp.npcstudio.dialogue.text.Words visible() {
 		return state.visibleText(NpcStudioConfig.get().typingSpeed);
 	}
 
@@ -274,14 +328,11 @@ public class DialogueScreen extends Screen {
 	}
 
 	private static int colourOf(String name) {
-		return switch (name) {
-			case "red" -> 0xFFEF5350;
-			case "green" -> 0xFF66BB6A;
-			case "yellow" -> 0xFFFFCA28;
-			case "pink", "magenta" -> 0xFFEC407A;
-			case "grey", "gray" -> 0xFF90A4AE;
-			default -> ACCENT;
-		};
+		// One vocabulary, shared with the bar, the answers and the pickers that offer
+		// it. Kept here as a call rather than a copy: a colour offered in the editor
+		// and unknown to the drawing is a setting that silently does nothing, which is
+		// exactly how this arrived as a bug report.
+		return com.mopicmp.npcstudio.dialogue.text.Tint.of(name);
 	}
 
 	/**

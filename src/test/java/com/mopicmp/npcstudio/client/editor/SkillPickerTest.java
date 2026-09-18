@@ -38,7 +38,7 @@ class SkillPickerTest {
 		DialogueNames.remember(DialogueRegistry.names().stream()
 			.map(name -> DialogueRegistry.get(name)
 				.map(graph -> new EditorPayloads.Known(name, graph.speaks(), graph.waits(),
-					List.copyOf(graph.segments().keySet())))
+					List.copyOf(graph.segments().keySet()), graph.kind().name().toLowerCase()))
 				.orElseThrow())
 			.toList());
 	}

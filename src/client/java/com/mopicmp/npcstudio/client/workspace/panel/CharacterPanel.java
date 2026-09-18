@@ -63,6 +63,7 @@ public class CharacterPanel extends WorkspacePanel {
 	 */
 	private boolean watchful;
 	private boolean endless;
+	private boolean floating;
 	private final List<String> animations = new ArrayList<>();
 	private final List<String> held = new ArrayList<>();
 	private float scale = 1f;
@@ -156,6 +157,7 @@ public class CharacterPanel extends WorkspacePanel {
 		scale = details.scale() <= 0 ? 1f : details.scale();
 		watchful = details.watchful();
 		endless = details.endless();
+		floating = details.floating();
 		skin = null;
 		mainHand = null;
 		offHand = null;
@@ -164,7 +166,10 @@ public class CharacterPanel extends WorkspacePanel {
 		// being filled in rather than when somebody opens the list. A menu that
 		// appears empty and fills in a moment later is a menu people click through
 		// before it is ready.
-		ClientPlayNetworking.send(new com.mopicmp.npcstudio.net.EditorPayloads.Browse());
+		// Quietly: this wants the names for a dropdown and nothing else. Asked out
+		// loud it opened the dialogue window over the workspace every time a character
+		// was opened, which is what this panel being filled in means.
+		ClientPlayNetworking.send(com.mopicmp.npcstudio.net.EditorPayloads.Browse.quietly());
 		rebuild();
 	}
 
@@ -195,10 +200,24 @@ public class CharacterPanel extends WorkspacePanel {
 	 * knows what a character is and one packet that says so.
 	 */
 	public void setAnimation(int slot, String animation) {
-		if (about < 0 || slot < 0 || slot >= animations.size()) return;
+		setAnimation(about, slot, animation);
+	}
+
+	/**
+	 * The same, for an answer to a question asked about a particular character.
+	 *
+	 * Refused outright when the selection has moved on. There is no sensible other
+	 * behaviour: the list held here belongs to whoever is selected now, so writing last
+	 * character's answer into it would give the wrong person the animation and mark it
+	 * unsaved, with nothing anywhere saying what had happened.
+	 */
+	public boolean setAnimation(int asked, int slot, String animation) {
+		if (about < 0 || asked != about) return false;
+		if (slot < 0 || slot >= animations.size()) return false;
 		animations.set(slot, animation);
 		notice = Component.translatable("npc_studio.character.unsaved").getString();
 		rebuild();
+		return true;
 	}
 
 	@Override
@@ -255,10 +274,16 @@ public class CharacterPanel extends WorkspacePanel {
 		for (NpcEntity.Motion motion : NpcEntity.Motion.values()) {
 			int slot = motion.ordinal();
 			y += LABEL;
+			// The question carries who it is about, and the answer is refused if the
+			// selection has moved since. Without that, choosing an animation, clicking
+			// another character to look at her, and then pressing "use this" wrote the
+			// answer into the second character — reported as an animation that moved to
+			// somebody else.
+			int asking = about;
 			add(new IconTextButton(PAD, y - 1, across, ROW, Icon.PLAY,
 				Component.literal(nameOf(animations.get(slot))), ACCENT,
-				() -> Workspace.askAnimation(new Workspace.Pick(animations.get(slot),
-					picked -> animations.set(slot, picked)))));
+				() -> Workspace.askAnimation(new Workspace.Pick(asking, animations.get(slot),
+					picked -> setAnimation(asking, slot, picked)))));
 			y += ROW + GAP;
 		}
 
@@ -286,6 +311,18 @@ public class CharacterPanel extends WorkspacePanel {
 			Component.translatable("npc_studio.character.endless.what"), ACCENT,
 			() -> endless, () -> {
 				endless = !endless;
+				touched();
+			}));
+		y += ROW + GAP;
+
+		// On a row of its own rather than squeezed in beside those two. It is the one
+		// of the three that changes where a character physically is, and pairing it
+		// with "endless ammo" would file it as a detail of fighting.
+		y += LABEL;
+		add(new ToggleSwitch(PAD, y, SWITCH, ROW,
+			Component.translatable("npc_studio.character.floating.what"), ACCENT,
+			() -> floating, () -> {
+				floating = !floating;
 				touched();
 			}));
 		y += ROW + GAP + 4;
@@ -354,6 +391,7 @@ public class CharacterPanel extends WorkspacePanel {
 			PAD, y, TEXT_DIM);
 		graphics.text(font, Component.translatable("npc_studio.character.endless"),
 			PAD + (width - PAD * 2) / 2, y, TEXT_DIM);
+		y = label(graphics, "npc_studio.character.floating", y + ROW + GAP);
 
 		if (!notice.isEmpty()) {
 			graphics.text(font, Component.literal(notice), PAD, height - 12, TEXT_DIM);
@@ -479,7 +517,7 @@ public class CharacterPanel extends WorkspacePanel {
 		if (about < 0) return;
 		ClientPlayNetworking.send(
 			new NpcPayloads.Apply(about, skinText, dialogueText, animations, held, scale,
-				watchful, endless));
+				watchful, endless, floating));
 		// Saved is the new starting point, so closing afterwards must not put the
 		// old size back.
 		originalScale = null;

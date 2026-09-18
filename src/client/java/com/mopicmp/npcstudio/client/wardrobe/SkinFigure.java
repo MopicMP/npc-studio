@@ -68,10 +68,15 @@ public final class SkinFigure {
 	 * like a mannequin.
 	 */
 	private static void pose(ModelPart root) {
-		turn(root, "right_leg", -14, 0, 0);
-		turn(root, "left_leg", 9, 0, 0);
-		turn(root, "right_arm", -4, 0, 5);
-		turn(root, "left_arm", 5, 0, -5);
+		// Which leg leads: the left one, which is the near leg at this angle. The
+		// figure is turned thirty degrees to its own left, so the far leg stepping
+		// forward reads as a leg behind the body — the step is there and cannot be
+		// seen. The two are swapped here and nowhere else, which is the point of
+		// this class being the one that poses.
+		turn(root, "right_leg", 9, 0, 0);
+		turn(root, "left_leg", -14, 0, 0);
+		turn(root, "right_arm", 5, 0, 5);
+		turn(root, "left_arm", -4, 0, -5);
 	}
 
 	private static void turn(ModelPart root, String named, float x, float y, float z) {

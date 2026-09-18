@@ -37,6 +37,18 @@ public class FlatButton extends AbstractWidget {
 		onPress.run();
 	}
 
+	/** Enter and space press it, since this is not built on the game's own button. */
+	@Override
+	public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+		if (active && (event.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
+			|| event.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER
+			|| event.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_SPACE)) {
+			onPress.run();
+			return true;
+		}
+		return super.keyPressed(event);
+	}
+
 	@Override
 	protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
 		boolean hovered = isHovered();

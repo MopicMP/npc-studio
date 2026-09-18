@@ -1,6 +1,7 @@
 package com.mopicmp.npcstudio.client.dialogue;
 
 import com.mopicmp.npcstudio.client.NpcStudioConfig;
+import com.mopicmp.npcstudio.client.text.Ink;
 import com.mopicmp.npcstudio.entity.NpcEntity;
 import com.mopicmp.npcstudio.net.AdvancePayload;
 
@@ -72,13 +73,31 @@ public class CutsceneScreen extends Screen {
 		DialogueCamera.endScene();
 	}
 
+	/**
+	 * Escape ends the scene without ending the conversation.
+	 *
+	 * The server is told, for the reason given on {@link
+	 * com.mopicmp.npcstudio.net.PutDownPayload}: closing a screen is something only
+	 * this side can see, and the bar draws whatever the server still has on screen —
+	 * so without saying anything, escape swapped one showing of the same line for
+	 * another instead of putting it down.
+	 */
+	@Override
+	public void onClose() {
+		ClientPlayNetworking.send(new com.mopicmp.npcstudio.net.PutDownPayload());
+		minecraft.setScreenAndShow(null);
+	}
+
 	@Override
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		if (!state.finishedTyping(NpcStudioConfig.get().typingSpeed)) {
 			DialogueClientState.skipTyping();
 			return true;
 		}
-		ClientPlayNetworking.send(new AdvancePayload(state.npcId()));
+		// Through the one place that knows which packet a thing this is: a scene a
+		// doorway began has no entity to name, and naming one is how a cutscene in a
+		// zone became unadvanceable.
+		SpeakingOn.carryOn(state);
 		return true;
 	}
 
@@ -112,11 +131,8 @@ public class CutsceneScreen extends Screen {
 			graphics.text(font, Component.literal(state.speaker()), cursor, textTop, ACCENT);
 			textTop += font.lineHeight + 4;
 		}
-		String visible = state.visibleText(NpcStudioConfig.get().typingSpeed);
-		for (var row : font.split(Component.literal(visible), right - PADDING - cursor)) {
-			graphics.text(font, row, cursor, textTop, TEXT);
-			textTop += font.lineHeight + 2;
-		}
+		Ink.draw(graphics, font, state.visibleText(NpcStudioConfig.get().typingSpeed),
+			cursor, textTop, right - PADDING - cursor, 2, TEXT);
 
 		String hint = "click to go on  ·  esc to end the scene";
 		graphics.text(font, Component.literal(hint),

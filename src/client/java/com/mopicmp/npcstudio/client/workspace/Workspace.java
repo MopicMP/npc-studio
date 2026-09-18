@@ -41,7 +41,26 @@ public final class Workspace {
 	 * top. So the request has to be left somewhere both can see: what is set at
 	 * the moment, and what to do with the choice.
 	 */
-	public record Pick(String current, java.util.function.Consumer<String> chose) { }
+	public record Pick(int about, String current,
+			java.util.function.Consumer<String> chose) {
+
+		/**
+		 * Who the question was asked about.
+		 *
+		 * <h2>Why a request has to name a character at all</h2>
+		 *
+		 * Because the answer arrives later, and by then the selection may have moved.
+		 * It was reported as an animation landing on the wrong NPC, and that is exactly
+		 * what it was: the request was "which animation", with no record of whose, so
+		 * the panel wrote the answer into whatever character it happened to be showing
+		 * when the answer came back.
+		 *
+		 * Nothing about the picker changed to fix it. What changed is that the question
+		 * carries its own subject, so an answer can be checked against it — and the
+		 * check belongs to whoever asked, since they are the ones who know what the
+		 * answer is for.
+		 */
+	}
 
 	private static Pick animationPick;
 
@@ -112,6 +131,33 @@ public final class Workspace {
 		if (entity == null) return;
 		((com.mopicmp.npcstudio.client.mixin.EntityAccessor) entity)
 			.npcStudio$setSharedFlag(GLOWING, on);
+	}
+
+	/**
+	 * Lets go of the world, and of whoever was chosen in it.
+	 *
+	 * <h2>Why a number has to be forgotten</h2>
+	 *
+	 * Because it is an entity id, and ids are handed out per world and handed out
+	 * again in the next. Carried across, the selection does not point at nobody —
+	 * which would be harmless — it points at whatever happens to hold that number
+	 * where you have arrived. Every panel here answers to the selection, so the
+	 * costume panel would be dressing a stranger and the handles would be standing
+	 * on one.
+	 *
+	 * This is the third statement of the same hazard in this codebase: the undo
+	 * history says it, the remembered skins say it, and the scene's cast says it.
+	 * The selection is where all three of those get their subject from, and it was
+	 * the one that never let go.
+	 *
+	 * The glow is not put out first, deliberately. The entity it was on belongs to a
+	 * level that is going away with it, and reaching into a discarded world to tidy
+	 * a flag nobody will read is work with a null waiting in it.
+	 */
+	public static void forget() {
+		selected = -1;
+		animationPick = null;
+		showPlayer = false;
 	}
 
 	public static int selected() {

@@ -78,13 +78,19 @@ public class PlacedPanel extends WorkspacePanel {
 			Icon.SCENE.draw(graphics, PAD, top + (ROW - Icon.SIZE) / 2, on ? ACCENT : TEXT_DIM);
 
 			// The name, and how far away it is. Distance is what turns a list into
-			// directions.
-			graphics.text(font, Component.literal(object.model()),
-				PAD + Icon.SIZE + 3, top + 3, on ? ACCENT : TEXT);
+			// directions — so when the row is too narrow for both, the distance is the
+			// half that survives and the name is the half that gets cut.
+			//
+			// It used to be neither: the name was drawn at full length and the distance
+			// over the top of it. Model names are long by habit — they are file names —
+			// so in a panel a hundred and forty wide that was most rows.
 			String away = "%.0f".formatted(
 				minecraft.player == null ? 0 : minecraft.player.distanceTo(object));
-			graphics.text(font, Component.literal(away),
-				width - PAD - font.width(away), top + 3, TEXT_DIM);
+			int end = width - PAD - font.width(away);
+			int nameLeft = PAD + Icon.SIZE + 3;
+			graphics.text(font, Component.literal(shortened(object.model(), end - nameLeft - 4)),
+				nameLeft, top + 3, on ? ACCENT : TEXT);
+			graphics.text(font, Component.literal(away), end, top + 3, TEXT_DIM);
 		}
 	}
 

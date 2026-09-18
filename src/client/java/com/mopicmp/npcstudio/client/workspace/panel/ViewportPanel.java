@@ -1,5 +1,6 @@
 package com.mopicmp.npcstudio.client.workspace.panel;
 
+import com.mopicmp.npcstudio.client.workspace.Under;
 import com.mopicmp.npcstudio.client.workspace.Workspace;
 import com.mopicmp.npcstudio.client.workspace.WorkspaceCamera;
 import com.mopicmp.npcstudio.client.workspace.WorkspacePanel;
@@ -48,6 +49,10 @@ public class ViewportPanel extends WorkspacePanel {
 	private static final int KEY_SPACE = 32;
 	private static final int KEY_LEFT_SHIFT = 340;
 	private static final int KEY_LEFT_CONTROL = 341;
+	private static final int KEY_F = 70;
+	private static final int KEY_1 = 49;
+	private static final int KEY_2 = 50;
+	private static final int KEY_DELETE = 261;
 	private static final int KEY_RIGHT_SHIFT = 344;
 	private static final int KEY_RIGHT_CONTROL = 345;
 
@@ -72,6 +77,18 @@ public class ViewportPanel extends WorkspacePanel {
 	@Override
 	public boolean transparent() {
 		return true;
+	}
+
+	/**
+	 * The one panel without a cross, because it is the world rather than a panel.
+	 *
+	 * Everything else is summoned over this and dismissed again. Shutting this
+	 * would leave the workspace drawing nothing at all — which is what the hide
+	 * button already does, deliberately and reversibly.
+	 */
+	@Override
+	public boolean closable() {
+		return false;
 	}
 
 	@Override
@@ -123,8 +140,26 @@ public class ViewportPanel extends WorkspacePanel {
 		// is an invisible point that can only be found by name — and an arrow drawn on
 		// nothing is a handle for something you cannot see.
 		com.mopicmp.npcstudio.client.scene.CameraMarker.draw(graphics, originX(), originY());
+		com.mopicmp.npcstudio.client.map.StartMarker.draw(graphics, originX(), originY());
+		com.mopicmp.npcstudio.client.map.SpotMarkers.draw(graphics, originX(), originY());
+		// A route being drawn, in the viewport that is drawing it. Nothing is shown
+		// unless this panel is the one placing points — a route belongs to one node
+		// of one graph, and a world with every route in it at once is a world of
+		// lines nobody can trace back to anything.
+		if (com.mopicmp.npcstudio.client.map.Routing.inScene()) {
+			com.mopicmp.npcstudio.client.map.Routing.draw(graphics, font,
+				originX(), originY(), ground(mouseX, mouseY).at());
+			com.mopicmp.npcstudio.client.map.Routing.hint(graphics, font, 0, width);
+		}
 		com.mopicmp.npcstudio.client.scene.BoneHandles.draw(graphics, originX(), originY());
 		com.mopicmp.npcstudio.client.scene.MoveHandles.draw(graphics, originX(), originY());
+
+		// Last of everything, because it is the one thing here that is asked for
+		// rather than shown: handles and outlines describe the world, and this covers
+		// it on purpose.
+		ring.draw(graphics, font, mouseX, mouseY);
+		world.draw(graphics, font, mouseX, mouseY);
+		com.mopicmp.npcstudio.client.map.Naming.draw(graphics, font, width, height);
 	}
 
 	/** Which limb the mouse is over, if it is over the character being posed. */
@@ -156,6 +191,14 @@ public class ViewportPanel extends WorkspacePanel {
 		// what is selected and how far off the camera is; everything else that
 		// could go here is a thing to click, and things to click belong in panels
 		// where they are not sitting on top of the work.
+		// The keys, said out loud and permanently, exactly as the modelling viewport
+		// says its own. A key nobody has been told about is a key that does not
+		// exist, and there is no other place in this window where somebody would go
+		// looking — the workspace has no help screen and should not grow one for six
+		// letters.
+		graphics.text(font, Component.translatable("npc_studio.viewport.keys"),
+			6, height - 32, TEXT_DIM);
+
 		Entity chosen = Workspace.selection();
 		String who = chosen == null
 			? Component.translatable("npc_studio.viewport.nothing").getString()
@@ -181,7 +224,26 @@ public class ViewportPanel extends WorkspacePanel {
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		if (!inside(event.x(), event.y())) return false;
 
+		// The open menu first, always. It is drawn over the world, so a click aimed
+		// at it that reached the world instead would pick whatever the entry happens
+		// to be covering — which is the character the menu is about.
+		if (ring.isOpen()) {
+			ring.click(event.x(), event.y());
+			return true;
+		}
+		if (world.isOpen()) {
+			world.click(event.x(), event.y());
+			return true;
+		}
+
 		if (event.button() == GLFW_RIGHT) {
+			// Where the press landed, so that letting go without having travelled can
+			// be told from a drag. The threshold is the one the number fields already
+			// use for the same distinction — a click that wanders by a pixel is still
+			// a click, and a hand that has moved three is aiming.
+			pressX = event.x();
+			pressY = event.y();
+			mayMenu = true;
 			// Looking about rather than orbiting: the right button is how you get
 			// from one end of a scene to the other, and orbiting is how you get
 			// stuck circling whatever you last clicked on.
@@ -200,6 +262,37 @@ public class ViewportPanel extends WorkspacePanel {
 			return true;
 		}
 		if (event.button() == GLFW_LEFT) {
+			// Drawing a route takes this button whole, and takes it before anything
+			// else here. While the mode is on there is nothing in this panel worth
+			// clicking instead — the whole of it is putting points on the ground —
+			// and a click that selected a character mid-route would look exactly like
+			// a point that failed to appear.
+			//
+			// Only this button. The right one flies the camera, and a route longer
+			// than the view is drawn by flying along it; taking that away to gain a
+			// second way of removing a point would trade the useful half of the mode
+			// for the convenient half.
+			if (com.mopicmp.npcstudio.client.map.Routing.inScene()) {
+				Under on = ground(event.x(), event.y());
+				if (on.at() != null) {
+					if (com.mopicmp.npcstudio.client.map.Routing.drawingBox()) {
+						// A corner. Shift does not remove one — there is nothing to remove
+						// until both are down, and a half-drawn box is undone by walking away.
+						com.mopicmp.npcstudio.client.map.Routing.putCorner(on.at());
+					} else if (com.mopicmp.npcstudio.client.map.Routing.movingHome()) {
+						// Facing where the viewport's camera is looking, which is the same
+						// gesture as out in the world: which way she stands is said by
+						// looking that way, and here the camera is the looking.
+						com.mopicmp.npcstudio.client.map.Routing.putHome(on.at(),
+							com.mopicmp.npcstudio.client.workspace.WorkspaceCamera.yaw());
+					} else if ((event.modifiers() & GLFW_SHIFT) != 0) {
+						com.mopicmp.npcstudio.client.map.Routing.remove(on.at());
+					} else {
+						com.mopicmp.npcstudio.client.map.Routing.put(on.at());
+					}
+				}
+				return true;
+			}
 			// A handle first, always. A ring drawn over a character is a ring as far
 			// as the person clicking is concerned, and letting the pick underneath it
 			// win would mean the only way to grab a bone is to aim at the part of the
@@ -232,6 +325,9 @@ public class ViewportPanel extends WorkspacePanel {
 
 	@Override
 	public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+		if (mayMenu && Math.hypot(event.x() - pressX, event.y() - pressY) > SLOP) {
+			mayMenu = false;
+		}
 		if (com.mopicmp.npcstudio.client.scene.BoneHandles.holding()) {
 			com.mopicmp.npcstudio.client.scene.BoneHandles.drag(
 				originX() + event.x(), originY() + event.y());
@@ -272,7 +368,133 @@ public class ViewportPanel extends WorkspacePanel {
 		panning = false;
 		looking = false;
 		aiming = false;
+
+		if (mayMenu && event.button() == GLFW_RIGHT) {
+			mayMenu = false;
+			openWorldMenu(event.x(), event.y());
+			return true;
+		}
 		return was;
+	}
+
+	// ------------------------------------------------------- the menu in the world
+
+	/** Travel before a press stops being a click. The number fields' own. */
+	private static final int SLOP = 3;
+
+	private double pressX;
+	private double pressY;
+	private boolean mayMenu;
+
+	private final com.mopicmp.npcstudio.client.workspace.Ring ring =
+		new com.mopicmp.npcstudio.client.workspace.Ring();
+
+	/**
+	 * The way out when a subject has grown past what a ring can hold.
+	 *
+	 * Kept rather than deleted, and it is not a hedge. Eight is the ceiling the
+	 * ring exists to impose, so exceeding it has to do something — and quietly
+	 * dropping the ninth would make the ceiling a lie. Falling back to a column is
+	 * visible, works, and is meant to look like what it is: a sign that this
+	 * subject is doing too much.
+	 */
+	private final com.mopicmp.npcstudio.client.workspace.Menu world =
+		new com.mopicmp.npcstudio.client.workspace.Menu();
+
+	/**
+	 * Opens what is on offer for whatever the cursor is over.
+	 *
+	 * A ring while the subject fits in one, a column when it does not. The choice
+	 * is made here rather than inside either of them because it is a statement
+	 * about the subject, not about drawing: a subject that needs a column has
+	 * grown past what one gesture should be asked to hold.
+	 */
+	private void openWorldMenu(double localX, double localY) {
+		Under under = under(localX, localY);
+		if (under.nothing()) {
+			// Silence here would be indistinguishable from the gesture being broken.
+			say(net.minecraft.network.chat.Component.translatable("npc_studio.world.nothing"));
+			return;
+		}
+		var entries = com.mopicmp.npcstudio.client.workspace.WorldActions.forSubject(under);
+		if (entries.isEmpty()) {
+			// Something is there and there is nothing to do to it — a cow, a boat, a
+			// dropped apple. Silence here is the same fault as silence over empty air,
+			// and it is the one the ring's own notes warn about: a gesture that
+			// sometimes does nothing is a gesture people stop using.
+			say(net.minecraft.network.chat.Component.translatable("npc_studio.world.nothing"));
+			return;
+		}
+
+		if (entries.size() <= com.mopicmp.npcstudio.client.workspace.Ring.MOST) {
+			ring.open((int) localX, (int) localY, entries, 0, 0, width, height);
+		} else {
+			world.open(font, (int) localX, (int) localY, entries, 0, 0, width, height);
+		}
+	}
+
+	@Override
+	public boolean escape() {
+		if (com.mopicmp.npcstudio.client.map.Naming.isOpen()) {
+			com.mopicmp.npcstudio.client.map.Naming.cancel();
+			return true;
+		}
+		// Done drawing the route, and back to the node it belongs to. The same key
+		// ends it out in the world, so the way out of the mode is one key wherever it
+		// was entered — the two halves differ in what they are good for and must not
+		// differ in how they are left.
+		if (com.mopicmp.npcstudio.client.map.Routing.inScene()) {
+			com.mopicmp.npcstudio.client.map.Routing.finish();
+			return true;
+		}
+		if (!ring.isOpen() && !world.isOpen()) return false;
+		ring.close();
+		world.close();
+		return true;
+	}
+
+	@Override
+	public boolean charTyped(net.minecraft.client.input.CharacterEvent event) {
+		if (com.mopicmp.npcstudio.client.map.Naming.charTyped(event.codepoint())) return true;
+		return super.charTyped(event);
+	}
+
+	private void say(net.minecraft.network.chat.Component what) {
+		if (minecraft.player != null) minecraft.player.sendOverlayMessage(what);
+	}
+
+	/**
+	 * What the cursor is over, in the order the left button already uses.
+	 *
+	 * Matching that order is the point rather than a convenience: the menu has to
+	 * be about the thing a click would have taken, or pointing means two different
+	 * things depending on which button is used to point.
+	 */
+	private Under under(double localX, double localY) {
+		String limb = boneAt(localX, localY);
+		if (!limb.isEmpty()) return Under.bone(Workspace.selection(), limb);
+
+		Entity hit = pick(localX, localY);
+		if (hit instanceof com.mopicmp.npcstudio.entity.SceneCamera) return Under.camera(hit);
+		if (hit instanceof com.mopicmp.npcstudio.entity.ModelObject) return Under.object(hit);
+		if (hit != null) return Under.character(hit);
+
+		return ground(localX, localY);
+	}
+
+	/** The block the ray meets, and the exact point on it. */
+	private Under ground(double localX, double localY) {
+		if (minecraft.level == null || minecraft.player == null) return Under.NOTHING;
+		Vec3[] line = ray(localX, localY);
+		if (line == null) return Under.NOTHING;
+
+		var hit = minecraft.level.clip(new net.minecraft.world.level.ClipContext(
+			line[0], line[1],
+			net.minecraft.world.level.ClipContext.Block.OUTLINE,
+			net.minecraft.world.level.ClipContext.Fluid.NONE,
+			minecraft.player));
+		if (hit.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK) return Under.NOTHING;
+		return Under.ground(hit.getBlockPos(), hit.getLocation());
 	}
 
 	/**
@@ -386,9 +608,37 @@ public class ViewportPanel extends WorkspacePanel {
 
 	@Override
 	public boolean keyPressed(KeyEvent event) {
+		// Anything being typed comes first, and takes every key it knows. F would
+		// otherwise frame the selection in the middle of somebody spelling a name.
+		if (com.mopicmp.npcstudio.client.map.Naming.keyPressed(event.key())) return true;
+		if (com.mopicmp.npcstudio.client.map.Naming.isOpen()) return true;
+
 		// F for the selection, as in every editor that has ever had a viewport.
-		if (event.key() == 70) {
+		if (event.key() == KEY_F) {
 			if (steerable()) WorkspaceCamera.frame(Workspace.selection());
+			return true;
+		}
+		// One, two, three for the tools — which is not a choice made here. The
+		// modelling window has taught these since it existed, and says so in its own
+		// help line. Binding G and R for the same three acts, because another editor
+		// uses those letters, would mean the same gesture has two names depending on
+		// which window it is done in — the exact drift being merged out of this
+		// workspace everywhere else this week.
+		//
+		// The modelling viewport keeps its own handling of these and never reaches
+		// here for them; these are for the world.
+		if (event.key() == KEY_1) {
+			com.mopicmp.npcstudio.client.model.Gizmo.tool(
+				com.mopicmp.npcstudio.client.model.Gizmo.Tool.MOVE);
+			return true;
+		}
+		if (event.key() == KEY_2) {
+			com.mopicmp.npcstudio.client.model.Gizmo.tool(
+				com.mopicmp.npcstudio.client.model.Gizmo.Tool.ROTATE);
+			return true;
+		}
+		if (event.key() == KEY_DELETE) {
+			com.mopicmp.npcstudio.client.workspace.WorldActions.remove(Workspace.selection());
 			return true;
 		}
 		return false;

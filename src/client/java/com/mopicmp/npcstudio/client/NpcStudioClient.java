@@ -48,6 +48,10 @@ public class NpcStudioClient implements ClientModInitializer {
 		// ordering one.
 		NpcEntity.factory = ClientNpcEntity::new;
 
+		// The way into the server manager, from the screen where somebody is
+		// already looking at servers.
+		com.mopicmp.npcstudio.client.server.ServerEntry.register();
+
 		// Only the index is read here — a list of names, not a hundred and seventy
 		// megabytes of keyframes. The movement of an emote is parsed the first time
 		// something plays it, so a session that never opens the picker never pays
@@ -100,6 +104,68 @@ public class NpcStudioClient implements ClientModInitializer {
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
 			com.mopicmp.npcstudio.client.model.ModelStore.forget());
 
+		// The map's start. The settings arrive on the way in and are applied at once;
+		// leaving puts every one of them back, and that is not optional — see
+		// StartOptions for what these numbers are and where they live afterwards.
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.MapPayloads.Start.TYPE,
+			(payload, context) -> context.client().execute(() ->
+				com.mopicmp.npcstudio.client.map.Started.took(payload.start())));
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.MapPayloads.Spawn.TYPE,
+			(payload, context) -> context.client().execute(() ->
+				com.mopicmp.npcstudio.client.map.Started.told(payload)));
+		ClientTickEvents.END_CLIENT_TICK.register(
+			com.mopicmp.npcstudio.client.map.Started::tick);
+
+		// A second jump, watched for on the side where a jump happens. Free when nobody
+		// has the ability: it is a key read and a list lookup, and the list is empty for
+		// every player on a map that grants none.
+		ClientTickEvents.END_CLIENT_TICK.register(
+			com.mopicmp.npcstudio.client.knack.Knacks::tick);
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
+			com.mopicmp.npcstudio.client.map.Started.gone());
+
+		// Typefaces this map is written in. The server sends a list on the way in and
+		// this asks only for the files it has not got, so a second visit costs nothing.
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.FontPayloads.Catalogue.TYPE, (payload, context) ->
+				com.mopicmp.npcstudio.client.text.FontDelivery.offered(payload));
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.FontPayloads.Part.TYPE, (payload, context) ->
+				com.mopicmp.npcstudio.client.text.FontDelivery.piece(payload));
+		// Half of a typeface that was still arriving goes with the world it was
+		// arriving from. Held statically, it would otherwise sit here on the next
+		// server waiting for pieces that are never coming.
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
+			com.mopicmp.npcstudio.client.text.FontDelivery.forget());
+
+		// The map's named places. Asked for on the way in rather than when a panel
+		// opens, because they are drawn in the world and a graph acts on them whether
+		// or not anybody is editing.
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.SpotPayloads.Spots.TYPE,
+			(payload, context) -> context.client().execute(() ->
+				com.mopicmp.npcstudio.client.map.Spots.took(payload.spots())));
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
+			com.mopicmp.npcstudio.client.map.Spots.gone());
+
+		// A route being drawn is a mode, and a mode left on across a disconnect is
+		// one that borrows the mouse buttons in whatever world comes next — with the
+		// document it was placing into belonging to a server nobody is talking to.
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
+			com.mopicmp.npcstudio.client.map.Routing.forget());
+
+		// Entity ids belong to the world that handed them out and are handed out
+		// again in the next one. An entry kept across a disconnect would eventually
+		// name a different character and teleport it somewhere it has never been.
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+			com.mopicmp.npcstudio.client.edit.History.forget();
+			// A hold is about a world. Held statically, it would otherwise still be in
+			// force on the next world somebody joined, with nothing there to release it.
+			com.mopicmp.npcstudio.client.dialogue.Holding.forget();
+		});
+
 		ClientPlayNetworking.registerGlobalReceiver(ShowLinePayload.TYPE,
 			(payload, context) -> context.client().execute(() -> {
 				DialogueClientState.show(payload);
@@ -110,8 +176,16 @@ public class NpcStudioClient implements ClientModInitializer {
 				DialogueClientState.show(payload);
 				present(context.client());
 			}));
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.HoldPlayerPayload.TYPE,
+			(payload, context) -> context.client().execute(() ->
+				com.mopicmp.npcstudio.client.dialogue.Holding.told(payload.held())));
 		ClientPlayNetworking.registerGlobalReceiver(CloseDialoguePayload.TYPE,
 			(payload, context) -> context.client().execute(() -> {
+				// Only the document's blanket rule. A hold the graph put on spans nodes
+				// on purpose — see Holding.barGone — and the bar going away is not the
+				// conversation ending. The end of the conversation sends its own release.
+				com.mopicmp.npcstudio.client.dialogue.Holding.barGone();
 				DialogueClientState.close();
 				if (DialogueScreen.isOpen() || CutsceneScreen.isOpen()) context.client().setScreenAndShow(null);
 			}));
@@ -187,6 +261,34 @@ public class NpcStudioClient implements ClientModInitializer {
 		ClientPlayNetworking.registerGlobalReceiver(com.mopicmp.npcstudio.net.WardrobePayloads.Marks.TYPE,
 			(payload, context) -> context.client().execute(() ->
 				com.mopicmp.npcstudio.client.wardrobe.Costumes.acceptMarks(payload.marks())));
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.PortraitPayloads.Shelf.TYPE,
+			(payload, context) -> context.client().execute(() ->
+				com.mopicmp.npcstudio.client.wardrobe.PortraitShelf.accept(payload.pictures())));
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.GaugePayloads.Showing.TYPE,
+			(payload, context) -> context.client().execute(() ->
+				com.mopicmp.npcstudio.client.dialogue.Gauges.accept(payload.gauges())));
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.KnackPayloads.Have.TYPE,
+			(payload, context) -> context.client().execute(() ->
+				com.mopicmp.npcstudio.client.knack.Knacks.accept(payload.knacks())));
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.VariablePayloads.Names.TYPE,
+			(payload, context) -> context.client().execute(() ->
+				com.mopicmp.npcstudio.client.editor.KnownVariables.accept(payload.known())));
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.WatchPayloads.Told.TYPE,
+			(payload, context) -> context.client().execute(() ->
+				com.mopicmp.npcstudio.client.dialogue.Watching.accept(payload.lines())));
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.PuppetPayloads.Sheets.TYPE,
+			(payload, context) -> context.client().execute(() ->
+				com.mopicmp.npcstudio.client.puppet.PuppetSheets.accept(payload.written())));
+		ClientPlayNetworking.registerGlobalReceiver(
+			com.mopicmp.npcstudio.net.ShowPortraitPayload.TYPE,
+			(payload, context) -> context.client().execute(() ->
+				com.mopicmp.npcstudio.client.dialogue.Portraits.show(payload)));
 		ClientPlayNetworking.registerGlobalReceiver(com.mopicmp.npcstudio.net.WardrobePayloads.Picture.TYPE,
 			(payload, context) -> context.client().execute(() ->
 				com.mopicmp.npcstudio.client.wardrobe.Costumes.acceptPicture(
@@ -210,10 +312,21 @@ public class NpcStudioClient implements ClientModInitializer {
 			}));
 		ClientPlayNetworking.registerGlobalReceiver(
 			com.mopicmp.npcstudio.net.BenchPayloads.Told.TYPE,
-			(payload, context) -> context.client().execute(() ->
+			(payload, context) -> context.client().execute(() -> {
 				com.mopicmp.npcstudio.client.workspace.WorkspaceScreen.deliver(
 					com.mopicmp.npcstudio.client.workspace.panel.BenchPanel.class,
-					panel -> panel.accept(payload))));
+					panel -> panel.accept(payload));
+				// And out loud when nothing is showing it. These answers used to be read
+				// only in the bench panel, which was right while the bench was the only
+				// thing that asked. The ring asks now, from the world, with no panel open
+				// — and an act with no visible answer is an act that looks like nothing
+				// happened.
+				var client = context.client();
+				if (client.player == null || payload.lines().isEmpty()) return;
+				if (com.mopicmp.npcstudio.client.workspace.WorkspaceScreen.watching("bench")) return;
+				client.player.sendOverlayMessage(
+					net.minecraft.network.chat.Component.literal(payload.lines().get(0)));
+			}));
 		ClientPlayNetworking.registerGlobalReceiver(EditorPayloads.Listing.TYPE,
 			(payload, context) -> context.client().execute(() -> {
 				// Always remembered, because two screens want the same answer for
@@ -221,8 +334,12 @@ public class NpcStudioClient implements ClientModInitializer {
 				// fill a drop-down. Asking twice would be one packet more and one
 				// state more to keep in step.
 				com.mopicmp.npcstudio.client.editor.DialogueNames.remember(payload.graphs());
-				// A screen that asked only for the names keeps itself; anything else
-				// meant "show me the list".
+				// Whoever asked only for the names keeps their window, and the packet
+				// says which that was. Without it every answer opened the list — and the
+				// character panel asks for the names as it fills itself in, which is
+				// every time a character is opened. So the dialogue window arrived over
+				// the world each time the menu did, having been asked for by a dropdown.
+				if (!payload.toShow()) return;
 				// In the workspace the list belongs to the dialogue panel, which is
 				// where the graph is going to appear anyway. Outside it, asking for
 				// the list still means asking to see it on a screen of its own.
@@ -245,8 +362,48 @@ public class NpcStudioClient implements ClientModInitializer {
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
 			com.mopicmp.npcstudio.client.skin.CustomSkins.forget();
 			com.mopicmp.npcstudio.client.wardrobe.Costumes.forget();
+			// The skin the last map dressed everybody in. It holds a texture registered
+			// against that world's library, so carrying it over would put the previous
+			// map's costume on the next map's players until somebody looked closely.
+			com.mopicmp.npcstudio.client.map.WornHere.forget();
+			// The picture standing beside the last scene, and the list it came from.
+			com.mopicmp.npcstudio.client.dialogue.Portraits.forget();
+			com.mopicmp.npcstudio.client.wardrobe.PortraitShelf.forget();
+			// The layout sheets and the alpha masks decoded for placing them. Both are
+			// this world's; the next one has its own figures and its own pictures.
+			com.mopicmp.npcstudio.client.puppet.PuppetSheets.forget();
+			com.mopicmp.npcstudio.client.puppet.Masks.forget();
+			com.mopicmp.npcstudio.client.dialogue.Watching.forget();
+			// The names the last map's documents used. Offering them in the next map's
+			// editor would be offering variables that do not exist there.
+			com.mopicmp.npcstudio.client.editor.KnownVariables.forget();
+			// And what this map let anybody do. Carried over, the next map would hand
+			// somebody an ability none of its documents ever granted.
+			com.mopicmp.npcstudio.client.knack.Knacks.forget();
+			// And what it was showing of it. Carried over, the next map would draw a
+			// stamina bar none of its documents ever asked for.
+			com.mopicmp.npcstudio.client.dialogue.Gauges.forget();
 			com.mopicmp.npcstudio.client.entity.ShapeEditing.end();
 			com.mopicmp.npcstudio.client.wardrobe.TryingOn.forget();
+
+			// And four more of exactly the same kind, which had been missed while the
+			// reason for the others was being written out three separate times.
+			//
+			// The selection is an entity id, so in the next world it names whoever holds
+			// that number there — and every panel in the workspace takes its subject
+			// from it, so the costume panel would be dressing a stranger.
+			com.mopicmp.npcstudio.client.workspace.Workspace.forget();
+			// The graphs are documents in a world save. Offered in the next world they
+			// name nothing, and a character given one stands still with a graph on her
+			// panel saying she has one.
+			com.mopicmp.npcstudio.client.editor.DialogueNames.forget();
+			// The model being built is a document of the world it was opened from.
+			// Carried over, saving it would write one world's ship into another's save.
+			com.mopicmp.npcstudio.client.model.Modelling.close();
+			// The scene camera is an entity of a level that is going away, and the flag
+			// beside it says the view is looking through one. Kept, the next world would
+			// start seeing through a camera that no longer exists.
+			com.mopicmp.npcstudio.client.scene.SceneCameras.forget();
 		});
 
 		// The state is static, so it outlives the world it belonged to. Without
@@ -264,6 +421,22 @@ public class NpcStudioClient implements ClientModInitializer {
 
 		// The turn towards the speaker is stepped on every client tick.
 		ClientTickEvents.END_CLIENT_TICK.register(DialogueCamera::tick);
+		// The way out of standing still, watched every tick. It is here rather than in
+		// the input mixin because it has to keep running on the tick that lets go, and
+		// the mixin returns before then.
+		ClientTickEvents.END_CLIENT_TICK.register(client ->
+			com.mopicmp.npcstudio.client.dialogue.Holding.tick());
+
+		// Typefaces dropped in the folder, put where the game looks them up — and put
+		// back when a resource reload throws them out again.
+		//
+		// A tick rather than a reload listener, and the reason is worth keeping: the
+		// order reload listeners run in is not ours to choose, so one registered
+		// beside the font manager's own may run *before* it and carefully fill a map
+		// that is about to be replaced. Asking "are they still there" cannot be wrong
+		// about the order, and it also catches a font going missing without a reload.
+		ClientTickEvents.END_CLIENT_TICK.register(client ->
+			com.mopicmp.npcstudio.client.text.Fonts.ensure());
 
 		// Placed objects are told what shape they are, on a slow beat and on every
 		// client — not only while the editor is open. A client works out where the
@@ -289,6 +462,22 @@ public class NpcStudioClient implements ClientModInitializer {
 
 		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
 			NpcStudio.id("dialogue"), DialogueHud::render);
+
+		// The map's marks over the ordinary game. They are put down by pointing at the
+		// world, from a ring that opens without the workspace — so drawing them only
+		// inside the workspace meant placing one while walking about produced nothing
+		// you could see, and a mark you cannot see is a mark you place twice.
+		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
+			NpcStudio.id("map_marks"),
+			com.mopicmp.npcstudio.client.map.SpotMarkers::overWorld);
+
+		// A route being drawn, for the same reason and in the same place. It is put
+		// down by pointing at the ground with no window open at all, so it has nowhere
+		// else it could be drawn — and a path you cannot see while walking it is a
+		// path laid twice.
+		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
+			NpcStudio.id("route"),
+			com.mopicmp.npcstudio.client.map.Routing::overWorld);
 
 		// Last of everything, and that is the whole requirement: a scene fading out
 		// has to take the hotbar and the crosshair with it, or what fades is the
@@ -339,7 +528,16 @@ public class NpcStudioClient implements ClientModInitializer {
 	 */
 	private static void present(net.minecraft.client.Minecraft client) {
 		DialogueClientState state = DialogueClientState.current();
-		if (state != null && state.isCutscene()) {
+		// A question staged as a cutscene is shown as a question instead.
+		//
+		// Not a preference overruled: a cutscene has no answers on it and no way to
+		// pick one — clicking it means "go on", and going on from a question is
+		// refused, so the scene stopped dead with the camera out and nothing to do.
+		// The mode is about how a *line* is staged, and a node that can be either was
+		// allowed to choose a staging that cannot hold it.
+		if (state != null && state.isCutscene() && !state.options().isEmpty()) {
+			client.setScreenAndShow(new DialogueScreen(state));
+		} else if (state != null && state.isCutscene()) {
 			// A new screen every line, and that is fine: the flight refuses to
 			// restart while it is already aimed at the same NPC, so several lines
 			// read as one continuous shot rather than as a camera that jumps back

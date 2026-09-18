@@ -198,6 +198,27 @@ public final class NpcStudioConfig {
 	 */
 	public com.mopicmp.npcstudio.client.workspace.DockLayout.SavedDock workspace;
 
+	/**
+	 * The arrangement from before the columns went, kept and not read.
+	 *
+	 * Moved here once, the first time an old one is found. It describes a workspace
+	 * that no longer exists — twelve panels sharing a column that could not fit its
+	 * own contents — so restoring it would put back the thing this work removed.
+	 * Deleting it outright is a different matter: somebody spent an afternoon
+	 * dragging those splitters, and quietly binning that is not ours to do.
+	 */
+	public com.mopicmp.npcstudio.client.workspace.DockLayout.SavedDock workspaceBefore;
+
+	/**
+	 * How wide each panel was last pulled to, by id.
+	 *
+	 * Separate from the layout above because a panel that has been dismissed is not
+	 * in the layout at all, and dismissing one is now the ordinary thing to do with
+	 * it. See {@code PanelWidths} for why that made the width look as though it were
+	 * never saved.
+	 */
+	public java.util.Map<String, Integer> panelWidth = new java.util.LinkedHashMap<>();
+
 	private static NpcStudioConfig loaded;
 
 	public static NpcStudioConfig get() {

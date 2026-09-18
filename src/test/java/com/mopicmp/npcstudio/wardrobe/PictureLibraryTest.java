@@ -22,7 +22,7 @@ import org.junit.jupiter.api.io.TempDir;
  * out, and that is worth several, because it is the reason the storage is
  * shaped the way it is rather than being one file with a list in it.
  */
-class SkinLibraryTest {
+class PictureLibraryTest {
 
 	private static byte[] png(int seed) {
 		byte[] bytes = new byte[64];
@@ -32,10 +32,10 @@ class SkinLibraryTest {
 
 	@Test
 	void aCostumeSurvivesBeingReopened(@TempDir Path root) {
-		SkinLibrary library = new SkinLibrary(root);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
 		library.add("guard", "medieval", "swordsmen", png(1));
 
-		List<SkinLibrary.Entry> reopened = new SkinLibrary(root).entries();
+		List<PictureLibrary.Entry> reopened = PictureLibrary.wardrobeShelf(root).entries();
 
 		assertEquals(1, reopened.size());
 		assertEquals("guard", reopened.get(0).label());
@@ -52,8 +52,8 @@ class SkinLibraryTest {
 	 */
 	@Test
 	void aBuildOutlivesFilingAndRenaming(@TempDir Path root) {
-		SkinLibrary library = new SkinLibrary(root);
-		SkinLibrary.Entry smith = library.add("smith", "", "", png(1));
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
+		PictureLibrary.Entry smith = library.add("smith", "", "", png(1));
 		BodyShape broad = new BodyShape(1.4f, 1.1f, 1.2f, 1.3f, 1, 1, 1, 0.5f, 0.2f);
 		library.reshape(smith.id(), broad);
 
@@ -61,15 +61,15 @@ class SkinLibraryTest {
 		library.refile(List.of(smith.id()), "town", "crafts");
 		library.dropCategory("town", "crafts");
 
-		assertEquals(broad, new SkinLibrary(root).entries().get(0).shape(),
+		assertEquals(broad, PictureLibrary.wardrobeShelf(root).entries().get(0).shape(),
 			"the same build, and it survived being reopened from disk");
 	}
 
 	/** A copy of a costume is a copy of how it is built, too. */
 	@Test
 	void aCopyKeepsTheBuild(@TempDir Path root) {
-		SkinLibrary library = new SkinLibrary(root);
-		SkinLibrary.Entry guard = library.add("guard", "", "", png(1));
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
+		PictureLibrary.Entry guard = library.add("guard", "", "", png(1));
 		BodyShape stout = new BodyShape(1.3f, 1, 1.4f, 1, 1, 1, 1, 0.25f, 0f);
 		library.reshape(guard.id(), stout);
 
@@ -81,13 +81,13 @@ class SkinLibraryTest {
 	/** A wardrobe of ordinary costumes reads exactly as it always did. */
 	@Test
 	void anOrdinaryBuildIsNotWrittenDown(@TempDir Path root) throws Exception {
-		SkinLibrary library = new SkinLibrary(root);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
 		library.add("plain", "", "", png(1));
 
 		String written = Files.readString(root.resolve("wardrobe.json"));
 
 		assertFalse(written.contains("shape"), "nothing to say, so nothing is said");
-		assertEquals(BodyShape.DEFAULT, new SkinLibrary(root).entries().get(0).shape());
+		assertEquals(BodyShape.DEFAULT, PictureLibrary.wardrobeShelf(root).entries().get(0).shape());
 	}
 
 	/**
@@ -101,8 +101,8 @@ class SkinLibraryTest {
 	 */
 	@Test
 	void aCopyIsFreeAndSeparate(@TempDir Path root) throws Exception {
-		SkinLibrary library = new SkinLibrary(root);
-		SkinLibrary.Entry original = library.add("guard", "medieval", "", png(1));
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
+		PictureLibrary.Entry original = library.add("guard", "medieval", "", png(1));
 
 		library.copy(List.of(original.id()), "favourites", "");
 		library.copy(List.of(original.id()), "town", "");
@@ -115,7 +115,7 @@ class SkinLibraryTest {
 		// Every copy has the label and the picture, and an identity of its own.
 		assertEquals(3, library.entries().stream()
 			.filter(entry -> entry.fingerprint().equals(original.fingerprint())).count());
-		assertEquals(3, library.entries().stream().map(SkinLibrary.Entry::id).distinct().count());
+		assertEquals(3, library.entries().stream().map(PictureLibrary.Entry::id).distinct().count());
 
 		// So throwing one away leaves the others where they were.
 		library.remove(List.of(original.id()));
@@ -132,12 +132,12 @@ class SkinLibraryTest {
 	 */
 	@Test
 	void deletingEverythingDestroysNothing(@TempDir Path root) throws Exception {
-		SkinLibrary library = new SkinLibrary(root);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
 		library.add("one", "", "", png(1));
 		library.add("two", "", "", png(2));
 		library.add("three", "", "", png(3));
 
-		List<String> everything = library.entries().stream().map(SkinLibrary.Entry::id).toList();
+		List<String> everything = library.entries().stream().map(PictureLibrary.Entry::id).toList();
 		library.remove(everything);
 		assertTrue(library.entries().isEmpty(), "the records are gone");
 
@@ -154,7 +154,7 @@ class SkinLibraryTest {
 	/** The picture a restored record points at has to still be readable. */
 	@Test
 	void restoredCostumesStillHaveTheirPictures(@TempDir Path root) {
-		SkinLibrary library = new SkinLibrary(root);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
 		library.add("one", "", "", png(7));
 		String fingerprint = library.entries().get(0).fingerprint();
 
@@ -168,11 +168,11 @@ class SkinLibraryTest {
 	/** Restoring the wrong version must itself be undoable. */
 	@Test
 	void restoringIsItselfUndoable(@TempDir Path root) {
-		SkinLibrary library = new SkinLibrary(root);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
 		library.add("one", "", "", png(1));
 		library.add("two", "", "", png(2));
 
-		library.remove(library.entries().stream().map(SkinLibrary.Entry::id).toList());
+		library.remove(library.entries().stream().map(PictureLibrary.Entry::id).toList());
 		int versionsAfterWipe = library.history().size();
 		library.restore(library.history().get(0));
 
@@ -183,7 +183,7 @@ class SkinLibraryTest {
 	/** The same picture added twice is one file, because its name is its content. */
 	@Test
 	void twoCopiesOfOnePictureAreOneFile(@TempDir Path root) throws Exception {
-		SkinLibrary library = new SkinLibrary(root);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
 		library.add("winter", "", "", png(5));
 		library.add("summer", "", "", png(5));
 
@@ -196,7 +196,7 @@ class SkinLibraryTest {
 	/** Dropping a category keeps what was in it. */
 	@Test
 	void droppingACategoryKeepsItsCostumes(@TempDir Path root) {
-		SkinLibrary library = new SkinLibrary(root);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
 		library.add("archer", "medieval", "archers", png(1));
 		library.add("swordsman", "medieval", "swordsmen", png(2));
 
@@ -215,12 +215,12 @@ class SkinLibraryTest {
 	 */
 	@Test
 	void renamingKeepsTheIdentifierAndThePicture(@TempDir Path root) {
-		SkinLibrary library = new SkinLibrary(root);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
 		library.add("untitled", "medieval", "guards", png(3));
-		SkinLibrary.Entry before = library.entries().get(0);
+		PictureLibrary.Entry before = library.entries().get(0);
 
 		library.rename(before.id(), "Стражник");
-		SkinLibrary.Entry after = library.entries().get(0);
+		PictureLibrary.Entry after = library.entries().get(0);
 
 		assertEquals(before.id(), after.id(), "an NPC pointing at this must still find it");
 		assertEquals(before.fingerprint(), after.fingerprint(), "and it is still the same picture");
@@ -229,7 +229,7 @@ class SkinLibraryTest {
 
 		// And it survives a reload, which is where a rename that only lived in
 		// memory would quietly come undone.
-		SkinLibrary reopened = new SkinLibrary(root);
+		PictureLibrary reopened = PictureLibrary.wardrobeShelf(root);
 		assertEquals("Стражник", reopened.entries().get(0).label());
 		assertEquals(before.id(), reopened.entries().get(0).id());
 	}
@@ -237,10 +237,10 @@ class SkinLibraryTest {
 	/** Two costumes must never share an identifier, however fast they are added. */
 	@Test
 	void identifiersAreUniqueEvenInABurst(@TempDir Path root) {
-		SkinLibrary library = new SkinLibrary(root);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
 		for (int i = 0; i < 50; i++) library.add("skin " + i, "", "", png(i));
 
-		long distinct = library.entries().stream().map(SkinLibrary.Entry::id).distinct().count();
+		long distinct = library.entries().stream().map(PictureLibrary.Entry::id).distinct().count();
 		assertEquals(50, distinct, "fifty costumes, fifty identifiers");
 	}
 
@@ -254,7 +254,7 @@ class SkinLibraryTest {
 	 */
 	@Test
 	void anIdentifierIsNeverHandedOnAfterADeletion(@TempDir Path root) {
-		SkinLibrary library = new SkinLibrary(root);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
 		library.add("first", "", "", png(1));
 		String gone = library.entries().get(0).id();
 
@@ -271,11 +271,11 @@ class SkinLibraryTest {
 
 	@Test
 	void costumesCanBeMovedBetweenCategories(@TempDir Path root) {
-		SkinLibrary library = new SkinLibrary(root);
+		PictureLibrary library = PictureLibrary.wardrobeShelf(root);
 		library.add("one", "medieval", "archers", png(1));
 		library.add("two", "medieval", "archers", png(2));
 
-		library.refile(library.entries().stream().map(SkinLibrary.Entry::id).toList(),
+		library.refile(library.entries().stream().map(PictureLibrary.Entry::id).toList(),
 			"modern", "police");
 
 		assertTrue(library.entries().stream().allMatch(entry -> entry.group().equals("police")));

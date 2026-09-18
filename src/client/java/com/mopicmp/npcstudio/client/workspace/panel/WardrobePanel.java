@@ -51,9 +51,22 @@ public class WardrobePanel extends ScreenPanel {
 		return new WardrobeScreen(null, dressing);
 	}
 
+	/**
+	 * Follows the selection without throwing the screen away.
+	 *
+	 * It used to remake the screen whenever the selected character changed, and a
+	 * remake is a new screen with new widgets: the shelf jumped back to the top,
+	 * anything half typed went, and for a frame there was nothing there at all —
+	 * which from the outside is a window closing and opening again. The screen can
+	 * simply be told who it is dressing now.
+	 */
 	@Override
 	public void tick() {
 		super.tick();
-		if (Workspace.selected() != dressing) remake();
+		int wanted = Workspace.selected();
+		if (wanted == dressing) return;
+		dressing = wanted;
+		if (inner() instanceof WardrobeScreen wardrobe) wardrobe.dressing(wanted);
+		else remake();
 	}
 }

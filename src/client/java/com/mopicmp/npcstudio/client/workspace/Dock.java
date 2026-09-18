@@ -282,6 +282,25 @@ public final class Dock {
 		boolean inGrip(double px, double py) {
 			return px >= x + width - 8 && px < x + width && py >= y + height - 8 && py < y + height;
 		}
+
+		/**
+		 * Either upright edge, which is what changes the width.
+		 *
+		 * The corner alone was enough while every floater was a small box somebody had
+		 * dragged out into the middle. It stopped being enough when panels started
+		 * arriving as full-height slabs against an edge: the corner of one of those is
+		 * in the very bottom corner of the window, and the thing anybody actually
+		 * wants to pull is the long side facing the world.
+		 *
+		 * Four pixels, and outside the body rather than inside it, so that a list or a
+		 * field hard against the edge of a panel is still clickable.
+		 */
+		int atSide(double px, double py) {
+			if (py < y + TABS || py >= y + height) return 0;
+			if (px >= x - 3 && px < x + 4) return -1;
+			if (px >= x + width - 4 && px < x + width + 3) return 1;
+			return 0;
+		}
 	}
 
 	// ------------------------------------------------------------ the state
@@ -301,6 +320,9 @@ public final class Dock {
 	private Split heldSplitter;
 	private Floater heldFloater;
 	private boolean resizingFloater;
+
+	/** Which upright edge is being pulled: -1 left, 1 right, 0 the corner. */
+	private int heldSide;
 	private double heldX;
 	private double heldY;
 
@@ -417,7 +439,7 @@ public final class Dock {
 			drawCarried(graphics, mouseX, mouseY);
 		}
 
-		if (!menu.isEmpty()) {
+		if (menu.isOpen()) {
 			graphics.nextStratum();
 			drawMenu(graphics, mouseX, mouseY);
 		}
@@ -438,11 +460,26 @@ public final class Dock {
 	}
 
 	private void renderLeaf(GuiGraphicsExtractor graphics, Leaf leaf, int mouseX, int mouseY, float delta) {
+		// A leaf holding nothing draws nothing, bar included.
+		//
+		// The root leaf is the one that can be emptied and not removed: {@link #prune}
+		// leaves it standing, because a tree with no root is not a tree. It used to go
+		// on drawing its title bar — a strip with a menu, a collapse and a maximise on
+		// it, over a rectangle of nothing, none of which does anything. That reads as
+		// the workspace having broken, and it became easy to reach the moment every
+		// panel grew a cross.
+		//
+		// Drawing nothing is right rather than merely tidy: the leaf still takes drops,
+		// so a panel dragged back lands in it, and until then the world shows through
+		// where it is — which is what the workspace is supposed to look like with
+		// nothing open.
+		if (leaf.tabs.isEmpty()) return;
+
 		WorkspacePanel panel = leaf.showing();
 		boolean seeThrough = panel != null && panel.transparent();
 
 		drawBar(graphics, leaf.x, leaf.y, leaf.width, leaf.tabs, leaf.active, leaf.collapsed,
-			leaf == maximized, mouseX, mouseY, seeThrough);
+			leaf == maximized, mouseX, mouseY, seeThrough, false);
 
 		if (leaf.collapsed || panel == null) return;
 
@@ -465,7 +502,7 @@ public final class Dock {
 		graphics.fill(floater.x - 1, floater.y - 1, floater.x + floater.width + 1,
 			floater.y + floater.height + 1, EDGE_LINE);
 		drawBar(graphics, floater.x, floater.y, floater.width, List.of(floater.panel), 0, false,
-			false, mouseX, mouseY, false);
+			false, mouseX, mouseY, false, true);
 		int bodyTop = floater.y + TABS;
 		int bodyHeight = floater.height - TABS;
 		if (bodyHeight <= 0) return;
@@ -473,11 +510,45 @@ public final class Dock {
 		drawPanel(graphics, floater.panel, floater.x, bodyTop, floater.width, bodyHeight,
 			mouseX, mouseY, delta);
 
+		drawSideGrip(graphics, floater, bodyTop, bodyHeight, mouseX, mouseY);
+
 		// The corner grip: three steps, which is enough to read as "pull here".
 		for (int step = 0; step < 3; step++) {
 			int at = 2 + step * 3;
 			graphics.fill(floater.x + floater.width - at - 1, floater.y + floater.height - 3,
 				floater.x + floater.width - at, floater.y + floater.height - 2, TEXT_DIM);
+		}
+	}
+
+	/**
+	 * The upright edge, drawn when the hand is on it or pulling it.
+	 *
+	 * <h2>Why it had to be drawn at all</h2>
+	 *
+	 * It was reported as the width not being adjustable, and it was — the edge took
+	 * the drag perfectly well. Nothing said so. A four-pixel strip that behaves
+	 * differently from the four pixels either side of it, with no mark and no
+	 * cursor change, is a feature only the person who wrote it can find.
+	 *
+	 * The game gives no way to change the pointer, so the mark is the whole of the
+	 * affordance: a line down the edge under the cursor, brighter while it is being
+	 * pulled, and the notches that say which way it moves.
+	 */
+	private void drawSideGrip(GuiGraphicsExtractor graphics, Floater floater,
+			int bodyTop, int bodyHeight, int mouseX, int mouseY) {
+		boolean pulling = heldFloater == floater && resizingFloater && heldSide != 0;
+		int side = pulling ? heldSide : floater.atSide(mouseX, mouseY);
+		if (side == 0) return;
+
+		int edge = side < 0 ? floater.x : floater.x + floater.width - 2;
+		graphics.fill(edge, bodyTop, edge + 2, bodyTop + bodyHeight, pulling ? ACCENT : TEXT_DIM);
+
+		// Three notches at the middle, the mark every draggable edge in every
+		// program wears. Without them the line reads as a border.
+		int middle = bodyTop + bodyHeight / 2;
+		for (int step = -1; step <= 1; step++) {
+			int at = middle + step * 4;
+			graphics.fill(edge - 1, at, edge + 3, at + 1, pulling ? ACCENT : TEXT);
 		}
 	}
 
@@ -501,11 +572,11 @@ public final class Dock {
 
 	private void drawBar(GuiGraphicsExtractor graphics, int left, int top, int across,
 			List<WorkspacePanel> tabs, int active, boolean collapsed, boolean full,
-			int mouseX, int mouseY, boolean seeThrough) {
+			int mouseX, int mouseY, boolean seeThrough, boolean floating) {
 		graphics.fill(left, top, left + across, top + TABS, seeThrough ? 0xCC12161C : BAR);
 		graphics.fill(left, top + TABS - 1, left + across, top + TABS, EDGE_LINE);
 
-		int buttons = 3 * BUTTON;
+		int buttons = BUTTONS * BUTTON;
 		int room = across - buttons;
 
 		// Names as long as they all fit, icons alone when they do not. All or none,
@@ -533,11 +604,39 @@ public final class Dock {
 		}
 
 		int right = left + across;
-		drawGlyph(graphics, right - BUTTON * 3, top, Icon.MENU, mouseX, mouseY);
-		drawGlyph(graphics, right - BUTTON * 2, top, collapsed ? Icon.EXPAND : Icon.COLLAPSE,
+		WorkspacePanel showing = tabs.isEmpty() ? null
+			: tabs.get(Math.max(0, Math.min(active, tabs.size() - 1)));
+
+		drawGlyph(graphics, right - BUTTON * 4, top, Icon.MENU, mouseX, mouseY);
+		drawGlyph(graphics, right - BUTTON * 3, top, collapsed ? Icon.EXPAND : Icon.COLLAPSE,
 			mouseX, mouseY);
-		drawGlyph(graphics, right - BUTTON, top, full ? Icon.RESTORE : Icon.MAXIMIZE, mouseX, mouseY);
+		// The third means "give it the window" for a docked panel and "put it back in
+		// the layout" for a floating one, and those are different enough acts to be
+		// worth different marks.
+		//
+		// Absent for a docked panel that says it cannot be worked in beside anything
+		// else. Such a panel has two states and not three — filling the window, or not
+		// there — so a button offering to shrink it is a button offering the one state
+		// it has declared useless. It was three separate doors to that state: this
+		// mark, Ctrl and space, and escape. The mark is not drawn, the other two are
+		// refused, and the way out is the cross.
+		boolean fills = !floating && showing != null && showing.wholeWindow();
+		if (!fills) {
+			drawGlyph(graphics, right - BUTTON * 2, top,
+				floating ? Icon.DOCK : full ? Icon.RESTORE : Icon.MAXIMIZE, mouseX, mouseY);
+		}
+
+		// And the cross, which was the one thing every window in every program has
+		// and this one did not. Closing was in the menu behind the first glyph all
+		// along — that is, behind a list, which is exactly the place nobody looks for
+		// something this ordinary.
+		if (showing == null || showing.closable()) {
+			drawGlyph(graphics, right - BUTTON, top, Icon.CLOSE, mouseX, mouseY);
+		}
 	}
+
+	/** How many marks sit at the right of a bar: menu, collapse, whole-window, close. */
+	static final int BUTTONS = 4;
 
 	/** The icon a panel is known by, or a plain box for one that has not claimed one. */
 	static Icon iconOf(WorkspacePanel panel) {
@@ -567,7 +666,7 @@ public final class Dock {
 	}
 
 	private boolean named(Leaf leaf) {
-		return named(leaf.tabs, leaf.width - 3 * BUTTON);
+		return named(leaf.tabs, leaf.width - BUTTONS * BUTTON);
 	}
 
 	static final int BUTTON = 16;
@@ -697,8 +796,15 @@ public final class Dock {
 
 	/** Takes an emptied leaf out of the tree, leaving its sibling in the parent's place. */
 	private void prune(Leaf empty) {
+		// Before the root is let off, not after. The root leaf stays in the tree when
+		// it empties — a tree needs a root — but an empty leaf holding the whole window
+		// is a window with nothing in it and no bar to press, which is what closing a
+		// maximised graph out of the root leaf did.
+		if (maximized == empty) {
+			maximized = null;
+			byItself = false;
+		}
 		if (root == empty) return;
-		if (maximized == empty) maximized = null;
 		root = without(root, empty);
 	}
 
@@ -740,7 +846,12 @@ public final class Dock {
 			return;
 		}
 
+		// Where it came from, kept across the detaching that forgets it. Whatever is
+		// showing there afterwards has to be asked whether it needs the window — a
+		// leaf that has just lost the graph is a leaf holding a room-sized hole.
+		Leaf from = carriedFrom;
 		detach(panel);
+		if (from != null && from != drop.leaf && !from.tabs.isEmpty()) fitShown(from);
 
 		if (drop.leaf == null || drop.side == Side.FLOAT) {
 			floaters.add(new Floater(panel, (int) carryX - 90, (int) carryY - 8, 180, 120));
@@ -754,6 +865,11 @@ public final class Dock {
 			drop.leaf.active = index;
 			drop.leaf.collapsed = false;
 			focused = panel;
+			// And the panel that has just arrived in front takes the window if it is one
+			// of the ones that cannot be used without it. Every other place the shown tab
+			// changes already asks this; a drop was the one that did not, so a graph
+			// dragged into a bar landed in whatever room that bar had.
+			fitShown(drop.leaf);
 			return;
 		}
 
@@ -765,6 +881,7 @@ public final class Dock {
 			: new Split(vertical, 0.65f, drop.leaf, fresh);
 		replace(drop.leaf, split);
 		focused = panel;
+		fitShown(fresh);
 	}
 
 	// ------------------------------------------------------------------ input
@@ -783,6 +900,17 @@ public final class Dock {
 			if (floater.inGrip(px, py)) {
 				heldFloater = floater;
 				resizingFloater = true;
+				heldSide = 0;
+				heldX = px;
+				heldY = py;
+				bringToFront(floater);
+				return true;
+			}
+			int side = floater.atSide(px, py);
+			if (side != 0) {
+				heldFloater = floater;
+				resizingFloater = true;
+				heldSide = side;
 				heldX = px;
 				heldY = py;
 				bringToFront(floater);
@@ -797,6 +925,10 @@ public final class Dock {
 				}
 				if (button == 2) {
 					dockBack(floater);
+					return true;
+				}
+				if (button == 3) {
+					close(floater.panel);
 					return true;
 				}
 				carried = floater.panel;
@@ -870,6 +1002,12 @@ public final class Dock {
 	}
 
 	private boolean clickBar(Leaf leaf, MouseButtonEvent event, boolean doubleClick) {
+		// Nothing is drawn there, so nothing is pressed there. Swallowed rather than
+		// passed on: an empty leaf is still a surface, and a click that fell through it
+		// to the world would move the camera by pressing a bar somebody can see the
+		// world through.
+		if (leaf.tabs.isEmpty()) return true;
+
 		double px = event.x();
 		double py = event.y();
 		int button = barButton(leaf.x + leaf.width, px, py, leaf.y);
@@ -885,20 +1023,41 @@ public final class Dock {
 			return true;
 		}
 		if (button == 2) {
-			maximized = maximized == leaf ? null : leaf;
+			// Through the one method rather than by setting the field, which is how this
+			// door came to behave differently from the other two: it never touched
+			// `byItself`, so a graph the dock had taken the window for could be shrunk
+			// here and the dock went on believing it had chosen the arrangement.
+			maximize(leaf);
+			return true;
+		}
+		if (button == 3) {
+			WorkspacePanel showing = leaf.showing();
+			// Swallowed rather than ignored when the panel refuses: nothing is drawn
+			// there, so the press is on empty bar and must not fall through to
+			// whatever the bar is over.
+			if (showing != null && showing.closable()) close(showing);
 			return true;
 		}
 
 		boolean named = named(leaf);
+		// Where the drawing stops, and therefore where the pressing stops. The bar
+		// gives up on the first tab that would not fit; the click loop walked the whole
+		// list, so the part of a half-drawn tab that spills under the buttons selected
+		// a tab nobody could see. It is the same fault as the one this file already
+		// carries a note about — two answers to "is this bar showing names" — and it
+		// got likelier when the bar grew a fourth button and the room shrank.
+		int room = leaf.width - BUTTONS * BUTTON;
 		int at = leaf.x;
 		for (int i = 0; i < leaf.tabs.size(); i++) {
 			int span = tabWidth(leaf.tabs.get(i), named);
+			if (at + span > leaf.x + room) break;
 			if (px >= at && px < at + span) {
 				if (leaf.active != i) {
 					WorkspacePanel was = leaf.showing();
 					if (was != null) was.closed();
 					leaf.active = i;
 					leaf.tabs.get(i).opened();
+					fitShown(leaf);
 				}
 				focused = leaf.tabs.get(i);
 				carried = leaf.tabs.get(i);
@@ -913,11 +1072,11 @@ public final class Dock {
 		return true;
 	}
 
-	/** Which of the three buttons at the right of a bar was hit, or -1. */
+	/** Which of the marks at the right of a bar was hit, or -1. */
 	private int barButton(int right, double px, double py, int top) {
 		if (py < top || py >= top + TABS) return -1;
-		for (int i = 0; i < 3; i++) {
-			int left = right - BUTTON * (3 - i);
+		for (int i = 0; i < BUTTONS; i++) {
+			int left = right - BUTTON * (BUTTONS - i);
 			if (px >= left && px < left + BUTTON) return i;
 		}
 		return -1;
@@ -950,7 +1109,23 @@ public final class Dock {
 		if (carried != null) {
 			// Four pixels of slack, so that clicking a tab selects it and does not
 			// tear it out because a hand moved.
-			if (!carrying && (Math.abs(px - carryX) > 4 || Math.abs(py - carryY) > 4)) carrying = true;
+			if (!carrying && (Math.abs(px - carryX) > 4 || Math.abs(py - carryY) > 4)) {
+				carrying = true;
+				// And the window goes back the moment a panel is picked up to be moved.
+				//
+				// A panel the dock had given the whole window to was a panel with nowhere
+				// to be put: every leaf but its own is out of the layout while it fills the
+				// screen, and a drop onto its own leaf when it is the only tab there is
+				// refused as a move that changes nothing. So it could be dragged and never
+				// went anywhere — reported as refusing to be moved about half the time,
+				// which is exactly how often the graph had taken the window.
+				//
+				// Only room the dock took for itself. A maximise somebody pressed is
+				// theirs, and dragging a tab is not a request to undo it.
+				if (byItself && maximized != null && maximized.tabs.contains(carried)) {
+					giveBackWindow();
+				}
+			}
 			carryX = px;
 			carryY = py;
 			if (carrying) {
@@ -962,7 +1137,20 @@ public final class Dock {
 			}
 		}
 		if (heldFloater != null) {
-			if (resizingFloater) {
+			if (resizingFloater && heldSide == -1) {
+				// The left edge: the panel grows leftwards, so its corner moves with the
+				// hand and its width grows by as much as the corner moved back. Without
+				// moving the corner the panel would appear to slide away from the hand
+				// pulling it.
+				int least = Math.max(120, heldFloater.panel.minimumWidth());
+				int wide = Math.max(least, heldFloater.width - (int) dragX);
+				heldFloater.x += heldFloater.width - wide;
+				heldFloater.width = wide;
+			} else if (resizingFloater && heldSide == 1) {
+				heldFloater.width = Math.max(
+					Math.max(120, heldFloater.panel.minimumWidth()),
+					heldFloater.width + (int) dragX);
+			} else if (resizingFloater) {
 				heldFloater.width = Math.max(120, heldFloater.width + (int) dragX);
 				heldFloater.height = Math.max(60, heldFloater.height + (int) dragY);
 			} else {
@@ -1009,6 +1197,12 @@ public final class Dock {
 		carriedFloater = null;
 		carrying = false;
 		if (heldFloater != null) {
+			// Written down at the end of the pull rather than during it, and against the
+			// panel's id rather than the panel, so that dismissing it and calling it back
+			// returns the width that was chosen instead of the one the code picked.
+			if (resizingFloater) {
+				PanelWidths.remember(heldFloater.panel.id(), heldFloater.width);
+			}
 			heldFloater = null;
 			resizingFloater = false;
 			return true;
@@ -1085,6 +1279,11 @@ public final class Dock {
 		return focused;
 	}
 
+	/** Whether the caret is in a field in the panel that has the keyboard. */
+	public boolean typing() {
+		return focused != null && focused.typing();
+	}
+
 	/**
 	 * Undoes whatever the workspace is in the middle of, and says whether it did.
 	 *
@@ -1096,6 +1295,13 @@ public final class Dock {
 		// Whatever else escape undoes, it lets go. A panel left holding a press it
 		// will never be told the end of is a panel stuck in the middle of a drag.
 		pressed = null;
+
+		// The panel first, because whatever it has open is the innermost thing on
+		// screen and escape means "get me out of this" innermost-first. Without this
+		// a menu opened over the world had no way out but clicking somewhere, which
+		// is the kind of one-way door this method exists to prevent.
+		WorkspacePanel showing = focused;
+		if (showing != null && showing.escape()) return true;
 		if (carried != null || carrying) {
 			carried = null;
 			carriedFrom = null;
@@ -1103,15 +1309,78 @@ public final class Dock {
 			carrying = false;
 			return true;
 		}
-		if (!menu.isEmpty()) {
-			menu = List.of();
+		if (menu.isOpen()) {
+			menu.close();
 			return true;
 		}
 		if (maximized != null) {
+			WorkspacePanel filling = maximized.showing();
+
+			// A panel that took the window on its own is stepped off, not taken away.
+			//
+			// Escape means "get me out of this", and for a graph of nodes the way out is
+			// not a smaller graph — handing the window back leaves it squeezed into the
+			// state it declares it cannot be worked in. So escape moves to another tab of
+			// the same bar, which is what "out of the graph" means when the graph is one
+			// tab among several.
+			//
+			// <h2>It used to close it, and that was the bug</h2>
+			//
+			// {@code close(filling)} takes the panel out of the layout altogether. The
+			// layout is saved on the way out, so the tab was gone for good: open the
+			// graph from the panels menu, press escape to leave the workspace, come back
+			// — and the bar has no graph in it. Reported as having to summon it and dock
+			// it again every single time before any work could start.
+			//
+			// The reasoning was sound when a maximised graph was the only thing on the
+			// screen and "put it away" was the only way out that meant anything. It
+			// stopped being sound when panels started arriving as tabs beside each other:
+			// there is somewhere to go now, and escape is not the button that deletes
+			// things. The cross is.
+			//
+			// Only when the dock took the window unasked. Somebody who pressed the
+			// maximise button themselves is asking for it back, not asking to leave, and
+			// `byItself` is exactly that difference.
+			if (byItself && filling != null && filling.wholeWindow()) {
+				Leaf leaf = maximized;
+				maximized = null;
+				byItself = false;
+				int beside = besideIn(leaf, filling);
+				if (beside >= 0) {
+					filling.closed();
+					leaf.active = beside;
+					leaf.tabs.get(beside).opened();
+					fitShown(leaf);
+				}
+				return true;
+			}
 			maximized = null;
+			// Cleared with it, which it never was. A stale "the dock chose this" left
+			// over from a window nobody is filling any more is a flag waiting to make
+			// the next decision on the wrong grounds.
+			byItself = false;
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * Which other tab of this leaf to step onto, or -1 when there is nowhere to go.
+	 *
+	 * The world first if it is in the same bar, because that is what somebody leaving
+	 * a graph is going back to look at. Failing that, anything that is not itself a
+	 * panel demanding the whole window — stepping off one of those onto another is
+	 * not stepping off anything.
+	 */
+	private int besideIn(Leaf leaf, WorkspacePanel leaving) {
+		int fallback = -1;
+		for (int i = 0; i < leaf.tabs.size(); i++) {
+			WorkspacePanel each = leaf.tabs.get(i);
+			if (each == leaving) continue;
+			if (each.id().equals("viewport")) return i;
+			if (!each.wholeWindow() && fallback < 0) fallback = i;
+		}
+		return fallback;
 	}
 
 	public void tick() {
@@ -1131,6 +1400,31 @@ public final class Dock {
 	 * menu asks for and because "put it back on the right" is a thing somebody
 	 * says out loud. Dragging covers the arrangements nobody can name.
 	 */
+	/**
+	 * Puts a panel down as a slab against an edge, over whatever is behind it.
+	 *
+	 * The shape the workspace is moving to: the world fills the window and a panel
+	 * is something summoned over it and dismissed again, rather than a column that
+	 * is always there taking room whether or not it is being used.
+	 *
+	 * A floater rather than a new kind of thing, because a floater is already
+	 * exactly this — a panel with a bar, over the rest, that can be moved and
+	 * closed. The only thing missing was a way to say where to put one.
+	 */
+	public void floatAt(WorkspacePanel panel, int left, int top, int wide, int tall) {
+		detach(panel);
+		floaters.add(new Floater(panel, left, top, wide, tall));
+		focused = panel;
+	}
+
+	/** The floating panel with this id, or null when it is not out. */
+	public WorkspacePanel floating(String id) {
+		for (Floater floater : floaters) {
+			if (floater.panel.id().equals(id)) return floater.panel;
+		}
+		return null;
+	}
+
 	public void send(WorkspacePanel panel, String where) {
 		Leaf from = leafOf(panel);
 		carried = panel;
@@ -1157,14 +1451,96 @@ public final class Dock {
 			root = firstIsNew
 				? new Split(vertical, 0.25f, fresh, whole)
 				: new Split(vertical, 0.75f, whole, fresh);
+			fitShown(fresh);
 		}
 		carried = null;
 		carriedFrom = null;
 		carriedFloater = null;
 	}
 
+	/**
+	 * Gives a leaf the window, or takes it back — except where taking it back is a
+	 * state the panel has said it cannot be used in.
+	 *
+	 * The refusal is silent because there is nothing to say: the mark that would have
+	 * asked for this is not drawn on such a bar, so the only ways here are the key
+	 * and a caller, and neither is somebody reading a button. The way out is the
+	 * cross, or escape, which puts it away rather than shrinking it.
+	 */
 	public void maximize(Leaf leaf) {
-		maximized = maximized == leaf ? null : leaf;
+		if (maximized == leaf) {
+			WorkspacePanel filling = leaf.showing();
+			if (filling != null && filling.wholeWindow()) return;
+			maximized = null;
+			byItself = false;
+			return;
+		}
+		maximized = leaf;
+		byItself = false;
+	}
+
+	/**
+	 * Set when the dock maximised on its own rather than being asked to.
+	 *
+	 * The difference decides what happens when the tab changes: room the dock took
+	 * for a graph it gives back when the graph is not being looked at, and room
+	 * somebody took deliberately it keeps. Without the distinction, one of the two
+	 * has to be wrong — either a deliberate maximise collapses the moment you
+	 * change tab, or a graph leaves the whole window taken behind it.
+	 */
+	private boolean byItself;
+
+	/**
+	 * Gives the window to a panel that cannot be used without it, and takes it back.
+	 *
+	 * Called wherever the shown panel changes, which is more places than it looks:
+	 * a tab click, a panel dropped into a leaf, a layout read off disk.
+	 */
+	void fitShown(Leaf leaf) {
+		WorkspacePanel showing = leaf.showing();
+		if (showing != null && showing.wholeWindow()) {
+			if (maximized == null) {
+				maximized = leaf;
+				byItself = true;
+			}
+			return;
+		}
+		if (byItself && maximized == leaf) {
+			maximized = null;
+			byItself = false;
+		}
+	}
+
+	/**
+	 * Hands back a window the dock took for itself, and says nothing about one that
+	 * was asked for.
+	 *
+	 * The whole of the distinction {@link #byItself} exists for, offered outside so
+	 * that opening the workspace can put the world in front without also undoing a
+	 * maximise somebody chose. Room the dock took, the dock can give back; room a
+	 * person took is theirs.
+	 */
+	public void giveBackWindow() {
+		if (!byItself) return;
+		maximized = null;
+		byItself = false;
+	}
+
+	/**
+	 * The same, for a layout that has just been read off disk.
+	 *
+	 * Without it a workspace saved while looking at the graph reopens with the graph
+	 * squeezed back into its column — the arrangement the panel exists to escape,
+	 * restored faithfully every time.
+	 */
+	public void fitAll() {
+		for (Leaf leaf : leavesOf(root)) fitShown(leaf);
+	}
+
+	/** The leaf a key should act on: whatever is being typed into, or the maximised one. */
+	public Leaf focusedLeaf() {
+		Leaf of = focused == null ? null : leafOf(focused);
+		return of != null ? of : maximized;
 	}
 
 	public Leaf maximized() {
@@ -1204,6 +1580,9 @@ public final class Dock {
 				leaf.collapsed = false;
 				leaf.active = i;
 				focused = leaf.tabs.get(i);
+				// A panel that cannot be worked in beside anything else needs the window
+				// whichever way it was reached, and being revealed is a way of reaching it.
+				fitShown(leaf);
 				return true;
 			}
 		}
@@ -1222,33 +1601,58 @@ public final class Dock {
 		send(panel, where);
 	}
 
+	/**
+	 * Opens a panel as a tab beside what is already on the screen.
+	 *
+	 * <h2>Why this exists next to {@link #add}</h2>
+	 *
+	 * Because "put it where its kind belongs" and "put it here with the rest" are
+	 * different requests, and the panels menu was making the first when it meant the
+	 * second. Asked for the dialogue, {@code add} split the layout, gave the new leaf
+	 * its own half, and then — because a graph cannot be worked in beside anything —
+	 * the dock handed it the whole window. From the outside that is a window opening
+	 * on top of everything, which is what it was reported as.
+	 *
+	 * A tab is what somebody means when they open a panel from a list of panels: the
+	 * same bar, one more name in it, and the arrangement they had built left alone.
+	 * Splitting is a thing you do by dragging, where you can see where it lands.
+	 */
+	public void addAsTab(WorkspacePanel panel) {
+		if (reveal(panel.id())) return;
+		Leaf home = leafOf(focused);
+		if (home == null) home = leaves.isEmpty() ? null : leaves.get(0);
+		if (home == null) {
+			// No leaf at all, which happens only with everything closed. Then there is
+			// nothing to be a tab of, and its own home is the honest answer.
+			add(panel, Panels.homeOf(panel.id()));
+			return;
+		}
+		home.tabs.add(panel);
+		home.active = home.tabs.size() - 1;
+		home.collapsed = false;
+		focused = panel;
+		fitShown(home);
+	}
+
 	// ----------------------------------------------------------------- the menu
 
-	/** One line of the panel menu: what it says and what it does. */
-	private record Entry(Component label, Runnable act) { }
-
-	private List<Entry> menu = List.of();
-	private int menuX;
-	private int menuY;
-
-	private static final int MENU_ROW = 12;
-	private static final int MENU_WIDTH = 108;
+	private final Menu menu = new Menu();
 
 	private void openMenu(Leaf leaf, Floater floater, int px, int py) {
 		WorkspacePanel panel = floater != null ? floater.panel : leaf.showing();
 		if (panel == null) return;
-		List<Entry> entries = new ArrayList<>();
-		entries.add(new Entry(word("left"), () -> send(panel, "left")));
-		entries.add(new Entry(word("right"), () -> send(panel, "right")));
-		entries.add(new Entry(word("top"), () -> send(panel, "top")));
-		entries.add(new Entry(word("bottom"), () -> send(panel, "bottom")));
+		List<Menu.Entry> entries = new ArrayList<>();
+		entries.add(Menu.Entry.of(word("left"), () -> send(panel, "left")));
+		entries.add(Menu.Entry.of(word("right"), () -> send(panel, "right")));
+		entries.add(Menu.Entry.of(word("top"), () -> send(panel, "top")));
+		entries.add(Menu.Entry.of(word("bottom"), () -> send(panel, "bottom")));
 		if (floater != null) {
-			entries.add(new Entry(word("dock"), () -> dockBack(floater)));
+			entries.add(Menu.Entry.of(Icon.DOCK, word("dock"), () -> dockBack(floater)));
 		} else {
-			entries.add(new Entry(word("float"), () -> send(panel, "float")));
-			entries.add(new Entry(word("full"), () -> maximize(leaf)));
+			entries.add(Menu.Entry.of(word("float"), () -> send(panel, "float")));
+			entries.add(Menu.Entry.of(Icon.MAXIMIZE, word("full"), () -> maximize(leaf)));
 		}
-		entries.add(new Entry(word("close"), () -> close(panel)));
+		entries.add(Menu.Entry.of(Icon.CLOSE, word("close"), () -> close(panel)));
 
 		// And every panel that is not on screen, opened right here as a tab beside
 		// this one. The top bar has offered this all along, which is a different
@@ -1257,7 +1661,7 @@ public final class Dock {
 		// same as it being to hand.
 		for (String id : Panels.known()) {
 			if (holds(id)) continue;
-			entries.add(new Entry(
+			entries.add(Menu.Entry.of(iconOf(id),
 				Component.translatable("npc_studio.dock.open", Panels.titleOf(id)),
 				() -> {
 					WorkspacePanel made = Panels.make(id);
@@ -1265,9 +1669,7 @@ public final class Dock {
 				}));
 		}
 
-		menu = entries;
-		menuX = Math.min(px, x + width - MENU_WIDTH);
-		menuY = Math.min(py, y + height - entries.size() * MENU_ROW);
+		menu.open(font(), px, py, entries, x, y, width, height);
 	}
 
 	private boolean holds(String id) {
@@ -1294,26 +1696,11 @@ public final class Dock {
 	}
 
 	private void drawMenu(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
-		int bottom = menuY + menu.size() * MENU_ROW;
-		graphics.fill(menuX - 1, menuY - 1, menuX + MENU_WIDTH + 1, bottom + 1, EDGE_LINE);
-		graphics.fill(menuX, menuY, menuX + MENU_WIDTH, bottom, PANEL);
-		for (int i = 0; i < menu.size(); i++) {
-			int top = menuY + i * MENU_ROW;
-			boolean hovered = mouseX >= menuX && mouseX < menuX + MENU_WIDTH
-				&& mouseY >= top && mouseY < top + MENU_ROW;
-			if (hovered) graphics.fill(menuX, top, menuX + MENU_WIDTH, top + MENU_ROW, TAB_HOVER);
-			graphics.text(font(), menu.get(i).label(), menuX + 6, top + 2, hovered ? TEXT : TEXT_DIM);
-		}
+		menu.draw(graphics, font(), mouseX, mouseY);
 	}
 
 	private boolean clickMenu(double px, double py) {
-		if (menu.isEmpty()) return false;
-		int row = (int) ((py - menuY) / MENU_ROW);
-		boolean inside = px >= menuX && px < menuX + MENU_WIDTH && row >= 0 && row < menu.size();
-		List<Entry> entries = menu;
-		menu = List.of();
-		if (inside) entries.get(row).act().run();
-		return true;
+		return menu.click(px, py);
 	}
 
 	// --------------------------------------------------------------- plumbing

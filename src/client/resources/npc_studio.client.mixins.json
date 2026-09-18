@@ -11,6 +11,7 @@
 		"ModelPartMixin",
 		"PlayerModelMixin",
 		"MinecraftMixin",
+		"OptionInstanceMixin",
 		"SkyStateMixin",
 		"LevelWeatherMixin",
 		"FogTintMixin",
@@ -19,7 +20,10 @@
 		"SoundDeviceAccess",
 		"SoundHushMixin",
 		"FontManagerAccess",
-		"MinecraftFontsAccess"
+		"FontSetAccess",
+		"MinecraftFontsAccess",
+		"ClientInputMixin",
+		"PlayerSkinMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

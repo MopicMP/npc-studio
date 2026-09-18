@@ -19,6 +19,7 @@ import com.mopicmp.npcstudio.client.workspace.panel.MusicPanel;
 import com.mopicmp.npcstudio.client.workspace.panel.PosePanel;
 import com.mopicmp.npcstudio.client.workspace.panel.ScenePanel;
 import com.mopicmp.npcstudio.client.workspace.panel.ShadersPanel;
+import com.mopicmp.npcstudio.client.workspace.panel.StartPanel;
 import com.mopicmp.npcstudio.client.workspace.panel.TimelinePanel;
 import com.mopicmp.npcstudio.client.workspace.panel.ViewportPanel;
 import com.mopicmp.npcstudio.client.workspace.panel.WardrobePanel;
@@ -50,6 +51,7 @@ public final class Panels {
 		new Kind("music", MusicPanel::new, "right"),
 		new Kind("environment", EnvironmentPanel::new, "right"),
 		new Kind("shaders", ShadersPanel::new, "right"),
+		new Kind("start", StartPanel::new, "right"),
 		new Kind("graph", GraphPanel::new, "bottom"),
 		new Kind("timeline", TimelinePanel::new, "bottom"),
 		new Kind("credits", CreditsPanel::new, "float"),

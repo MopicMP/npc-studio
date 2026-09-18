@@ -189,6 +189,51 @@ class ConditionRowsTest {
 		assertTrue(fitted > 0, "no conditions were found at all, so this proved nothing");
 	}
 
+	@org.junit.jupiter.api.Test
+	@org.junit.jupiter.api.DisplayName("moving a row changes the reading order and not the answer")
+	void movingARowKeepsTheMeaning() {
+		// Under "all of" and under "any of" alike, the order of the rows decides
+		// nothing — which is exactly why moving them is safe, and exactly why it is
+		// worth having: the rows are read by a person, top to bottom, and grouping the
+		// two tests about one errand together is a real edit to the document as a thing
+		// that gets read and no edit at all to the document as a thing that runs.
+		//
+		// Where order does decide the answer is one level up, between the arms of a
+		// branch. That is the fault this was built for — an arm that is true and never
+		// reached — and it is not this class's to test.
+		ConditionRows rows = new ConditionRows(true, List.of(
+			new ConditionRows.Row(false, new Condition.Compare("a",
+				com.mopicmp.npcstudio.dialogue.Scope.PLAYER, Condition.Op.EQ,
+				com.mopicmp.npcstudio.dialogue.Value.of(true))),
+			new ConditionRows.Row(true, new Condition.Visited("somewhere")),
+			new ConditionRows.Row(false, new Condition.Inside("gate"))));
+
+		ConditionRows moved = rows.moved(2, 0);
+		assertEquals(3, moved.rows().size());
+		assertEquals(new Condition.Inside("gate"), moved.rows().get(0).leaf());
+		assertEquals("a", ((Condition.Compare) moved.rows().get(1).leaf()).variable());
+		assertTrue(moved.rows().get(2).not(), "the turned-round row is still turned round");
+		answersAlike(rows.write(), moved.write(), List.of("a"));
+	}
+
+	@org.junit.jupiter.api.Test
+	@org.junit.jupiter.api.DisplayName("a row put in at a place lands at that place, and out of range is clamped")
+	void puttingARowInAtAPlace() {
+		// Clamped rather than thrown, because the caller is a drag that ended wherever
+		// the mouse happened to be — including past the end of a list that got shorter
+		// while it was being carried.
+		ConditionRows rows = new ConditionRows(true, List.of(
+			new ConditionRows.Row(false, new Condition.Visited("one")),
+			new ConditionRows.Row(false, new Condition.Visited("two"))));
+		ConditionRows.Row fresh = new ConditionRows.Row(false, new Condition.Visited("three"));
+
+		assertEquals("three", ((Condition.Visited) rows.plusAt(0, fresh)
+			.rows().get(0).leaf()).node());
+		assertEquals("three", ((Condition.Visited) rows.plusAt(99, fresh)
+			.rows().get(2).leaf()).node());
+		assertEquals(2, rows.rows().size(), "the rows it was asked about are unchanged");
+	}
+
 	private static List<Condition> conditionsOf(Node node) {
 		return switch (node) {
 			case Node.Until until -> List.of(until.condition());

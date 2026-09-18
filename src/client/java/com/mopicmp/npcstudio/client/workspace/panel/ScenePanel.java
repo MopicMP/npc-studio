@@ -90,17 +90,31 @@ public class ScenePanel extends WorkspacePanel {
 			if (i == people && people > 0) graphics.fill(0, top, width, top + 1, 0xFF2C333D);
 
 			// The distance says which of two identically named characters this is,
-			// which a name on its own cannot.
-			graphics.text(font, Component.literal(nameOf(thing)), 6, top + 3, on ? ACCENT : TEXT);
+			// which a name on its own cannot — so the distance is the half that must
+			// survive when the row is too narrow for both.
+			//
+			// It used to be drawn over the top of whatever the name had reached, because
+			// the name was drawn at full length and the distance right-aligned into the
+			// same row. Two characters called the same thing, which is exactly the case
+			// this column exists for, produced two rows of overlapping letters.
 			String away = String.format("%.0f", distanceTo(thing));
-			graphics.text(font, Component.literal(away),
-				width - MARK - 10 - font.width(away), top + 3, TEXT_DIM);
+			int end = width - MARK - 10 - font.width(away);
+			graphics.text(font, Component.literal(shortened(nameOf(thing), end - 6 - 4)),
+				6, top + 3, on ? ACCENT : TEXT);
+			graphics.text(font, Component.literal(away), end, top + 3, TEXT_DIM);
 			drawMark(graphics, thing, top, i == hovered);
 		}
 	}
 
 	/** How much of a row's right-hand end belongs to the scene mark. */
 	private static final int MARK = 9;
+
+	/*
+	 * The cutting lives on WorkspacePanel. It was written here first and then the
+	 * same fault turned up in the placed-objects list, which is the same picture with
+	 * different nouns — so it is one answer in one place rather than two that can come
+	 * to disagree about where an ellipsis goes.
+	 */
 
 	/**
 	 * Whether this character is in the open scene, and the way to change that.

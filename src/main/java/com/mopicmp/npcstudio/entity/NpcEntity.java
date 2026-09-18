@@ -103,6 +103,16 @@ public class NpcEntity extends Avatar {
 	public enum Motion { IDLE, WALK, RUN, JUMP }
 
 	/**
+	 * Whether a route told her to walk or to run, as a number the client can see.
+	 *
+	 * Nought for "nobody said", then one past the ordinal, so that the absence and
+	 * the first value are not the same byte. Synched because the animation is chosen
+	 * where the character is drawn, and only the server knows what the graph ordered.
+	 */
+	private static final EntityDataAccessor<Byte> DATA_GAIT =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.BYTE);
+
+	/**
 	 * A skin somebody supplied as a file, rather than by naming a player.
 	 *
 	 * The picture is kept here on the server and handed out on request. What is
@@ -383,6 +393,10 @@ public class NpcEntity extends Avatar {
 		builder.define(DATA_SKIN_MARK, "");
 		builder.define(DATA_WATCHFUL, false);
 		builder.define(DATA_MOOD, (byte) 0);
+		builder.define(DATA_GAIT, (byte) 0);
+		builder.define(DATA_POST, net.minecraft.core.BlockPos.ZERO);
+		builder.define(DATA_POST_YAW, 0f);
+		builder.define(DATA_POSTED, false);
 	}
 
 	/**
@@ -412,6 +426,36 @@ public class NpcEntity extends Avatar {
 	 */
 	private static final EntityDataAccessor<Byte> DATA_MOOD =
 		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.BYTE);
+
+	/**
+	 * Whether she stays in the air where she was put.
+	 *
+	 * <h2>Why nothing of ours is stored for this</h2>
+	 *
+	 * Because the game already has the flag, syncs it, and saves it. {@code NoGravity}
+	 * is on every entity, travels to clients by itself, and is written into the world by
+	 * vanilla's own save code — so a field here would be a second copy of a fact, which
+	 * is the mistake this file has paid for three times over.
+	 *
+	 * <h2>What it is actually for</h2>
+	 *
+	 * Asked for as "so the NPC does not fall", and it is worth writing down that this
+	 * also settles an animation fault. A character that is falling — even by the half
+	 * block of a step, even for the two ticks after being nudged — is reported by
+	 * {@link #restingAnimation} as jumping, and a character with no jump animation set
+	 * then shows nothing at all. Standing still is what makes an idle animation play.
+	 */
+	public boolean floating() {
+		return isNoGravity();
+	}
+
+	public void setFloating(boolean on) {
+		setNoGravity(on);
+		// Whatever fall she was in the middle of stops with it. Without this she keeps
+		// the speed she had and drifts down for ever, which is the one behaviour the
+		// switch exists to prevent and would be the first thing anybody saw.
+		if (on) setDeltaMovement(getDeltaMovement().x, 0, getDeltaMovement().z);
+	}
 
 	public boolean watchful() {
 		return entityData.get(DATA_WATCHFUL);
@@ -481,11 +525,18 @@ public class NpcEntity extends Avatar {
 		if (at == null) return;
 		var lead = watch.lead();
 		if (lead == null) return;
-		// While walking, the feet decide which way the body faces and the head is
-		// free to look elsewhere. Somebody crossing a courtyard towards a noise while
-		// watching a window is doing two things at once, and that is what it should
-		// look like.
-		turnTowards(at, lead, watch.squaresUp() && !walk.walking());
+		// Not while she is going somewhere. This used to turn the head anyway, on the
+		// grounds that somebody crossing a courtyard towards a noise while watching a
+		// window is doing two things at once — which is true of a person and reads as
+		// broken on a character, because there is no face on the model to sell it and
+		// no neck that bends. Reported plainly: she walks with her head cranked ninety
+		// degrees to one side.
+		//
+		// So while she walks she looks where she is walking, and the reflex has its
+		// head back the moment she stops. What is given up is a bit of life while
+		// crossing a room; what is bought is a character who does not look broken.
+		if (walk.walking()) return;
+		turnTowards(at, lead, watch.squaresUp());
 	}
 
 	private final com.mopicmp.npcstudio.foe.Walk walk = new com.mopicmp.npcstudio.foe.Walk();
@@ -624,8 +675,25 @@ public class NpcEntity extends Avatar {
 		return route != null && !route.isEmpty();
 	}
 
+	/**
+	 * Stop where she is, and let go of the round she was on.
+	 *
+	 * <h2>Why halting ends the route rather than pausing it</h2>
+	 *
+	 * Because the node that ordered it is still the node she is standing at, and it
+	 * puts a character back on a route it finds nobody carrying — that is what makes
+	 * a patrol survive being interrupted. So a halt that merely cleared the order
+	 * would be undone on the next tick, twenty times a second, and the character
+	 * would stutter rather than stop, with two perfectly correct instructions
+	 * fighting and nothing to point at.
+	 *
+	 * Ended, the arrival is there for the graph to read, and the walk node moves on
+	 * to whatever comes after it. Which is what "stop walking" ought to mean to a
+	 * graph: not "freeze", but "that is done with".
+	 */
 	public void halt() {
 		stopWalking();
+		if (!routeOrder.isEmpty()) routeOver();
 	}
 
 	/**
@@ -663,6 +731,21 @@ public class NpcEntity extends Avatar {
 		// cannot be followed is not a route, and keeping it would mean pushing at
 		// the post until something else happened.
 		if (walk.stuck()) {
+			// Which post, though. Written down before the walk is thrown away, because
+			// the walk is the only thing that knows — and the next search is worth
+			// asking only if it is told something the last one did not know.
+			int[] post = walk.stoppedAt();
+			if (post != null) {
+				shun.add(com.mopicmp.npcstudio.foe.Ways.named(post[0], post[1], post[2]));
+				// Kept small. This is a note about the last minute of walking, not a map
+				// of the world's awkward corners — ground that was blocked by somebody
+				// standing in it is passable again the moment they move, and a character
+				// who remembers every doorway she ever waited at ends up refusing to use
+				// her own house.
+				while (shun.size() > MOST_SHUNNED) {
+					shun.remove(shun.iterator().next());
+				}
+			}
 			stopWalking();
 			return;
 		}
@@ -751,9 +834,47 @@ public class NpcEntity extends Avatar {
 	/** How fast a head comes round to something she was told to watch. */
 	private static final float GAZE_RATE = 12f;
 
+	/**
+	 * One tick of looking at what a graph pointed her at.
+	 *
+	 * <h2>Why it stands down while she is walking</h2>
+	 *
+	 * Because it was not merely turning her head — it was steering her.
+	 *
+	 * The order in {@code tick} is {@code walkOn}, then this. {@code stride} points
+	 * the body at the next waypoint and sets {@code zza = 1}, which is "walk forward
+	 * along the way you are facing"; then this ran and turned the body somewhere else;
+	 * and the movement itself happens at the top of the <em>next</em> tick, inside
+	 * {@code super.tick}. So the direction actually walked in was the direction of the
+	 * gaze, and the waypoint had nothing to do with it.
+	 *
+	 * That is the whole of the report, both halves of it. A character told to look at
+	 * the player and then sent along a route walks with her head screwed round behind
+	 * her — and she walks <em>at the player</em>, into whatever happens to be between
+	 * them, which is why a route that is fine half the time is hopeless the other
+	 * half. Whether she got stuck depended on nothing about the route: it depended on
+	 * whether a graph had told her to look at anything.
+	 *
+	 * <h2>Why the whole gaze and not just the body</h2>
+	 *
+	 * Leaving the head turned would fix the walking and keep the picture, and it is
+	 * the wrong picture. Asked for plainly: while she is going somewhere she looks
+	 * where she is going. A person crossing a courtyard does not walk it backwards
+	 * watching you.
+	 *
+	 * <h2>Why it is not forgotten</h2>
+	 *
+	 * A gaze is a hold. She stops looking while her legs need the body and takes it up
+	 * again when they stop, without the graph having to say it twice — which is what
+	 * makes "look at the player, then walk to the gate, then talk" read the way it is
+	 * written.
+	 */
 	private void gaze() {
 		if (gazingAt.isEmpty()) return;
 		if (com.mopicmp.npcstudio.dialogue.Mark.NOTHING.equals(gazingAt)) return;
+		// The legs own the body while there is somewhere to be. Two authors of one
+		// number is always a fault; here it was a fault that moved her.
+		if (walk.walking()) return;
 		Vec3 at = com.mopicmp.npcstudio.brain.Marks.eyes(this, gazingAt);
 		// A mark that names nothing at the moment is not an error and not a reason
 		// to let go: told to watch the lead, she goes on facing where it was until
@@ -783,6 +904,44 @@ public class NpcEntity extends Avatar {
 	}
 
 	/**
+	 * Puts her at a place at once, without walking to it.
+	 *
+	 * <h2>What is dropped on the way</h2>
+	 *
+	 * The walk, and only the walk. A character who is somewhere else is not still
+	 * following a path to somewhere she used to be going: the waypoints behind her
+	 * would send her back through the wall she has just appeared on the far side of.
+	 *
+	 * Her home is <em>not</em> moved, and that is the point of it being separate. A
+	 * scene that puts her round a corner has not changed where she belongs, and the
+	 * steps of every route she has are still measured from the same place — otherwise
+	 * one teleport would silently rewrite every path she owns.
+	 *
+	 * <h2>Why she is not turned as well</h2>
+	 *
+	 * Because she arrives facing the way she was going, which is the one thing about
+	 * the moment the author already controls: she walked round the corner facing
+	 * somewhere, and a body that also spins on arrival reads as a glitch rather than
+	 * as a cut.
+	 */
+	public void appearAt(com.mopicmp.npcstudio.dialogue.Route.Point where) {
+		if (where == null) return;
+		Vec3 anchor = home();
+		int[] to = com.mopicmp.npcstudio.dialogue.Route.world(where,
+			net.minecraft.util.Mth.floor(anchor.x),
+			net.minecraft.util.Mth.floor(anchor.y),
+			net.minecraft.util.Mth.floor(anchor.z),
+			homeFacing());
+		stopWalking();
+		// The bottom middle of the block, which is where a body stands — the same
+		// reading a route point, a named place and the map's start all take of theirs.
+		Vec3 at = Vec3.atBottomCenterOf(new net.minecraft.core.BlockPos(to[0], to[1], to[2]));
+		// The game's own way of moving a body rather than setting the position by hand,
+		// so the chunk is loaded and the client is told it was a move and not a stride.
+		teleportTo(at.x, at.y, at.z);
+	}
+
+	/**
 	 * Where she is to come back to.
 	 *
 	 * A place rather than a name, because "where I was told to stand" is a fact
@@ -790,14 +949,97 @@ public class NpcEntity extends Avatar {
 	 * Unset until a graph asks for it, so a character who never posts anywhere
 	 * carries nothing.
 	 */
-	private Vec3 post;
+	/**
+	 * Where she belongs, and which way she stands there.
+	 *
+	 * <h2>Why a place was not enough</h2>
+	 *
+	 * Reported plainly: a character sent home arrives in the right square with her
+	 * nose against whatever wall she happened to approach from, which reads as
+	 * broken rather than as finished. Going back somewhere means standing there as
+	 * you stood, and half of standing somewhere is which way you are looking.
+	 *
+	 * It is also what makes a route of steps possible at all — "four forward" has no
+	 * meaning without a forward, and this is it.
+	 *
+	 * <h2>Why it is synched, which it was not for an afternoon</h2>
+	 *
+	 * Because both sides measure against it and they have to agree to the block. The
+	 * legs turn a step into a place on the server; the editor turns a click into a
+	 * step on the client. While this lived in a plain field the client had no post at
+	 * all and quietly measured from wherever she happened to be standing — so a route
+	 * would have been right on the screen and wrong on the ground, which is the worse
+	 * of the two and the harder to see.
+	 */
+	private static final EntityDataAccessor<net.minecraft.core.BlockPos> DATA_POST =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.BLOCK_POS);
 
+	private static final EntityDataAccessor<Float> DATA_POST_YAW =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.FLOAT);
+
+	/**
+	 * Whether anybody has said where she belongs yet.
+	 *
+	 * A flag rather than a sentinel position, because there is no block of a world
+	 * that cannot legitimately be somebody's post — and a character standing at the
+	 * origin is a character standing at the origin, not one nobody has placed.
+	 */
+	private static final EntityDataAccessor<Boolean> DATA_POSTED =
+		SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.BOOLEAN);
+
+	/** Where she belongs, or null when nobody has said. */
 	public Vec3 post() {
-		return post;
+		return posted() ? Vec3.atBottomCenterOf(entityData.get(DATA_POST)) : null;
+	}
+
+	public boolean posted() {
+		return entityData.get(DATA_POSTED);
+	}
+
+	public float postYaw() {
+		return entityData.get(DATA_POST_YAW);
 	}
 
 	public void markPost() {
-		post = position();
+		markPost(blockPosition(), getYRot());
+	}
+
+	public void markPost(net.minecraft.core.BlockPos where, float facing) {
+		entityData.set(DATA_POST, where);
+		entityData.set(DATA_POST_YAW, facing);
+		entityData.set(DATA_POSTED, true);
+		// Saved from here on — see addAdditionalSaveData. It used to live only in
+		// memory, which was honest while it meant "where I happened to be standing
+		// when a graph asked", and stopped being honest the moment it became the place
+		// a character belongs and the frame a route of steps is measured in. Both of
+		// those are authorship, and authorship survives closing the world.
+	}
+
+	/**
+	 * Where she belongs, falling back to where she is.
+	 *
+	 * <h2>Why the fallback must never be reached in practice</h2>
+	 *
+	 * Because it moves. A route of steps measured against "where she is now" walks
+	 * her four blocks further out on every round, which over an afternoon is a
+	 * character who has wandered off with no line anywhere to blame for it.
+	 *
+	 * So the post is pinned on her first tick — see {@link #tick} — and this fallback
+	 * exists for the one frame before that and for a client that has not been told
+	 * yet. It is the honest answer in both, and in neither is it used to walk.
+	 */
+	public Vec3 home() {
+		Vec3 where = post();
+		return where != null ? where : position();
+	}
+
+	public float homeYaw() {
+		return posted() ? postYaw() : getYRot();
+	}
+
+	/** The frame a route's steps are measured in: her home, snapped to a quarter turn. */
+	public com.mopicmp.npcstudio.dialogue.Route.Facing homeFacing() {
+		return com.mopicmp.npcstudio.dialogue.Route.Facing.ofYaw(homeYaw());
 	}
 
 	/**
@@ -812,6 +1054,25 @@ public class NpcEntity extends Avatar {
 		if (headingFor == null || !walk.walking()) return true;
 		return headingFor.distanceToSqr(wanted) > 16;
 	}
+
+	/**
+	 * Blocks that have actually stopped her, which the next search is told about.
+	 *
+	 * Ordered, so that dropping the oldest is dropping the oldest rather than dropping
+	 * whichever the hash happened to put first — a memory that forgets at random is a
+	 * character who behaves differently on two runs of the same scene.
+	 */
+	private final java.util.LinkedHashSet<Long> shun = new java.util.LinkedHashSet<>();
+
+	/**
+	 * How many of those are remembered.
+	 *
+	 * Small on purpose. Whatever stopped her is usually a thing that moves — a shut
+	 * gate, a villager in a doorway — so this is a note about the last minute rather
+	 * than a map of the world, and a long memory would have her walking the long way
+	 * round for ever because of somebody who has since wandered off.
+	 */
+	private static final int MOST_SHUNNED = 8;
 
 	private void stopWalking() {
 		walk.stop();
@@ -831,6 +1092,22 @@ public class NpcEntity extends Avatar {
 	private static final float WALKING_PACE = 0.26f;
 
 	/**
+	 * The last climb she jumped for: where to, where from, and what she can step.
+	 *
+	 * Kept for the bench and nothing else. Jumping has been reported three times and
+	 * I have now been wrong about the cause twice, both times because the report is
+	 * necessarily a description — "he jumps a lot" — and the answer is arithmetic.
+	 * Three numbers settle it: a climb of about a block with a step of six tenths is
+	 * a route drawn a block too high, and no jump recorded at all while she is
+	 * visibly hopping means the body never left the ground and it is the animation.
+	 */
+	private double[] lastJump;
+
+	public double[] lastJump() {
+		return lastJump;
+	}
+
+	/**
 	 * One step towards the next waypoint.
 	 *
 	 * The physics is the game's own: the body is pointed at where it is going and
@@ -838,11 +1115,31 @@ public class NpcEntity extends Avatar {
 	 * water. Writing the movement by hand would mean reimplementing all of that
 	 * badly, and this character is a player in every other respect already.
 	 */
+	/**
+	 * How fast a head comes back to facing the way she is walking.
+	 *
+	 * Eased rather than snapped, because a head that jumps forward the instant the
+	 * feet move is the same fault as one that snaps round to look at you — and both
+	 * were reported. Unhurried on purpose: a shade slower than a gaze, so that setting
+	 * off looks like turning to go rather than like the head being put back.
+	 */
+	private static final float FACES_THE_WAY = 9f;
+
 	private void stride(double[] step) {
 		float bearing = (float) com.mopicmp.npcstudio.foe.Sight.yawTo(
 			getX(), getZ(), step[0], step[2]);
 		yBodyRot = bearing;
 		setYRot(bearing);
+
+		// And the head with it. Nothing used to bring it forward: the body was pointed
+		// down the path and the head kept whatever angle it had been left at, so a
+		// character who had glanced at something and then set off walked the whole way
+		// looking sideways at nothing. The body turning is not the same as the head
+		// turning, and only one of them was ever written down.
+		setYHeadRot(com.mopicmp.npcstudio.foe.Neck.step(getYHeadRot(), bearing, FACES_THE_WAY));
+		// Level, too. A head left tilted up at a rooftop stays tilted up all the way
+		// across the square, which is the same fault in the other axis.
+		setXRot(com.mopicmp.npcstudio.foe.Neck.step(getXRot(), 0, FACES_THE_WAY));
 
 		// How fast was settled when the walk was ordered - by a reflex or by a
 		// graph - and is not decided again on every step.
@@ -865,7 +1162,30 @@ public class NpcEntity extends Avatar {
 
 		// Up a block, which needs a jump: a person's step height is not a whole
 		// block, and the route deliberately allows climbing one because people climb.
-		if (onGround() && step[1] > getY() + 0.4) jumpFromGround();
+		//
+		// <h2>Why this is measured against her own step and not against a number</h2>
+		//
+		// It was 0.4, and 0.4 is less than half a block — so every slab, stair, path
+		// block, layer of snow and carpet made her jump, continuously, for as long as
+		// she was heading for a waypoint on one. Reported as "he jumps all the time
+		// and in great quantities", and in a built map that is nearly everywhere.
+		//
+		// Two mistakes in one line. The waypoint's height is the block her feet go in,
+		// so the floor of it is at exactly that number, while getY() is where her feet
+		// actually are — and on half a block those differ by half a block with nothing
+		// to climb. And the threshold was below her own step height, so even a real
+		// half-block rise was jumped rather than walked up.
+		//
+		// Asked of the body rather than written down, because the step is an attribute
+		// and anything that scales her changes it. A number here would be a number that
+		// is right for one build.
+		if (onGround() && step[1] - getY() > maxUpStep()) {
+			// Written down as well as done, because this has been reported three times
+			// and described differently each time. The bench shows the last one, so the
+			// next report can be three numbers instead of a sentence.
+			lastJump = new double[] { step[1], getY(), maxUpStep() };
+			jumpFromGround();
+		}
 	}
 
 	/** Above this much urgency, she does not walk over — she goes. */
@@ -889,7 +1209,17 @@ public class NpcEntity extends Avatar {
 			public boolean clear(int x, int y, int z) {
 				var where = new net.minecraft.core.BlockPos(x, y, z);
 				var state = level.getBlockState(where);
-				return state.isAir() || state.getCollisionShape(level, where).isEmpty();
+				if (state.isAir()) return true;
+				var shape = state.getCollisionShape(level, where);
+				if (shape.isEmpty()) return true;
+				// Low enough to walk onto rather than into. A carpet, a layer of snow,
+				// a pressure plate, the bottom half of a slab — a body steps up onto
+				// all of those without leaving the ground, and calling them walls was
+				// what sent every route one block into the air above them.
+				//
+				// Her own step rather than a number written here, because anything that
+				// scales her changes it.
+				return shape.max(net.minecraft.core.Direction.Axis.Y) <= maxUpStep();
 			}
 
 			@Override
@@ -918,7 +1248,13 @@ public class NpcEntity extends Avatar {
 		if (landing == null) return java.util.List.of();
 		return com.mopicmp.npcstudio.foe.Ways.to(ground,
 			from.getX(), from.getY(), from.getZ(),
-			landing.getX(), landing.getY(), landing.getZ());
+			landing.getX(), landing.getY(), landing.getZ(),
+			com.mopicmp.npcstudio.foe.Ways.FURTHEST,
+			com.mopicmp.npcstudio.foe.Ways.LOOKED_AT,
+			// What has already stopped her, priced rather than forbidden. This is what
+			// makes the second attempt a different attempt: the search that produced the
+			// path she could not walk had no idea it was doing so, and now it does.
+			shun);
 	}
 
 	/** Somewhere near the guess that somebody could actually stand. */
@@ -947,6 +1283,333 @@ public class NpcEntity extends Avatar {
 	/** How far along a walk she is, for a readout. */
 	public com.mopicmp.npcstudio.foe.Walk walking() {
 		return walk;
+	}
+
+	// ---------------------------------------------------------------- the route
+
+	/**
+	 * Walking a whole path rather than going to one place.
+	 *
+	 * <h2>Why the count of points is here and not in the graph</h2>
+	 *
+	 * A bookmark is a place in a document, and it has nowhere to keep "I am on the
+	 * fourth of six" — the one node that tried would have been the one node that
+	 * needed saving, reloading and getting wrong. So the count lives beside the
+	 * walking, which is where the rest of the truth about where her feet are
+	 * already lives, and the node asks about it in two readings.
+	 *
+	 * <h2>What is deliberately not saved with the world</h2>
+	 *
+	 * All of it. A world reopened mid-round finds nobody carrying an order, so the
+	 * node sends her round again from its first point. That is the same trade
+	 * {@link com.mopicmp.npcstudio.dialogue.Node.Every} makes about a timer and it
+	 * is right for the same reason: nobody can tell, and the alternative is a
+	 * second kind of bookmark to save and to get wrong.
+	 */
+	private String routeOrder = "";
+
+	private com.mopicmp.npcstudio.dialogue.Route route =
+		com.mopicmp.npcstudio.dialogue.Route.NOWHERE;
+
+	/** Which point of it she is making for. */
+	private int routeAt;
+
+	/**
+	 * Whether the walk for {@link #routeAt} has already gone out.
+	 *
+	 * The one bit that tells "she has not set off yet" from "she has arrived", and
+	 * both of them look identical from outside: in either she is standing still
+	 * with a route in hand. Without it a route either never starts or finishes
+	 * instantly, depending on which way round the question is asked.
+	 */
+	private boolean routeSent;
+
+	/** Ticks left standing at a point that asked to be stood at. */
+	private int routeStanding;
+
+	/**
+	 * How many times the point she is on has been ordered and not arrived at.
+	 *
+	 * Reset by arriving and by moving on, so it counts tries at <em>this</em> point
+	 * rather than trouble over the round as a whole. A patrol with one awkward corner
+	 * in it should not run out of patience on the fourth lap.
+	 */
+	private int routeTries;
+
+	/** The last order she stopped carrying out, until the graph takes notice. */
+	private String routeWalked = "";
+
+	public String walkingTo() {
+		return routeOrder;
+	}
+
+	public String walked() {
+		return routeWalked;
+	}
+
+	/**
+	 * Sets her along a path, or carries on with the one she is already on.
+	 *
+	 * The same order arriving again is the ordinary case rather than a mistake: the
+	 * node that owns it says so on every tick it is standing at. A route that has
+	 * changed under the same name is taken up where she is — that is somebody
+	 * editing the path while she walks it, and sending her back to the first point
+	 * on every keystroke would make the editing unusable.
+	 */
+	public void follow(String order, com.mopicmp.npcstudio.dialogue.Route wanted) {
+		if (order == null || order.isEmpty() || wanted == null) return;
+		com.mopicmp.npcstudio.dialogue.Route now = wanted;
+
+		if (order.equals(routeOrder)) {
+			if (!now.equals(route)) {
+				route = now;
+				// Clamped rather than reset. A point removed from under her leaves the
+				// index past the end, and the route would otherwise finish on the spot.
+				if (routeAt > route.size()) routeAt = route.size();
+				// And the manner with it. Changing "walks" to "runs" while she is on
+				// her round has to take effect on that round, or the switch is one
+				// that does nothing until the next time she happens to set off.
+				entityData.set(DATA_GAIT, (byte) (route.gait().ordinal() + 1));
+			}
+			return;
+		}
+
+		routeOrder = order;
+		route = now;
+		routeAt = 0;
+		routeSent = false;
+		routeStanding = 0;
+		routeTries = 0;
+		// A fresh order takes the old arrival with it, so that a graph cannot read an
+		// answer about a route it has already left.
+		if (order.equals(routeWalked)) routeWalked = "";
+		entityData.set(DATA_GAIT, (byte) (route.gait().ordinal() + 1));
+	}
+
+	/**
+	 * The order a route uses to walk her home, kept apart from any node's name.
+	 *
+	 * A name no node can have, because node names come out of the editor and it
+	 * makes them from the kind — {@code walk 1}, {@code line 3} — and nothing in it
+	 * can produce a space-free word beginning with a colon. Without that, a graph
+	 * with a route node called "home" would find its own arrival answered by the
+	 * walk back, which is the sort of collision that shows up once, in somebody
+	 * else's map.
+	 */
+	private static final String HOMEWARD = ":home";
+
+	/**
+	 * Sends her back to where she was placed, standing as she was placed.
+	 *
+	 * <h2>Why walking home goes through the route machinery</h2>
+	 *
+	 * Because it is a route of one point, and everything a walk home needs — the
+	 * pathfinding, the arrival, the giving up when a wall has gone up across the
+	 * way, the animation that goes with it — is already there and already tested.
+	 * A second way of walking somewhere would be a second thing to get wrong, and
+	 * the first thing it would get wrong is the giving up.
+	 *
+	 * The facing is set on arrival for walking and at once for the other, which is
+	 * the whole of the difference between the two.
+	 */
+	public void goHome(boolean walking) {
+		Vec3 back = home();
+		float facing = homeYaw();
+
+		// Already on the way. The ending that ordered this is still the node the
+		// graph is standing at, and a finished graph is stepped again on the next
+		// tick — so without this the order would be given afresh twenty times a
+		// second, and each fresh order starts the walk from its first point again.
+		if (HOMEWARD.equals(routeOrder)) return;
+
+		// Or already there, which is the same problem one step further on. She gets
+		// home, the graph is stepped again, and off she goes home from home — which
+		// is what "he came back only to walk the round again" was: two orders, both
+		// correct, taking turns with the body.
+		//
+		// The facing is still set, because it costs nothing and because this is also
+		// the path taken by a character who was standing at home when the graph
+		// ended and should be turned to face the way she was placed.
+		if (position().distanceToSqr(back) <= com.mopicmp.npcstudio.foe.Walk.ARRIVED
+				* com.mopicmp.npcstudio.foe.Walk.ARRIVED) {
+			setYRot(facing);
+			setYHeadRot(facing);
+			yBodyRot = facing;
+			return;
+		}
+
+		if (!walking) {
+			halt();
+			// Through the server's own teleport rather than by writing the position,
+			// so that whatever is riding on knowing where an entity is — the chunk it
+			// belongs to, the clients watching it — is told properly.
+			snapTo(back.x, back.y, back.z);
+			setYRot(facing);
+			setYHeadRot(facing);
+			yBodyRot = facing;
+			return;
+		}
+
+		homewardYaw = facing;
+		follow(HOMEWARD, new com.mopicmp.npcstudio.dialogue.Route(
+			java.util.List.of(new com.mopicmp.npcstudio.dialogue.Route.Point.At(
+				net.minecraft.util.Mth.floor(back.x),
+				net.minecraft.util.Mth.floor(back.y),
+				net.minecraft.util.Mth.floor(back.z))),
+			com.mopicmp.npcstudio.dialogue.Route.Gait.WALK,
+			com.mopicmp.npcstudio.dialogue.Route.STROLL,
+			com.mopicmp.npcstudio.dialogue.Route.From.WORLD));
+	}
+
+	/**
+	 * Which way to stand once the walk home is over.
+	 *
+	 * Held here rather than being worked out on arrival, because by then she is
+	 * home and "the way she was placed" and "the way she is standing" are the same
+	 * answer — which is how a character ends up facing the wall she walked at.
+	 */
+	private Float homewardYaw;
+
+	/** The graph has taken notice of an arrival, so it stops being one. */
+	public void tookArrival(String order) {
+		if (order != null && order.equals(routeWalked)) routeWalked = "";
+	}
+
+	/**
+	 * One tick of walking a path.
+	 *
+	 * <h2>Why a point she cannot reach is stepped over rather than fatal</h2>
+	 *
+	 * Because both ways of failing to walk somewhere look the same from here and
+	 * neither is worth stopping for. She is already standing on the point, so the
+	 * search finds nothing to search; or a wall has gone up across the round since
+	 * it was drawn. In the first the right answer is plainly to carry on, and in
+	 * the second it is to carry on too — a guard who meets a new wall should walk
+	 * the rest of her round, not stand at it for the life of the world.
+	 */
+	private void walkTheRoute() {
+		if (routeOrder.isEmpty()) return;
+
+		if (routeStanding > 0) {
+			routeStanding--;
+			return;
+		}
+
+		var point = route.at(routeAt);
+		if (point == null) {
+			routeOver();
+			return;
+		}
+		int[] where = pointAt(point);
+
+		if (!routeSent) {
+			// The bottom middle of the block, which is where a body stands — the same
+			// reading a named place and the map's start both take of theirs.
+			walkTo(Vec3.atBottomCenterOf(
+				new net.minecraft.core.BlockPos(where[0], where[1], where[2])),
+				route.pace());
+			// Set whether or not there was a way. An order that found none leaves her
+			// not walking, and the next tick reads that as having arrived, which steps
+			// over the point instead of standing at it.
+			routeSent = true;
+			return;
+		}
+
+		if (walk.walking()) return;
+
+		// Arriving and giving up used to be the same thing here, and that was wrong in
+		// the one way nobody could see. A walk ends when she gets there, and it ends
+		// when she has been pushing at a wall for a second and a half — and this read
+		// both as "she is there", stepped on to the next point, and on the last point
+		// finished the round. The character stops part way along with the graph
+		// certain the route was walked. Reported as exactly that: she catches on the
+		// walls and then stands still without reaching the end.
+		//
+		// So it asks. She is either near the place or she is not, and if she is not
+		// the walk is ordered again — from where she now stands, which is what makes
+		// the second search different from the first and able to go round whatever
+		// stopped the first.
+		if (!com.mopicmp.npcstudio.foe.Walk.reached(where, getX(), getY(), getZ(),
+				com.mopicmp.npcstudio.foe.Walk.ARRIVED)
+				&& routeTries < com.mopicmp.npcstudio.foe.Walk.TRIES) {
+			routeTries++;
+			routeSent = false;
+			return;
+		}
+
+		routeSent = false;
+		routeTries = 0;
+		// She got here, so whatever she was avoiding has done its work and the next leg
+		// starts with an open mind. Held any longer, a gate that was shut once would go
+		// on being walked round for the rest of the afternoon after somebody opened it —
+		// which is a character taking the long way for a reason nobody can see.
+		shun.clear();
+		routeStanding = point.stay();
+		routeAt++;
+		if (routeAt >= route.size()) routeOver();
+	}
+
+	/**
+	 * Where one point of the route is, in blocks of this world.
+	 *
+	 * Steps are turned into places here and nowhere else. Against her home rather
+	 * than against where she is now: an anchor that moved with her would make a round
+	 * of "four forward" walk her four blocks further out every time it came round,
+	 * which is a character wandering off over an afternoon with no line anywhere to
+	 * blame.
+	 */
+	private int[] pointAt(com.mopicmp.npcstudio.dialogue.Route.Point point) {
+		Vec3 anchor = home();
+		return com.mopicmp.npcstudio.dialogue.Route.world(point,
+			net.minecraft.util.Mth.floor(anchor.x),
+			net.minecraft.util.Mth.floor(anchor.y),
+			net.minecraft.util.Mth.floor(anchor.z),
+			homeFacing());
+	}
+
+	/**
+	 * The end of a route, however it ended.
+	 *
+	 * Arriving and giving up are written down the same way on purpose. The graph
+	 * asks "am I still on it", and to a graph the honest answer to both is no —
+	 * see {@link com.mopicmp.npcstudio.dialogue.Sense#WALKED}, which says so out
+	 * loud so that nobody writes a condition believing it means success.
+	 */
+	private void routeOver() {
+		// Home, and standing as she was placed. Set here rather than when the walk was
+		// ordered, because it is only true once she has arrived — and it is set on
+		// giving up as well, which is right: a character who could not get home should
+		// at least stop staring at whatever stopped her.
+		if (HOMEWARD.equals(routeOrder) && homewardYaw != null) {
+			setYRot(homewardYaw);
+			setYHeadRot(homewardYaw);
+			yBodyRot = homewardYaw;
+			homewardYaw = null;
+		}
+		routeWalked = routeOrder;
+		routeOrder = "";
+		route = com.mopicmp.npcstudio.dialogue.Route.NOWHERE;
+		routeAt = 0;
+		routeSent = false;
+		routeStanding = 0;
+		routeTries = 0;
+		entityData.set(DATA_GAIT, (byte) 0);
+	}
+
+	/**
+	 * How she was told to carry herself, or null when nobody said.
+	 *
+	 * Told rather than measured. The animation used to be picked from how fast the
+	 * body was actually moving, which made "walks or runs" and "how fast" one dial
+	 * with two knobs on it — and a node offering both would have had one of them
+	 * lying the moment the other was moved.
+	 */
+	public com.mopicmp.npcstudio.dialogue.Route.Gait toldGait() {
+		byte told = entityData.get(DATA_GAIT);
+		if (told <= 0 || told > com.mopicmp.npcstudio.dialogue.Route.Gait.values().length) {
+			return null;
+		}
+		return com.mopicmp.npcstudio.dialogue.Route.Gait.values()[told - 1];
 	}
 
 	// ----------------------------------------------------------------- the brain
@@ -983,6 +1646,16 @@ public class NpcEntity extends Avatar {
 	 * That is the third time this family of bug has come up — the lost
 	 * {@code segments}, the gesture that never restarts, and this — which is why
 	 * it is a field and not a comment.
+	 *
+	 * <h2>And it is written down, which it was not</h2>
+	 *
+	 * A fourth time, in the same paragraph as the other three. It was read off the
+	 * old key and never saved under one of its own, so it lasted exactly as long as
+	 * the session the migration happened in — and that is the session where nobody
+	 * asks, because nothing has gone wrong yet. The question comes months later:
+	 * "why does she run this graph, I never gave her one." A field that cannot
+	 * answer then is a comment with extra steps, which is precisely what the note
+	 * above says it must not be.
 	 */
 	private String movedBrain = "";
 
@@ -1790,6 +2463,32 @@ public class NpcEntity extends Avatar {
 		return entityData.get(slotFor(motion));
 	}
 
+	/**
+	 * The animation for this way of moving, or the resting one if none was set.
+	 *
+	 * <h2>Why an empty slot means "nothing special" and not "nothing"</h2>
+	 *
+	 * Reported as a character whose animation would not show, restarted itself, and
+	 * worked only inside a scene. All of it was one thing: a slot with nothing in it
+	 * meant nothing was drawn, and a character is constantly passing through ways of
+	 * moving nobody wrote an animation for.
+	 *
+	 * A step down a slab is a tick or two of falling, which reads as a jump. A nudge is
+	 * two ticks of walking. With only an idle animation set, each of those blanked the
+	 * character for a moment and then brought the idle back — and coming back is a new
+	 * performance, so it started again from its first frame. That is the restarting.
+	 *
+	 * So an unset slot now says "I have nothing special for this", which is what
+	 * somebody who left it empty meant. The cost is honest and worth naming: a
+	 * character walking with no walk animation glides in her idle pose without moving
+	 * her feet. An empty idle as well means the empty string, which is the vanilla body
+	 * doing vanilla things — the behaviour of a character nobody has animated at all.
+	 */
+	private String motionOrResting(Motion motion) {
+		String set = motionAnimation(motion);
+		return set.isEmpty() ? motionAnimation(Motion.IDLE) : set;
+	}
+
 	public void setMotionAnimation(Motion motion, String animation) {
 		entityData.set(slotFor(motion), animation == null ? "" : animation);
 	}
@@ -1870,19 +2569,85 @@ public class NpcEntity extends Avatar {
 			.carriage(moving, quickly);
 	}
 
-	public String restingAnimation() {
-		// Standing still is decided by standing still, not by the ground flag. A
-		// client's copy of an entity is not run through the physics the server
-		// uses, so its `onGround` can read false for a character that has been
-		// stood in the same spot for an hour — and asking that question first
-		// meant the idle animation never played at all.
+	/**
+	 * How many ticks a new way of moving has to last before it is believed.
+	 *
+	 * <h2>Why anything has to wait at all</h2>
+	 *
+	 * Because the readings are twitchy in a way the character is not. Vanilla's own
+	 * numbers put a single tick of gravity at 0.08 and a real fall past 0.4 in about
+	 * five ticks, and a step off a slab spends one or two ticks in between — so a
+	 * character walking a path of slabs genuinely is "falling" every other step,
+	 * briefly, by any measure taken from her speed alone.
+	 *
+	 * Four ticks sits between the two: longer than the blips, and a fifth of a second,
+	 * which is under what anybody notices as a delay in starting to walk. It is
+	 * reasoned from vanilla's constants rather than measured in a running game — that
+	 * is worth saying, because if it turns out to be wrong it will be wrong by being
+	 * too short.
+	 */
+	private static final int SETTLE = 4;
+
+	/** The way of moving currently believed. The rule for believing it is in Settled. */
+	private final Settled<Motion> settled = new Settled<>(Motion.IDLE, SETTLE);
+
+	/**
+	 * Takes one reading of how she is moving and lets it in only if it persists.
+	 *
+	 * Run on both sides, because both work the animation out for themselves: the client
+	 * to draw it and the server to know what it is showing. They see slightly different
+	 * movement — a client's copy is not run through the server's physics — and that is
+	 * fine, since neither is telling the other. What matters is that each is steady.
+	 */
+	private void settleMotion() {
+		settled.saw(movingAs());
+	}
+
+	/**
+	 * How she is moving this very tick, before anything has been allowed to settle.
+	 *
+	 * <h2>Standing still is decided by standing still</h2>
+	 *
+	 * Not by the ground flag. A client's copy of an entity is not run through the
+	 * physics the server uses, so its {@code onGround} can read false for a character
+	 * that has been stood in the same spot for an hour — and asking that question first
+	 * meant the idle animation never played at all.
+	 *
+	 * <h2>Why half a block down is not a jump</h2>
+	 *
+	 * It was {@code |dy| > 0.08} with {@code !onGround()} meant as the real guard, and
+	 * that guard does not hold here for the reason just given. So the whole test was the
+	 * number, and the number is a single tick of gravity — which any step down clears.
+	 *
+	 * A path of slabs laid into grass is half a block up and half a block down at every
+	 * step, so she played the jump animation on every other one. Reported as "he jumps
+	 * all the time, and in great quantities", over a screenshot of exactly that path.
+	 *
+	 * Rising is unambiguous: nothing but a jump lifts her, and vanilla's jump begins at
+	 * 0.42, while stepping up a slab is a position the movement code corrects rather
+	 * than a speed. Falling has to be a fall rather than a step: gravity reaches four
+	 * tenths after about five ticks, which is two and a half blocks, and anything
+	 * shorter than that is somebody walking downstairs.
+	 *
+	 * The speeds are squared, because comparing squared lengths avoids a square root and
+	 * the threshold is arbitrary anyway. Roughly a brisk walk.
+	 */
+	private Motion movingAs() {
 		double speed = getDeltaMovement().horizontalDistanceSqr();
-		double falling = Math.abs(getDeltaMovement().y);
-		if (falling > 0.08 && !onGround()) return motionAnimation(Motion.JUMP);
-		// Squared, because comparing squared lengths avoids a square root and the
-		// threshold is arbitrary anyway. Roughly a brisk walk.
-		boolean moving = speed > 0.0005;
-		boolean quickly = speed > 0.02;
+		double vertical = getDeltaMovement().y;
+		if (vertical > 0.1 || vertical < -0.4) return Motion.JUMP;
+		if (speed > 0.02) return Motion.RUN;
+		if (speed > 0.0005) return Motion.WALK;
+		return Motion.IDLE;
+	}
+
+	public String restingAnimation() {
+		// Read off the settled answer rather than off this tick's speed. Where the
+		// thresholds are and why they are those numbers is at movingAs; what settleMotion
+		// adds is that one twitchy tick is not a change of animation. See SETTLE.
+		if (settled.believed() == Motion.JUMP) return motionOrResting(Motion.JUMP);
+		boolean moving = settled.believed() != Motion.IDLE;
+		boolean quickly = settled.believed() == Motion.RUN;
 
 		// On guard wins over the four animations somebody chose for this character,
 		// and only while she is on guard. That is the whole of the second half of the
@@ -1892,8 +2657,28 @@ public class NpcEntity extends Avatar {
 		String guarded = carriage(moving, quickly);
 		if (!guarded.isEmpty()) return guarded;
 
-		if (quickly) return motionAnimation(Motion.RUN);
-		if (moving) return motionAnimation(Motion.WALK);
+		// What a route said, in preference to what the speed implies.
+		//
+		// Only while she is moving. A gait is an answer to "how does she travel", and
+		// a character standing at a point of her round with the run animation playing
+		// would be running on the spot.
+		//
+		// This is the whole of what makes the node's two settings two settings. The
+		// animation was read off the measured speed, so an author who chose "runs" and
+		// then slowed her below about half pace watched her start walking, with the
+		// switch still reading "runs" and nothing anywhere admitting the disagreement.
+		if (moving) {
+			var told = toldGait();
+			if (told == com.mopicmp.npcstudio.dialogue.Route.Gait.RUN) {
+				return motionOrResting(Motion.RUN);
+			}
+			if (told == com.mopicmp.npcstudio.dialogue.Route.Gait.WALK) {
+				return motionOrResting(Motion.WALK);
+			}
+		}
+
+		if (quickly) return motionOrResting(Motion.RUN);
+		if (moving) return motionOrResting(Motion.WALK);
 		return motionAnimation(Motion.IDLE);
 	}
 
@@ -1915,10 +2700,26 @@ public class NpcEntity extends Avatar {
 	@Override
 	public void tick() {
 		super.tick();
+		// On both sides, because both work out the animation for themselves and both
+		// need it to be steady. Before anything else this tick, so that whatever asks
+		// afterwards asks the same question and gets the same answer.
+		settleMotion();
 		// Only the side that owns the truth. The client works out for itself when to
 		// stop drawing a gesture, and having it also clear the field would mean two
 		// answers to the same question that drift apart.
 		if (!level().isClientSide()) {
+			// Where she belongs, settled once and never guessed at again.
+			//
+			// Pinned here rather than left to whoever first asks, because the fallback
+			// answer is "wherever she is standing" and that moves. A route of steps
+			// measured against a moving anchor walks her a little further out on every
+			// round, which reads as a character quietly wandering off over an afternoon
+			// with nothing in the graph to blame.
+			//
+			// For a character placed before this existed, the first tick after the
+			// update is where she is, which is where she was placed unless a graph has
+			// already moved her. The ring's "post here" is how that is corrected.
+			if (!posted()) markPost();
 			expireGesture();
 			expireExpression();
 			refreshFace();
@@ -1926,6 +2727,13 @@ public class NpcEntity extends Avatar {
 			// The doing, as against the deciding: whoever ordered the walk - a
 			// reflex or a graph - the legs move here, every tick, the same way.
 			walkOn();
+			// And the route after them, not before. Reaching a point is not something
+			// the route notices — it is the walking that ends the walk, in the line
+			// above — so asking first would see her still going and put the next point
+			// off to the following tick. Over a dozen points that is a character who
+			// walks in a series of small hesitations, and it would have looked like the
+			// pathfinder rather than like an order of two lines.
+			walkTheRoute();
 			gaze();
 			workTheWeapon();
 			com.mopicmp.npcstudio.brain.Brain.tick(this);
@@ -2347,6 +3155,17 @@ public class NpcEntity extends Avatar {
 			output.putString("SkinFile", java.util.Base64.getEncoder().encodeToString(customSkin));
 		}
 		output.putInt("Worn", worn);
+		// Where she belongs, and which way she stands there. Authorship rather than
+		// runtime — it is the place a graph sends her back to and the frame a route
+		// of steps is measured in — so unlike the walking itself it survives the
+		// world being closed.
+		if (posted()) {
+			net.minecraft.core.BlockPos where = entityData.get(DATA_POST);
+			output.putInt("PostX", where.getX());
+			output.putInt("PostY", where.getY());
+			output.putInt("PostZ", where.getZ());
+			output.putFloat("PostYaw", postYaw());
+		}
 		for (int i = 0; i < wardrobe.size(); i++) {
 			Outfit outfit = wardrobe.get(i);
 			output.putString("Outfit" + i + "Label", outfit.label());
@@ -2376,8 +3195,14 @@ public class NpcEntity extends Avatar {
 		// "Brain" is deliberately not written back. It was the second document a
 		// character used to carry, it is read on load and turned into a dialogue,
 		// and writing it again would keep resurrecting a field that no longer means
-		// anything. What was carried over is remembered in `movedBrain` so that the
-		// bench can say so out loud, once, to whoever comes looking.
+		// anything.
+		//
+		// What was carried over is written under a name of its own instead, so the
+		// answer to "why does she run this graph" outlives the one session in which
+		// the moving happened. Under the old name it would be read back as a brain
+		// again and moved again for ever; under this one it is a note about what was
+		// done, which is a different thing and says so.
+		if (!movedBrain.isEmpty()) output.putString("MovedBrain", movedBrain);
 		// What she has learnt about herself. Not the bookmark — see `memory`.
 		if (!memory.isEmpty()) {
 			output.store("Memory", MEMORY_CODEC, memory);
@@ -2403,6 +3228,17 @@ public class NpcEntity extends Avatar {
 		entityData.set(DATA_POSTURE, BodyShape.readPosture(
 			input.getLongOr("Posture", BodyShape.DEFAULT.packedPosture())));
 		costumeId = input.getStringOr("Costume", "");
+		// Absent for every character placed before this was saved, and absent has to
+		// go on meaning "wherever she is standing" — see home(), which is what makes a
+		// route of steps work the moment somebody is put down, with nothing set up.
+		// Absent for every character saved before this existed, and absent has to go
+		// on meaning "nobody has said" — the first tick then pins it where she stands,
+		// which for a character nobody has moved is where she was placed.
+		if (input.getIntOr("PostY", Integer.MIN_VALUE) != Integer.MIN_VALUE) {
+			markPost(new net.minecraft.core.BlockPos(
+				input.getIntOr("PostX", 0), input.getIntOr("PostY", 0),
+				input.getIntOr("PostZ", 0)), input.getFloatOr("PostYaw", 0));
+		}
 		// Off for every character placed before this existed, which is every character
 		// in every world so far and is the answer they all want.
 		setWatchful(input.getBooleanOr("Watchful", false));
@@ -2415,6 +3251,10 @@ public class NpcEntity extends Avatar {
 		// arrangement that still exists. Either way what happened is remembered, so
 		// that "she used to have a brain and now runs this" is a sentence somebody
 		// can read rather than a difference they have to work out.
+		// The note left by an earlier load, first, so that a character who was moved
+		// three worlds ago can still say what happened to her.
+		movedBrain = input.getStringOr("MovedBrain", "");
+
 		String was = input.getStringOr("Brain", "");
 		if (!was.isEmpty()) {
 			movedBrain = was;

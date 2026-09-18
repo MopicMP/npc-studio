@@ -55,6 +55,50 @@ dependencies {
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
+	// A WebP decoder, for the pictures in the plugin browser.
+	//
+	// Measured before it was added, because a dependency for a column of icons is
+	// not obviously worth it: of the twelve most downloaded projects on Modrinth,
+	// ten serve their icon as WebP and two as PNG, and no PNG copy of a WebP one
+	// exists — three likely spellings of the address all answer 404. The game's
+	// own decoder is stb_image, which reads PNG, JPEG, GIF and BMP and not this.
+	//
+	// TwelveMonkeys rather than any of the others because it is **pure Java**:
+	// the alternatives carry a native library per platform, which would mean
+	// shipping three of them and testing on three. Five jars, 490 KB together,
+	// checked on a real Modrinth icon before this line was written.
+	implementation "com.twelvemonkeys.imageio:imageio-webp:${project.webp_version}"
+	// Included one by one because jar-in-jar does not follow transitive
+	// dependencies, and a decoder missing half of itself fails at the moment
+	// somebody opens the browser rather than at build time.
+	include "com.twelvemonkeys.imageio:imageio-webp:${project.webp_version}"
+	include "com.twelvemonkeys.imageio:imageio-core:${project.webp_version}"
+	include "com.twelvemonkeys.common:common-lang:${project.webp_version}"
+	include "com.twelvemonkeys.common:common-io:${project.webp_version}"
+	include "com.twelvemonkeys.common:common-image:${project.webp_version}"
+
+	// A YAML reader, for plugin and Paper configuration.
+	//
+	// Chosen on one measurement, made on this machine's own servers before the
+	// line was written: read `bukkit.yml`, `spigot.yml`, `commands.yml`,
+	// `paper-global.yml`, `paper-world-defaults.yml` and a plugin's `config.yml`
+	// and write them back unchanged. The ordinary way — load into a map, dump the
+	// map — loses every comment: 14 to 0, 11 to 0, 9 to 0, and the file comes back
+	// ten to fifteen lines shorter. In a plugin config the comments *are* the
+	// documentation, so that way is not an option at any price.
+	//
+	// Reading through the node API with comments switched on keeps them, and gives
+	// each value an exact span in the text. That is what this is here for: reading
+	// only. Writing is a substring replacement in the original file — see
+	// ConfigFile — so what survives a save survives because nothing touched it,
+	// not because a library was careful. Even SnakeYAML's own writer, which does
+	// keep every comment, quietly turned the fifteen CRLF line endings in
+	// paper-global.yml into LF.
+	//
+	// 340 KB, pure Java, no transitive dependencies of its own.
+	implementation "org.yaml:snakeyaml:${project.snakeyaml_version}"
+	include "org.yaml:snakeyaml:${project.snakeyaml_version}"
+
 	// The dialogue engine is deliberately free of Minecraft types, so it can be
 	// tested with plain JUnit and no game running at all. That is the whole point
 	// of keeping the engine and the integration apart.
@@ -241,6 +285,44 @@ tasks.register('exportFaceMarks', JavaExec) {
 	group = 'verification'
 	classpath = sourceSets.test.runtimeClasspath
 	mainClass = 'com.mopicmp.npcstudio.skin.FaceMarksExport'
+}
+
+// Asks Mojang, Fabric and Paper whether their version APIs still look the way
+// the parsing expects. Needs the internet, which is why it is a task somebody
+// runs and not a test that fails a build because a service is down.
+tasks.register('checkCores', JavaExec) {
+	group = 'verification'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.mopicmp.npcstudio.server.CoreCheck'
+	// `-Pinstall=fabric:26.2` fetches one for real instead of only listing, and
+	// `-Pbrowse=paper:1.21.4:essentials` asks the plugin catalogue the same way.
+	['install', 'browse'].each { name ->
+		if (project.hasProperty(name)) systemProperty name, project.property(name)
+	}
+}
+
+// Puts a real server up and talks to it, which is the only way to find out
+// whether the command channel, the detached process and the console file behave
+// the way the tests assume. Three commands on purpose — see ServerRun.
+tasks.register('checkServer', JavaExec) {
+	group = 'verification'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.mopicmp.npcstudio.server.ServerRun'
+	['mode', 'eula'].each { name ->
+		if (project.hasProperty(name)) systemProperty name, project.property(name)
+	}
+}
+
+// Runs the rights tab's own mechanism against a server that is already up, so
+// that "LuckPerms answers this" is something that was watched happening rather
+// than something read out of its source.
+tasks.register('checkPermissions', JavaExec) {
+	group = 'verification'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.mopicmp.npcstudio.server.PermissionsRun'
+	['at', 'port', 'pass'].each { name ->
+		if (project.hasProperty(name)) systemProperty name, project.property(name)
+	}
 }
 
 // Draws the face the way the game will, so that "it looks right" can be checked

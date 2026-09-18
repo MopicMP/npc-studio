@@ -135,6 +135,27 @@ public final class DialogueState {
 			declaredTypes, given);
 	}
 
+	/**
+	 * The same bookmark having forgotten it was ever at these nodes.
+	 *
+	 * <h2>Why forgetting where somebody has been is a separate act</h2>
+	 *
+	 * Because "has this node been visited" is a condition the language has, so a scene
+	 * put back to the start by resetting its variables alone is a scene that replays
+	 * with half its branches already decided — and the half that is already decided is
+	 * invisible, since nothing anywhere shows the visited set.
+	 *
+	 * The nodes are named rather than the whole set being emptied: the set belongs to
+	 * the player and holds every node of every document they have walked through, and
+	 * replaying one errand must not forget that they have met the innkeeper.
+	 */
+	public DialogueState forgetting(java.util.Collection<String> nodes) {
+		Set<String> next = new HashSet<>(visited);
+		if (!next.removeAll(nodes)) return this;
+		return new DialogueState(currentNode, playerVars, worldVars, characterVars, next,
+			declaredTypes, given);
+	}
+
 	public DialogueState withVisited(String node) {
 		Set<String> next = new HashSet<>(visited);
 		next.add(node);
